@@ -1,0 +1,23 @@
+violations:
+  - id: javax-to-jakarta-001
+    description: "Replace javax.servlet with jakarta.servlet"
+    category: mandatory
+    effort: 1
+    ruleSet: "quarkus/springboot"
+    rule:
+      id: "javax-to-jakarta-servlet"
+      message: "Java EE has been rebranded to Jakarta EE; javax.servlet.* packages must be replaced with jakarta.servlet.*"
+      ruleSet: "quarkus/springboot"
+      labels:
+        - "konveyor.io/source=java-ee"
+        - "konveyor.io/target=quarkus"
+    incidents:
+      - uri: "file:///examples/javax-to-jakarta/src/UserServlet.java"
+        message: "Replace `import javax.servlet.http.HttpServlet` with jakarta.servlet.http.HttpServlet"
+        lineNumber: 3
+        codeSnip: |
+          package com.example;
+
+          import javax.servlet.http.HttpServlet;
+          import javax.servlet.http.HttpServletRequest;
+          import javax.servlet.http.HttpServletResponse;
