@@ -21,8 +21,13 @@ func createTestGitRepo(t *testing.T) string {
 	require.NoError(t, err, "failed to init git repo")
 
 	// Configure git user for commits
-	exec.Command("git", "config", "user.name", "Test User").Run()
-	exec.Command("git", "config", "user.email", "test@example.com").Run()
+	cmd = exec.Command("git", "config", "user.name", "Test User")
+	cmd.Dir = tmpDir
+	_ = cmd.Run() // Ignore error, not critical for test setup
+
+	cmd = exec.Command("git", "config", "user.email", "test@example.com")
+	cmd.Dir = tmpDir
+	_ = cmd.Run() // Ignore error, not critical for test setup
 
 	return tmpDir
 }
