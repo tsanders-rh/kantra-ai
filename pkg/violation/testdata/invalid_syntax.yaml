@@ -1,0 +1,7 @@
+violations:
+  - id: "violation-001"
+    description: "This YAML has invalid syntax
+    category: "mandatory"
+      effort: 1
+    incidents:
+      - uri: "file:///test.java"

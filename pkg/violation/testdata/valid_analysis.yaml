@@ -1,0 +1,43 @@
+violations:
+  - id: "violation-001"
+    description: "Replace javax with jakarta"
+    category: "mandatory"
+    effort: 1
+    ruleSet: "java-ee"
+    rule:
+      id: "javax-to-jakarta"
+      message: "Migrate from javax to jakarta namespace"
+    incidents:
+      - uri: "file:///path/to/File.java"
+        message: "Replace javax.servlet import"
+        lineNumber: 10
+        codeSnip: "import javax.servlet.http.HttpServlet;"
+      - uri: "file:///path/to/AnotherFile.java"
+        message: "Replace javax.persistence import"
+        lineNumber: 5
+        codeSnip: "import javax.persistence.Entity;"
+  - id: "violation-002"
+    description: "Update deprecated API"
+    category: "optional"
+    effort: 3
+    ruleSet: "modernization"
+    rule:
+      id: "deprecated-api"
+      message: "Update to new API"
+    incidents:
+      - uri: "file:///path/to/Other.java"
+        message: "Use new API method"
+        lineNumber: 25
+        codeSnip: "oldMethod();"
+  - id: "violation-003"
+    description: "Remove obsolete configuration"
+    category: "potential"
+    effort: 5
+    ruleSet: "config"
+    rule:
+      id: "obsolete-config"
+      message: "Remove old config"
+    incidents:
+      - uri: "file:///config/old-config.xml"
+        message: "Remove deprecated settings"
+        lineNumber: 1
