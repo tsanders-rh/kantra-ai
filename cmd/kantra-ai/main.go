@@ -56,8 +56,9 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
 	remediateCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
 
-	remediateCmd.MarkFlagRequired("analysis")
-	remediateCmd.MarkFlagRequired("input")
+	// MarkFlagRequired only errors if flag doesn't exist, which can't happen here
+	_ = remediateCmd.MarkFlagRequired("analysis")
+	_ = remediateCmd.MarkFlagRequired("input")
 
 	rootCmd.AddCommand(remediateCmd)
 
