@@ -18,7 +18,7 @@ AI-powered remediation for Konveyor violations.
 - Sends violations to AI provider (Claude or OpenAI)
 - Applies fixes to source files
 - Tracks success/failure and costs
-- **Does NOT** create git commits (manual review for now)
+- Creates git commits (optional, with configurable strategies)
 
 ## 🚀 Quick Start
 
@@ -61,6 +61,27 @@ go build -o kantra-ai ./cmd/kantra-ai
   --input=./your-app \
   --provider=claude \
   --violation-ids=violation-001,violation-002
+
+# Auto-commit fixes (one commit per violation)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=per-violation
+
+# Auto-commit fixes (one commit per file)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=per-incident
+
+# Auto-commit fixes (single batch commit at end)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=at-end
 ```
 
 ## 📊 Validation Tracking
@@ -78,6 +99,7 @@ pkg/
     claude/           # Claude implementation
     openai/           # OpenAI implementation
   fixer/              # Apply fixes to files
+  gitutil/            # Git commit integration
 examples/             # Test violations
 validation/           # Test results tracking
 ```
@@ -85,7 +107,8 @@ validation/           # Test results tracking
 ## 🔮 Future Plans
 
 After validation succeeds:
-- Git workflow (commits per violation)
+- ✅ Git workflow (commits per violation/incident/batch)
+- PR creation automation
 - Cost controls and limits
 - Multiple providers and comparison
 - Verification (syntax check, build, tests)

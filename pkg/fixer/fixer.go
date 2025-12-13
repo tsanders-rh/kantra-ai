@@ -31,6 +31,7 @@ func New(provider provider.Provider, inputDir string, dryRun bool) *Fixer {
 type FixResult struct {
 	ViolationID string
 	IncidentURI string
+	FilePath    string // Relative file path for git tracking
 	Success     bool
 	Cost        float64
 	TokensUsed  int
@@ -57,6 +58,9 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 			filePath = strings.TrimPrefix(filePath, string(filepath.Separator))
 		}
 	}
+
+	// Store the relative file path for git tracking
+	result.FilePath = filePath
 
 	fullPath := filepath.Join(f.inputDir, filePath)
 

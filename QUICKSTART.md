@@ -87,6 +87,7 @@ kantra analyze \
 
 ### Step 4: Review the Changes
 
+**Option A: Manual Review (No Auto-Commit)**
 ```bash
 # See what changed
 git diff
@@ -97,6 +98,26 @@ git commit -m "AI fixes for mandatory violations (effort ≤ 1)"
 
 # If bad: revert
 git checkout .
+```
+
+**Option B: Auto-Commit (Recommended)**
+```bash
+# Let kantra-ai create commits automatically
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=/path/to/your/app \
+  --provider=claude \
+  --categories=mandatory \
+  --max-effort=1 \
+  --max-cost=1.00 \
+  --git-commit=per-violation
+
+# Review commit history
+git log --oneline
+
+# Cherry-pick commits you want to keep
+# Or revert specific commits if needed
+git revert <commit-hash>
 ```
 
 ## Command Reference
@@ -127,6 +148,11 @@ kantra-ai remediate \
 
 # Dry run (no changes)
 --dry-run
+
+# Git commit strategies
+--git-commit=per-violation   # One commit per violation type
+--git-commit=per-incident    # One commit per file fix
+--git-commit=at-end          # Single batch commit at end
 ```
 
 ### Provider Selection
@@ -189,13 +215,46 @@ kantra-ai remediate \
 # Compare results
 ```
 
+### Git Commit Strategies
+
+```bash
+# Per-Violation: One commit per violation type (best for review)
+# All fixes for a violation are in one commit
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./myapp \
+  --provider=claude \
+  --git-commit=per-violation
+
+# Per-Incident: One commit per file fix (most granular)
+# Each file gets its own commit
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./myapp \
+  --provider=claude \
+  --git-commit=per-incident
+
+# At-End: Single batch commit (simplest)
+# All fixes in one commit at the end
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./myapp \
+  --provider=claude \
+  --git-commit=at-end
+
+# Review commits
+git log --oneline --graph
+git show <commit-hash>  # See details of a specific commit
+```
+
 ## Tips
 
 1. **Always dry-run first** - See what would happen before spending money
 2. **Start small** - Test with 5-10 violations before doing bulk fixes
-3. **Review immediately** - Check `git diff` right after fixes
-4. **Track results** - Update VALIDATION.md with your findings
-5. **Use cost limits** - Set `--max-cost` to avoid surprises
+3. **Use auto-commit** - `--git-commit=per-violation` makes review easier
+4. **Review commit history** - Check `git log` to see what was fixed
+5. **Track results** - Update VALIDATION.md with your findings
+6. **Use cost limits** - Set `--max-cost` to avoid surprises
 
 ## Troubleshooting
 

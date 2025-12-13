@@ -19,14 +19,13 @@ The current implementation is intentionally minimal to validate the core hypothe
 - ✅ Apply fixes to files
 - ✅ Track costs and success rate
 - ✅ Basic filtering (by ID, category, effort)
+- ✅ Git commits with multiple strategies (per-violation, per-incident, at-end)
 
 **What's NOT implemented (yet):**
-- ❌ Git commits
 - ❌ PR creation
 - ❌ Advanced cost controls
 - ❌ Verification (build/test)
 - ❌ Resume capability
-- ❌ Multiple commit strategies
 - ❌ Kai solution server integration
 - ❌ Ollama local models
 - ❌ Progress UI
@@ -49,8 +48,13 @@ kantra-ai (MVP)
 │   │   ├── claude/          # Claude (Anthropic) implementation
 │   │   └── openai/          # OpenAI implementation
 │   │
-│   └── fixer/               # Apply fixes to files
-│       └── fixer.go         # File modification logic
+│   ├── fixer/               # Apply fixes to files
+│   │   └── fixer.go         # File modification logic
+│   │
+│   └── gitutil/             # Git commit integration
+│       ├── gitutil.go       # Core git operations
+│       ├── tracker.go       # Commit tracking & strategies
+│       └── messages.go      # Commit message formatting
 │
 └── examples/                # Test cases
     └── javax-to-jakarta/    # Simple migration test
@@ -60,10 +64,12 @@ kantra-ai (MVP)
 
 ### After Validation Succeeds (Week 3+)
 
-**Phase 1: Git Integration**
-- Commit per violation
-- Branch creation
-- Basic PR creation
+**Phase 1: Git Integration** ✅ (Completed)
+- ✅ Commit per violation
+- ✅ Commit per incident
+- ✅ Batch commit at end
+- ❌ Branch creation
+- ❌ Basic PR creation
 
 **Phase 2: Safety & Quality**
 - Syntax validation

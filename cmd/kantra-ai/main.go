@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
+	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
@@ -16,15 +17,16 @@ import (
 )
 
 var (
-	analysisPath  string
-	inputPath     string
-	providerName  string
-	violationIDs  string
-	categories    string
-	maxEffort     int
-	maxCost       float64
-	dryRun        bool
-	model         string
+	analysisPath      string
+	inputPath         string
+	providerName      string
+	violationIDs      string
+	categories        string
+	maxEffort         int
+	maxCost           float64
+	dryRun            bool
+	model             string
+	gitCommitStrategy string
 )
 
 func main() {
@@ -52,6 +54,7 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().Float64Var(&maxCost, "max-cost", 0, "Maximum cost in USD (0 = no limit)")
 	remediateCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 	remediateCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
+	remediateCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
 
 	remediateCmd.MarkFlagRequired("analysis")
 	remediateCmd.MarkFlagRequired("input")
@@ -75,6 +78,25 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load analysis: %w", err)
 	}
 	fmt.Printf("✓ Loaded %d violations\n\n", len(analysis.Violations))
+
+	// Initialize git tracker if requested
+	var commitTracker *gitutil.CommitTracker
+	if gitCommitStrategy != "" {
+		if !gitutil.IsGitInstalled() {
+			return fmt.Errorf("--git-commit requires git to be installed")
+		}
+		if !gitutil.IsGitRepository(inputPath) {
+			return fmt.Errorf("--git-commit requires input directory to be a git repository")
+		}
+
+		strategy, err := gitutil.ParseStrategy(gitCommitStrategy)
+		if err != nil {
+			return err
+		}
+
+		commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
+		fmt.Printf("✓ Git commits enabled (%s strategy)\n\n", gitCommitStrategy)
+	}
 
 	// Parse filters
 	var idFilter []string
@@ -159,6 +181,13 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 				totalCost += result.Cost
 				totalTokens += result.TokensUsed
 
+				// Track for git commit if enabled
+				if commitTracker != nil && !dryRun {
+					if err := commitTracker.TrackFix(v, incident, result); err != nil {
+						fmt.Printf("    ⚠ Git commit failed: %v\n", err)
+					}
+				}
+
 				// Check if we've exceeded max cost
 				if maxCost > 0 && totalCost >= maxCost {
 					fmt.Printf("\n⚠ Max cost ($%.2f) reached. Stopping.\n", maxCost)
@@ -173,6 +202,13 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	}
 
 summary:
+	// Finalize git commits if enabled
+	if commitTracker != nil && !dryRun {
+		if err := commitTracker.Finalize(); err != nil {
+			fmt.Printf("\n⚠ Final git commit failed: %v\n", err)
+		}
+	}
+
 	duration := time.Since(startTime)
 
 	fmt.Println("Summary")
