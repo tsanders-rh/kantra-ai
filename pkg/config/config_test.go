@@ -143,7 +143,7 @@ func TestFindConfigFile(t *testing.T) {
 	t.Run("finds config in current directory", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
@@ -159,7 +159,7 @@ func TestFindConfigFile(t *testing.T) {
 	t.Run("prefers .yaml over .yml", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
@@ -179,7 +179,7 @@ func TestFindConfigFile(t *testing.T) {
 	t.Run("returns empty string when no config found", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
