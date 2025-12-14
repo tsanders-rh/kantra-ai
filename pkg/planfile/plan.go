@@ -61,8 +61,12 @@ func NewPlan(provider string, totalViolations int) *Plan {
 	}
 }
 
-// GetPhaseByID returns a phase by its ID
+// GetPhaseByID returns a phase by its ID.
+// Returns an error if phaseID is empty or phase is not found.
 func (p *Plan) GetPhaseByID(phaseID string) (*Phase, error) {
+	if phaseID == "" {
+		return nil, fmt.Errorf("phaseID cannot be empty")
+	}
 	for i := range p.Phases {
 		if p.Phases[i].ID == phaseID {
 			return &p.Phases[i], nil

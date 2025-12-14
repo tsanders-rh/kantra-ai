@@ -14,6 +14,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+const (
+	// ReviewFileName is the name of the manual review file for low-confidence fixes
+	ReviewFileName = "ReviewFileName"
+)
+
 // Fixer applies AI-generated fixes to files
 type Fixer struct {
 	provider       provider.Provider
@@ -163,7 +168,7 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 			} else {
 				fmt.Printf("  ⚠ Low confidence: %s\n", fullPath)
 				fmt.Printf("    Reason: %s\n", reason)
-				fmt.Printf("    Added to .kantra-ai-review.yaml for manual review\n")
+				fmt.Printf("    Added to ReviewFileName for manual review\n")
 			}
 			return result, nil
 		}
@@ -258,7 +263,7 @@ func (f *Fixer) writeToReviewFile(v violation.Violation, incident violation.Inci
 	reviewFileMutex.Lock()
 	defer reviewFileMutex.Unlock()
 
-	reviewPath := filepath.Join(f.inputDir, ".kantra-ai-review.yaml")
+	reviewPath := filepath.Join(f.inputDir, "ReviewFileName")
 
 	// Load existing reviews if file exists
 	var reviews []ReviewItem
