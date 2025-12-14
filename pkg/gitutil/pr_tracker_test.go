@@ -376,8 +376,11 @@ func TestPRTracker_DryRunFinalize(t *testing.T) {
 
 		// Verify both "mock" PRs were tracked
 		assert.Len(t, tracker.createdPRs, 2)
-		assert.Equal(t, "v1", tracker.createdPRs[0].ViolationID)
-		assert.Equal(t, "v2", tracker.createdPRs[1].ViolationID)
+
+		// Check that both violation IDs are present (order is non-deterministic due to map iteration)
+		violationIDs := []string{tracker.createdPRs[0].ViolationID, tracker.createdPRs[1].ViolationID}
+		assert.Contains(t, violationIDs, "v1")
+		assert.Contains(t, violationIDs, "v2")
 	})
 
 	t.Run("dry-run per-incident shows PR preview for each fix", func(t *testing.T) {
