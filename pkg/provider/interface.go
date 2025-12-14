@@ -19,6 +19,9 @@ type Provider interface {
 
 	// GeneratePlan generates a phased migration plan from violations
 	GeneratePlan(ctx context.Context, req PlanRequest) (*PlanResponse, error)
+
+	// FixBatch requests fixes for multiple incidents of the same violation in one API call
+	FixBatch(ctx context.Context, req BatchRequest) (*BatchResponse, error)
 }
 
 // FixRequest contains all the context needed to fix a violation
@@ -75,4 +78,31 @@ type PlannedPhase struct {
 	ViolationIDs             []string              // Violation IDs in this phase
 	EstimatedCost            float64               // Estimated cost for this phase
 	EstimatedDurationMinutes int                   // Estimated time in minutes
+}
+
+// BatchRequest contains multiple incidents to fix in one API call
+type BatchRequest struct {
+	Violation    violation.Violation   // Shared violation context
+	Incidents    []violation.Incident  // Multiple incidents to fix together
+	FileContents map[string]string     // file path → file content
+	Language     string                // Programming language
+}
+
+// BatchResponse contains fixes for multiple incidents
+type BatchResponse struct {
+	Fixes      []IncidentFix // One fix per incident
+	Success    bool          // Overall success (true only if all succeeded)
+	TokensUsed int           // Total tokens consumed
+	Cost       float64       // Total cost in USD
+	Error      error         // Error if batch processing failed
+}
+
+// IncidentFix represents a single fix within a batch response
+type IncidentFix struct {
+	IncidentURI  string  // Which incident this fixes (matches incident.URI)
+	Success      bool    // Whether this specific fix succeeded
+	FixedContent string  // Fixed file content
+	Explanation  string  // AI's explanation of the change
+	Confidence   float64 // Confidence score (0.0-1.0)
+	Error        error   // Error if this fix failed
 }

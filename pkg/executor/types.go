@@ -6,6 +6,7 @@
 package executor
 
 import (
+	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/ux"
 )
@@ -23,6 +24,7 @@ type Config struct {
 	BranchName    string            // Custom branch name prefix
 	Progress      ux.ProgressWriter // Progress reporting
 	Resume        bool              // Resume from last failure
+	BatchConfig   fixer.BatchConfig // Batch processing configuration
 }
 
 // Result contains the result of plan execution with detailed metrics.

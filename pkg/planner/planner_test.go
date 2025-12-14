@@ -402,3 +402,11 @@ func createTestAnalysisMultipleViolations() *violation.Analysis {
 		},
 	}
 }
+
+func (m *MockProvider) FixBatch(ctx context.Context, req provider.BatchRequest) (*provider.BatchResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*provider.BatchResponse), args.Error(1)
+}

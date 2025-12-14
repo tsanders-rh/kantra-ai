@@ -103,17 +103,31 @@ func TestExecute_BasicFlow(t *testing.T) {
 	mockProvider := new(MockProvider)
 	mockProvider.On("Name").Return("test-provider").Maybe()
 
-	// Mock successful fix for both incidents
-	mockProvider.On("FixViolation", mock.Anything, mock.Anything).Return(
-		&provider.FixResponse{
-			Success:      true,
-			TokensUsed:   100,
-			Cost:         0.05,
-			FixedContent: "public class TestFixed {}",
-			Explanation:  "Fixed",
+	// Mock successful batch fix for both incidents
+	mockProvider.On("FixBatch", mock.Anything, mock.Anything).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{
+					IncidentURI:  "file:///test.java:10",
+					Success:      true,
+					FixedContent: "public class TestFixed {}",
+					Explanation:  "Fixed incident 1",
+					Confidence:   0.9,
+				},
+				{
+					IncidentURI:  "file:///test.java:20",
+					Success:      true,
+					FixedContent: "public class TestFixed {}",
+					Explanation:  "Fixed incident 2",
+					Confidence:   0.9,
+				},
+			},
+			Success:    true,
+			TokensUsed: 200,
+			Cost:       0.10,
 		},
 		nil,
-	).Times(2)
+	)
 
 	// Create executor
 	config := Config{
@@ -186,7 +200,7 @@ func TestExecute_WithDeferredPhase(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "no phases to execute")
 
-	mockProvider.AssertNotCalled(t, "FixViolation")
+	mockProvider.AssertNotCalled(t, "FixBatch")
 }
 
 func TestExecute_SpecificPhase(t *testing.T) {
@@ -210,13 +224,20 @@ func TestExecute_SpecificPhase(t *testing.T) {
 
 	mockProvider := new(MockProvider)
 	mockProvider.On("Name").Return("test-provider").Maybe()
-	mockProvider.On("FixViolation", mock.Anything, mock.Anything).Return(
-		&provider.FixResponse{
-			Success:     true,
-			TokensUsed:  50,
-			Cost:        0.03,
-			FixedContent:   "class Test2Fixed {}",
-			Explanation: "Fixed",
+	mockProvider.On("FixBatch", mock.Anything, mock.Anything).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{
+					IncidentURI:  "file:///test2.java:20",
+					Success:      true,
+					FixedContent: "class Test2Fixed {}",
+					Explanation:  "Fixed",
+					Confidence:   0.9,
+				},
+			},
+			Success:    true,
+			TokensUsed: 50,
+			Cost:       0.03,
 		},
 		nil,
 	).Once()
@@ -264,22 +285,26 @@ func TestExecute_WithFailure(t *testing.T) {
 	mockProvider := new(MockProvider)
 	mockProvider.On("Name").Return("test-provider").Maybe()
 
-	// First fix succeeds, second fails
-	mockProvider.On("FixViolation", mock.Anything, mock.Anything).Return(
-		&provider.FixResponse{
-			Success:     true,
-			TokensUsed:  100,
-			Cost:        0.05,
-			FixedContent:   "class TestFixed {}",
-			Explanation: "Fixed",
-		},
-		nil,
-	).Once()
-
-	mockProvider.On("FixViolation", mock.Anything, mock.Anything).Return(
-		&provider.FixResponse{
-			Success: false,
-			Error:   assert.AnError,
+	// Batch with one successful fix and one failed fix
+	mockProvider.On("FixBatch", mock.Anything, mock.Anything).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{
+					IncidentURI:  "file:///test.java:10",
+					Success:      true,
+					FixedContent: "class TestFixed {}",
+					Explanation:  "Fixed",
+					Confidence:   0.9,
+				},
+				{
+					IncidentURI:  "file:///test.java:20",
+					Success:      false,
+					Error:        assert.AnError,
+				},
+			},
+			Success:    false, // Overall success is false if any fix failed
+			TokensUsed: 100,
+			Cost:       0.05,
 		},
 		nil,
 	).Once()
@@ -345,14 +370,21 @@ func TestExecute_Resume(t *testing.T) {
 	mockProvider := new(MockProvider)
 	mockProvider.On("Name").Return("test-provider").Maybe()
 
-	// Should only call FixViolation once (for the failed incident)
-	mockProvider.On("FixViolation", mock.Anything, mock.Anything).Return(
-		&provider.FixResponse{
-			Success:     true,
-			TokensUsed:  100,
-			Cost:        0.05,
-			FixedContent:   "class TestFixed {}",
-			Explanation: "Fixed",
+	// Should only call FixBatch once with just the failed incident
+	mockProvider.On("FixBatch", mock.Anything, mock.Anything).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{
+					IncidentURI:  "file:///test.java:20",
+					Success:      true,
+					FixedContent: "class TestFixed {}",
+					Explanation:  "Fixed on retry",
+					Confidence:   0.9,
+				},
+			},
+			Success:    true,
+			TokensUsed: 100,
+			Cost:       0.05,
 		},
 		nil,
 	).Once()
@@ -561,4 +593,12 @@ func createTestPlanMultiPhase() *planfile.Plan {
 	}
 
 	return plan
+}
+
+func (m *MockProvider) FixBatch(ctx context.Context, req provider.BatchRequest) (*provider.BatchResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*provider.BatchResponse), args.Error(1)
 }

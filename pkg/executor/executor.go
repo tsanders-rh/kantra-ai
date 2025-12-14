@@ -18,7 +18,7 @@ type Executor struct {
 }
 
 // New creates a new Executor with the given configuration.
-// It sets default values for PlanPath, StatePath, and Progress if not provided.
+// It sets default values for PlanPath, StatePath, Progress, and BatchConfig if not provided.
 func New(config Config) (*Executor, error) {
 	// Set defaults
 	if config.PlanPath == "" {
@@ -29,6 +29,10 @@ func New(config Config) (*Executor, error) {
 	}
 	if config.Progress == nil {
 		config.Progress = &ux.NoOpProgressWriter{}
+	}
+	if config.BatchConfig.MaxBatchSize == 0 && config.BatchConfig.Parallelism == 0 {
+		// Use default batch config if not specified
+		config.BatchConfig = fixer.DefaultBatchConfig()
 	}
 
 	return &Executor{
@@ -143,9 +147,9 @@ func (e *Executor) getPhasesToExecute() []planfile.Phase {
 	return phases
 }
 
-// executePhase executes a single phase by iterating through all violations
-// and incidents, applying fixes using the AI provider. It tracks successes
-// and failures in the state file and returns detailed metrics for the phase.
+// executePhase executes a single phase by processing violations using batch processing
+// when enabled. It tracks successes and failures in the state file and returns detailed
+// metrics for the phase.
 func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) PhaseResult {
 	result := PhaseResult{
 		PhaseID:   phase.ID,
@@ -155,8 +159,13 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 	e.config.Progress.StartPhase(phase.Name)
 	e.state.MarkPhaseStarted(phase.ID)
 
-	// Create fixer
-	f := fixer.New(e.config.Provider, e.config.InputPath, e.config.DryRun)
+	// Create batch fixer
+	batchFixer := fixer.NewBatchFixer(
+		e.config.Provider,
+		e.config.InputPath,
+		e.config.DryRun,
+		e.config.BatchConfig,
+	)
 
 	// Execute fixes for each violation in the phase
 	for _, plannedViolation := range phase.Violations {
@@ -166,7 +175,8 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 			continue
 		}
 
-		// Fix each incident
+		// Filter incidents that need fixing
+		incidentsToFix := make([]violation.Incident, 0, len(plannedViolation.Incidents))
 		for _, incident := range plannedViolation.Incidents {
 			incidentURI := incident.URI
 
@@ -179,24 +189,41 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 				}
 			}
 
-			// Build violation object for fixer
-			violation := e.buildViolation(plannedViolation)
+			incidentsToFix = append(incidentsToFix, incident)
+		}
 
-			// Attempt fix
-			fixResult, err := f.FixIncident(ctx, violation, incident)
+		if len(incidentsToFix) == 0 {
+			continue
+		}
 
-			if err != nil || !fixResult.Success {
+		// Build violation object with incidents to fix
+		v := e.buildViolation(plannedViolation)
+		v.Incidents = incidentsToFix
+
+		// Process violation using batch fixer
+		fixResults, err := batchFixer.FixViolationBatch(ctx, v)
+
+		if err != nil {
+			// If entire batch failed, mark all incidents as failed
+			for _, incident := range incidentsToFix {
+				result.FailedFixes++
+				e.state.RecordIncidentFailure(phase.ID, plannedViolation.ViolationID, incident.URI, err.Error())
+			}
+			continue
+		}
+
+		// Process individual fix results
+		for i, fixResult := range fixResults {
+			incident := incidentsToFix[i]
+			incidentURI := incident.URI
+
+			if !fixResult.Success {
 				result.FailedFixes++
 				errorMsg := ""
-				if err != nil {
-					errorMsg = err.Error()
-				} else if fixResult.Error != nil {
+				if fixResult.Error != nil {
 					errorMsg = fixResult.Error.Error()
 				}
-
 				e.state.RecordIncidentFailure(phase.ID, plannedViolation.ViolationID, incidentURI, errorMsg)
-
-				// Continue to next incident
 				continue
 			}
 

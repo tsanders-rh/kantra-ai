@@ -231,3 +231,8 @@ func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (
 func contains(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
+
+// FixBatch is not yet implemented for OpenAI
+func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*provider.BatchResponse, error) {
+	return nil, fmt.Errorf("batch processing not yet implemented for OpenAI provider")
+}
