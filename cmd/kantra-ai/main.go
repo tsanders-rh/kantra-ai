@@ -139,7 +139,8 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			GitHubToken:  githubToken,
 		}
 
-		prTracker, err = gitutil.NewPRTracker(prConfig, inputPath, providerName)
+		progress := &gitutil.StdoutProgressWriter{}
+		prTracker, err = gitutil.NewPRTracker(prConfig, inputPath, providerName, progress)
 		if err != nil {
 			return fmt.Errorf("failed to initialize PR tracker: %w", err)
 		}
@@ -269,23 +270,24 @@ summary:
 	if prTracker != nil && !dryRun {
 		fmt.Println("\nCreating pull request(s)...")
 		if err := prTracker.Finalize(); err != nil {
-			// Format error message
+			// Format error message based on error type
 			ghErr, ok := err.(*gitutil.GitHubError)
 			if ok {
 				switch ghErr.StatusCode {
 				case 401:
 					fmt.Printf("\n⚠ PR creation failed: Invalid GITHUB_TOKEN\n")
 					fmt.Println("  Verify your token at: https://github.com/settings/tokens")
+					fmt.Println("  Make sure it hasn't expired")
 				case 403:
 					fmt.Printf("\n⚠ PR creation failed: Insufficient permissions\n")
 					fmt.Println("  Your token needs 'repo' scope")
-				case 422:
-					fmt.Printf("\n⚠ PR creation failed: %v\n", err)
-					fmt.Println("  A PR may already exist for this branch")
+					fmt.Println("  Regenerate at: https://github.com/settings/tokens")
 				default:
+					// Default case - most errors now have helpful messages from pr_tracker
 					fmt.Printf("\n⚠ PR creation failed: %v\n", err)
 				}
 			} else {
+				// Non-GitHub API errors (git operations, etc.) - pass through as-is
 				fmt.Printf("\n⚠ PR creation failed: %v\n", err)
 			}
 		} else {

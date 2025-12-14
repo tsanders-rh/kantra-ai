@@ -2,6 +2,7 @@ package gitutil
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/tsanders/kantra-ai/pkg/fixer"
@@ -61,11 +62,12 @@ type CreatedPR struct {
 
 // PRTracker manages PR creation aligned with commit strategy
 type PRTracker struct {
-	config        PRConfig
-	workingDir    string
-	providerName  string
-	githubClient  *GitHubClient
+	config         PRConfig
+	workingDir     string
+	providerName   string
+	githubClient   *GitHubClient
 	originalBranch string
+	progress       ProgressWriter
 
 	// Track fixes for PR creation
 	fixesByViolation map[string][]FixRecord
@@ -76,7 +78,7 @@ type PRTracker struct {
 }
 
 // NewPRTracker creates a new PR tracker
-func NewPRTracker(config PRConfig, workingDir string, providerName string) (*PRTracker, error) {
+func NewPRTracker(config PRConfig, workingDir string, providerName string, progress ProgressWriter) (*PRTracker, error) {
 	// Validate config
 	if config.GitHubToken == "" {
 		return nil, fmt.Errorf("GitHub token is required")
@@ -94,12 +96,18 @@ func NewPRTracker(config PRConfig, workingDir string, providerName string) (*PRT
 		return nil, fmt.Errorf("failed to get current branch: %w", err)
 	}
 
+	// Use NoOp progress writer if none provided
+	if progress == nil {
+		progress = &NoOpProgressWriter{}
+	}
+
 	return &PRTracker{
 		config:           config,
 		workingDir:       workingDir,
 		providerName:     providerName,
 		githubClient:     githubClient,
 		originalBranch:   currentBranch,
+		progress:         progress,
 		fixesByViolation: make(map[string][]FixRecord),
 		allFixes:         make([]FixRecord, 0),
 		createdPRs:       make([]CreatedPR, 0),
@@ -163,10 +171,16 @@ func (pt *PRTracker) Finalize() error {
 func (pt *PRTracker) createPRsPerViolation(baseBranch string) error {
 	timestamp := time.Now().Unix()
 
+	prCount := len(pt.fixesByViolation)
+	currentPR := 0
+
 	for violationID, fixes := range pt.fixesByViolation {
 		if len(fixes) == 0 {
 			continue
 		}
+
+		currentPR++
+		pt.progress.Printf("\n[%d/%d] Creating PR for violation: %s\n", currentPR, prCount, violationID)
 
 		// Generate branch name
 		branchName := fmt.Sprintf("%s-%s-%d", pt.config.BranchPrefix, violationID, timestamp)
@@ -306,12 +320,33 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 // createAndPushBranch creates a new branch from current HEAD and pushes it
 func (pt *PRTracker) createAndPushBranch(branchName string) error {
 	// Create branch
+	pt.progress.Printf("  Creating branch: %s\n", branchName)
 	if err := CreateBranch(pt.workingDir, branchName); err != nil {
+		if strings.Contains(err.Error(), "already exists") {
+			return fmt.Errorf("branch '%s' already exists - delete it first with: git branch -D %s", branchName, branchName)
+		}
 		return fmt.Errorf("failed to create branch: %w", err)
 	}
 
 	// Push branch
+	pt.progress.Printf("  Pushing to remote...\n")
 	if err := PushBranch(pt.workingDir, branchName); err != nil {
+		// Provide helpful error messages for common push failures
+		errStr := err.Error()
+		if strings.Contains(errStr, "Permission denied") || strings.Contains(errStr, "publickey") {
+			return fmt.Errorf("push failed: SSH key not configured\n"+
+				"  Either:\n"+
+				"  1. Use HTTPS remote: git remote set-url origin https://github.com/OWNER/REPO.git\n"+
+				"  2. Or setup SSH key: https://docs.github.com/en/authentication/connecting-to-github-with-ssh")
+		}
+		if strings.Contains(errStr, "403") || strings.Contains(errStr, "forbidden") {
+			return fmt.Errorf("push failed: No write access to repository\n"+
+				"  Check that your GITHUB_TOKEN has 'repo' scope")
+		}
+		if strings.Contains(errStr, "Could not resolve host") || strings.Contains(errStr, "network") {
+			return fmt.Errorf("push failed: Network error\n"+
+				"  Check your internet connection")
+		}
 		return fmt.Errorf("failed to push branch: %w", err)
 	}
 
@@ -320,6 +355,8 @@ func (pt *PRTracker) createAndPushBranch(branchName string) error {
 
 // createPR creates a pull request on GitHub
 func (pt *PRTracker) createPR(title, body, head, base string) (*PullRequestResponse, error) {
+	pt.progress.Printf("  Creating pull request...\n")
+
 	req := PullRequestRequest{
 		Title: title,
 		Body:  body,
@@ -327,7 +364,28 @@ func (pt *PRTracker) createPR(title, body, head, base string) (*PullRequestRespo
 		Base:  base,
 	}
 
-	return pt.githubClient.CreatePullRequest(req)
+	pr, err := pt.githubClient.CreatePullRequest(req)
+	if err != nil {
+		// Provide better error messages for common GitHub API errors
+		if ghErr, ok := err.(*GitHubError); ok {
+			switch ghErr.StatusCode {
+			case 422:
+				if strings.Contains(ghErr.Message, "No commits") {
+					return nil, fmt.Errorf("no commits to create PR from\n"+
+						"  This usually means:\n"+
+						"  1. The fixes were already committed to the base branch, or\n"+
+						"  2. Git commits failed earlier in the process")
+				}
+				if strings.Contains(ghErr.Message, "already exists") {
+					return nil, fmt.Errorf("a pull request already exists for branch '%s'\n"+
+						"  Either close the existing PR or use a different branch name with --branch", head)
+				}
+			}
+		}
+		return nil, err
+	}
+
+	return pr, nil
 }
 
 // GetCreatedPRs returns the list of created PRs

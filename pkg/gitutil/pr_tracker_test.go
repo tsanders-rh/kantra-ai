@@ -147,7 +147,7 @@ func TestNewPRTracker_Validation(t *testing.T) {
 			GitHubToken: "", // Empty token
 		}
 
-		_, err := NewPRTracker(config, "/tmp", "claude")
+		_, err := NewPRTracker(config, "/tmp", "claude", nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "GitHub token is required")
 	})

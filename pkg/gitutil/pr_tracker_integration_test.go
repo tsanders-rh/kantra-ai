@@ -124,7 +124,7 @@ func TestNewPRTracker_Success(t *testing.T) {
 		GitHubToken:  "test-token",
 	}
 
-	tracker, err := NewPRTracker(config, tmpDir, "claude")
+	tracker, err := NewPRTracker(config, tmpDir, "claude", nil)
 	require.NoError(t, err)
 	assert.NotNil(t, tracker)
 	assert.Equal(t, "claude", tracker.providerName)
@@ -139,7 +139,7 @@ func TestNewPRTracker_Errors(t *testing.T) {
 			GitHubToken: "", // Empty token
 		}
 
-		_, err := NewPRTracker(config, tmpDir, "claude")
+		_, err := NewPRTracker(config, tmpDir, "claude", nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "GitHub token is required")
 	})
@@ -152,7 +152,7 @@ func TestNewPRTracker_Errors(t *testing.T) {
 			GitHubToken: "test-token",
 		}
 
-		_, err := NewPRTracker(config, tmpDir, "claude")
+		_, err := NewPRTracker(config, tmpDir, "claude", nil)
 		assert.Error(t, err)
 	})
 }
