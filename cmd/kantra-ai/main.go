@@ -833,12 +833,24 @@ func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 	// Start with config file settings
 	confidenceConf := cfg.Confidence.ToConfidenceConfig()
 
+	// Get the current command to check which flags were set
+	cmd, _, err := rootCmd.Find(os.Args[1:])
+	if err != nil {
+		// Can't check flags, return config file settings
+		return confidenceConf, nil
+	}
+
+	// Helper to check if a flag was explicitly set
+	flagChanged := func(name string) bool {
+		return cmd.Flags().Changed(name)
+	}
+
 	// CLI flags override config file
-	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("enable-confidence") {
+	if flagChanged("enable-confidence") {
 		confidenceConf.Enabled = confidenceEnabled
 	}
 
-	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("min-confidence") {
+	if flagChanged("min-confidence") {
 		if minConfidence < 0.0 || minConfidence > 1.0 {
 			return confidenceConf, fmt.Errorf("--min-confidence must be between 0.0 and 1.0")
 		}
@@ -851,7 +863,7 @@ func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 		}
 	}
 
-	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("on-low-confidence") {
+	if flagChanged("on-low-confidence") {
 		switch onLowConfidence {
 		case "skip":
 			confidenceConf.OnLowConfidence = confidence.ActionSkip
@@ -864,7 +876,7 @@ func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 		}
 	}
 
-	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("complexity-threshold") {
+	if flagChanged("complexity-threshold") {
 		// Parse complexity-threshold flag: "trivial=0.7,low=0.75,..."
 		pairs := strings.Split(complexityThreshold, ",")
 		for _, pair := range pairs {
