@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"gopkg.in/yaml.v3"
 )
 
@@ -27,6 +28,9 @@ type Config struct {
 
 	// Verification settings
 	Verification VerificationConfig `yaml:"verification"`
+
+	// Confidence threshold settings
+	Confidence ConfidenceConfig `yaml:"confidence"`
 
 	// General settings
 	DryRun bool `yaml:"dry-run"`
@@ -72,6 +76,14 @@ type VerificationConfig struct {
 	FailFast bool   `yaml:"fail-fast"` // Stop on first failure
 }
 
+// ConfidenceConfig holds confidence threshold settings
+type ConfidenceConfig struct {
+	Enabled           bool               `yaml:"enabled"`             // Enable confidence filtering
+	MinConfidence     float64            `yaml:"min-confidence"`      // Global minimum confidence (overrides complexity thresholds)
+	OnLowConfidence   string             `yaml:"on-low-confidence"`   // skip, warn-and-apply, manual-review-file
+	ComplexityThresholds map[string]float64 `yaml:"complexity-thresholds,omitempty"` // Override specific complexity thresholds
+}
+
 // DefaultConfig returns a config with sensible defaults
 func DefaultConfig() *Config {
 	return &Config{
@@ -87,6 +99,11 @@ func DefaultConfig() *Config {
 			Type:     "test",
 			Strategy: "at-end",
 			FailFast: true,
+		},
+		Confidence: ConfidenceConfig{
+			Enabled:         false, // Disabled by default for backward compatibility
+			MinConfidence:   0.0,   // 0.0 means use complexity-based thresholds
+			OnLowConfidence: "skip",
 		},
 		DryRun: false,
 	}
@@ -160,4 +177,41 @@ func LoadOrDefault() *Config {
 func fileExists(path string) bool {
 	_, err := os.Stat(path)
 	return err == nil
+}
+
+// ToConfidenceConfig converts ConfidenceConfig to confidence.Config
+func (c *ConfidenceConfig) ToConfidenceConfig() confidence.Config {
+	conf := confidence.DefaultConfig()
+
+	// Apply user configuration
+	conf.Enabled = c.Enabled
+
+	// If global min-confidence is set, apply it to all complexity levels
+	if c.MinConfidence > 0 {
+		for level := range conf.Thresholds {
+			conf.Thresholds[level] = c.MinConfidence
+		}
+		conf.Default = c.MinConfidence
+	}
+
+	// Override specific complexity thresholds if provided
+	if len(c.ComplexityThresholds) > 0 {
+		for level, threshold := range c.ComplexityThresholds {
+			conf.Thresholds[level] = threshold
+		}
+	}
+
+	// Set action
+	switch c.OnLowConfidence {
+	case "skip":
+		conf.OnLowConfidence = confidence.ActionSkip
+	case "warn-and-apply":
+		conf.OnLowConfidence = confidence.ActionWarnAndApply
+	case "manual-review-file":
+		conf.OnLowConfidence = confidence.ActionManualReviewFile
+	default:
+		conf.OnLowConfidence = confidence.ActionSkip
+	}
+
+	return conf
 }

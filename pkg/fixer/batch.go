@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
@@ -38,19 +39,32 @@ func DefaultBatchConfig() BatchConfig {
 
 // BatchFixer provides optimized batch processing of violations
 type BatchFixer struct {
-	provider provider.Provider
-	inputDir string
-	dryRun   bool
-	config   BatchConfig
+	provider       provider.Provider
+	inputDir       string
+	dryRun         bool
+	config         BatchConfig
+	confidenceConf confidence.Config
 }
 
 // NewBatchFixer creates a new batch fixer
 func NewBatchFixer(p provider.Provider, inputDir string, dryRun bool, config BatchConfig) *BatchFixer {
 	return &BatchFixer{
-		provider: p,
-		inputDir: inputDir,
-		dryRun:   dryRun,
-		config:   config,
+		provider:       p,
+		inputDir:       inputDir,
+		dryRun:         dryRun,
+		config:         config,
+		confidenceConf: confidence.DefaultConfig(),
+	}
+}
+
+// NewBatchFixerWithConfidence creates a new batch fixer with confidence configuration
+func NewBatchFixerWithConfidence(p provider.Provider, inputDir string, dryRun bool, config BatchConfig, confidenceConf confidence.Config) *BatchFixer {
+	return &BatchFixer{
+		provider:       p,
+		inputDir:       inputDir,
+		dryRun:         dryRun,
+		config:         config,
+		confidenceConf: confidenceConf,
 	}
 }
 
@@ -137,16 +151,34 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 				FilePath:   filepath.Base(getFilePathFromURI(fix.IncidentURI)),
 				TokensUsed: tokensPerFix,
 				Cost:       costPerFix,
+				Confidence: fix.Confidence,
 			}
 
 			if fix.Success {
-				// Write the fixed file if not dry-run
-				if !bf.dryRun {
+				// Check confidence threshold before applying
+				shouldApply, reason := bf.confidenceConf.ShouldApplyFix(fix.Confidence, v.MigrationComplexity, v.Effort)
+				if !shouldApply {
+					fixResult.SkippedLowConfidence = true
+					fixResult.SkipReason = reason
+					fixResult.Success = false // Mark as not successful since we didn't apply it
+
 					filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
 					fullPath := filepath.Join(bf.inputDir, filePath)
-					if err := os.WriteFile(fullPath, []byte(fix.FixedContent), 0644); err != nil {
-						fixResult.Success = false
-						fixResult.Error = fmt.Errorf("failed to write file: %w", err)
+
+					// Print skip message
+					if bf.confidenceConf.OnLowConfidence == confidence.ActionSkip {
+						fmt.Printf("  ⚠ Skipped: %s\n", fullPath)
+						fmt.Printf("    Reason: %s\n", reason)
+					}
+				} else {
+					// Write the fixed file if not dry-run
+					if !bf.dryRun {
+						filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
+						fullPath := filepath.Join(bf.inputDir, filePath)
+						if err := os.WriteFile(fullPath, []byte(fix.FixedContent), 0644); err != nil {
+							fixResult.Success = false
+							fixResult.Error = fmt.Errorf("failed to write file: %w", err)
+						}
 					}
 				}
 			} else {

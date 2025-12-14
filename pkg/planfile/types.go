@@ -51,12 +51,14 @@ const (
 
 // PlannedViolation represents a violation included in a phase
 type PlannedViolation struct {
-	ViolationID   string               `yaml:"violation_id"`
-	Description   string               `yaml:"description"`
-	Category      string               `yaml:"category"`
-	Effort        int                  `yaml:"effort"`
-	IncidentCount int                  `yaml:"incident_count"`
-	Incidents     []violation.Incident `yaml:"incidents"`
+	ViolationID         string               `yaml:"violation_id"`
+	Description         string               `yaml:"description"`
+	Category            string               `yaml:"category"`
+	Effort              int                  `yaml:"effort"`
+	MigrationComplexity string               `yaml:"migration_complexity,omitempty"` // trivial, low, medium, high, expert
+	ManualReviewRequired bool                `yaml:"manual_review_required,omitempty"` // true for high/expert complexity
+	IncidentCount       int                  `yaml:"incident_count"`
+	Incidents           []violation.Incident `yaml:"incidents"`
 }
 
 // ExecutionState tracks the progress of executing a plan

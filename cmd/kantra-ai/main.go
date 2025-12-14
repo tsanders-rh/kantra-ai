@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/config"
 	"github.com/tsanders/kantra-ai/pkg/executor"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
@@ -51,10 +53,16 @@ var (
 	executeStatePath    string
 	executePhaseID      string
 	executeResume       bool
+
+	// Confidence threshold flags
+	confidenceEnabled   bool
+	minConfidence       float64
+	onLowConfidence     string
+	complexityThreshold string // format: "level=threshold,level=threshold"
 )
 
 func main() {
-	rootCmd := &cobra.Command{
+	rootCmd = &cobra.Command{
 		Use:   "kantra-ai",
 		Short: "AI-powered remediation for Konveyor violations",
 		Long: `kantra-ai applies AI-powered fixes to violations found by Konveyor analysis.
@@ -85,6 +93,10 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().StringVar(&verifyStrategy, "verify-strategy", "at-end", "When to verify: per-fix, per-violation, at-end")
 	remediateCmd.Flags().StringVar(&verifyCommand, "verify-command", "", "Custom verification command (overrides auto-detection)")
 	remediateCmd.Flags().BoolVar(&verifyFailFast, "verify-fail-fast", true, "Stop on first verification failure")
+	remediateCmd.Flags().BoolVar(&confidenceEnabled, "enable-confidence", false, "Enable confidence threshold filtering")
+	remediateCmd.Flags().Float64Var(&minConfidence, "min-confidence", 0.0, "Global minimum confidence threshold (0.0-1.0, overrides complexity thresholds)")
+	remediateCmd.Flags().StringVar(&onLowConfidence, "on-low-confidence", "skip", "Action on low confidence: skip, warn-and-apply, manual-review-file")
+	remediateCmd.Flags().StringVar(&complexityThreshold, "complexity-threshold", "", "Override thresholds: trivial=0.7,low=0.75,medium=0.8,high=0.9,expert=0.95")
 
 	// MarkFlagRequired only errors if flag doesn't exist, which can't happen here
 	_ = remediateCmd.MarkFlagRequired("analysis")
@@ -140,6 +152,10 @@ in a state file. Supports resuming from failures and executing specific phases.`
 	executeCmd.Flags().StringVar(&verifyStrategy, "verify-strategy", "at-end", "When to verify: per-fix, per-violation, at-end")
 	executeCmd.Flags().StringVar(&verifyCommand, "verify-command", "", "Custom verification command")
 	executeCmd.Flags().BoolVar(&verifyFailFast, "verify-fail-fast", true, "Stop on first verification failure")
+	executeCmd.Flags().BoolVar(&confidenceEnabled, "enable-confidence", false, "Enable confidence threshold filtering")
+	executeCmd.Flags().Float64Var(&minConfidence, "min-confidence", 0.0, "Global minimum confidence threshold (0.0-1.0, overrides complexity thresholds)")
+	executeCmd.Flags().StringVar(&onLowConfidence, "on-low-confidence", "skip", "Action on low confidence: skip, warn-and-apply, manual-review-file")
+	executeCmd.Flags().StringVar(&complexityThreshold, "complexity-threshold", "", "Override thresholds: trivial=0.7,low=0.75,medium=0.8,high=0.9,expert=0.95")
 
 	_ = executeCmd.MarkFlagRequired("input")
 
@@ -356,6 +372,12 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	provSpinner.StopWithSuccess(fmt.Sprintf("%s provider ready", providerName))
 	fmt.Println()
 
+	// Build confidence configuration
+	confidenceConf, err := buildConfidenceConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("invalid confidence configuration: %w", err)
+	}
+
 	// Estimate cost
 	if !dryRun {
 		totalEstimate := 0.0
@@ -376,8 +398,8 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 	}
 
-	// Create fixer
-	fix := fixer.New(prov, inputPath, dryRun)
+	// Create fixer with confidence configuration
+	fix := fixer.NewWithConfidence(prov, inputPath, dryRun, confidenceConf)
 
 	// Fix violations
 	ux.PrintSection("Fixing violations")
@@ -656,6 +678,9 @@ func runExecute(cmd *cobra.Command, args []string) error {
 
 	ux.PrintHeader("Executing Migration Plan")
 
+	// Load configuration from file (if exists)
+	cfg := config.LoadOrDefault()
+
 	// Create provider
 	prov, err := createProvider(providerName, model)
 	if err != nil {
@@ -668,18 +693,25 @@ func runExecute(cmd *cobra.Command, args []string) error {
 	fmt.Printf("🤖 Provider: %s\n", prov.Name())
 	fmt.Println()
 
+	// Build confidence configuration
+	confidenceConf, err := buildConfidenceConfig(cfg)
+	if err != nil {
+		return fmt.Errorf("invalid confidence configuration: %w", err)
+	}
+
 	// Create executor config
 	executorConfig := executor.Config{
-		PlanPath:  executePlanPath,
-		StatePath: executeStatePath,
-		InputPath: inputPath,
-		Provider:  prov,
-		PhaseID:   executePhaseID,
-		DryRun:    dryRun,
-		GitCommit: gitCommitStrategy,
-		CreatePR:  createPR,
-		Progress:  &ux.ConsoleProgressWriter{},
-		Resume:    executeResume,
+		PlanPath:         executePlanPath,
+		StatePath:        executeStatePath,
+		InputPath:        inputPath,
+		Provider:         prov,
+		PhaseID:          executePhaseID,
+		DryRun:           dryRun,
+		GitCommit:        gitCommitStrategy,
+		CreatePR:         createPR,
+		Progress:         &ux.ConsoleProgressWriter{},
+		Resume:           executeResume,
+		ConfidenceConfig: confidenceConf,
 	}
 
 	// Create executor
@@ -768,3 +800,68 @@ func createProvider(name string, model string) (provider.Provider, error) {
 		return nil, fmt.Errorf("unknown provider: %s (available: claude, openai, groq, together, anyscale, perplexity, ollama, lmstudio, openrouter)", name)
 	}
 }
+
+// buildConfidenceConfig creates a confidence.Config from config file and CLI flags
+// CLI flags override config file values
+func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
+	// Start with config file settings
+	confidenceConf := cfg.Confidence.ToConfidenceConfig()
+
+	// CLI flags override config file
+	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("enable-confidence") {
+		confidenceConf.Enabled = confidenceEnabled
+	}
+
+	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("min-confidence") {
+		if minConfidence < 0.0 || minConfidence > 1.0 {
+			return confidenceConf, fmt.Errorf("--min-confidence must be between 0.0 and 1.0")
+		}
+		if minConfidence > 0 {
+			// Apply global minimum to all thresholds
+			for level := range confidenceConf.Thresholds {
+				confidenceConf.Thresholds[level] = minConfidence
+			}
+			confidenceConf.Default = minConfidence
+		}
+	}
+
+	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("on-low-confidence") {
+		switch onLowConfidence {
+		case "skip":
+			confidenceConf.OnLowConfidence = confidence.ActionSkip
+		case "warn-and-apply":
+			confidenceConf.OnLowConfidence = confidence.ActionWarnAndApply
+		case "manual-review-file":
+			confidenceConf.OnLowConfidence = confidence.ActionManualReviewFile
+		default:
+			return confidenceConf, fmt.Errorf("invalid --on-low-confidence value: %s (must be: skip, warn-and-apply, manual-review-file)", onLowConfidence)
+		}
+	}
+
+	if cmd, _, err := rootCmd.Find(os.Args[1:]); err == nil && cmd.Flags().Changed("complexity-threshold") {
+		// Parse complexity-threshold flag: "trivial=0.7,low=0.75,..."
+		pairs := strings.Split(complexityThreshold, ",")
+		for _, pair := range pairs {
+			parts := strings.Split(strings.TrimSpace(pair), "=")
+			if len(parts) != 2 {
+				return confidenceConf, fmt.Errorf("invalid --complexity-threshold format: %s (expected: level=threshold)", pair)
+			}
+			level := strings.TrimSpace(parts[0])
+			thresholdStr := strings.TrimSpace(parts[1])
+
+			threshold, err := strconv.ParseFloat(thresholdStr, 64)
+			if err != nil {
+				return confidenceConf, fmt.Errorf("invalid threshold value for %s: %s", level, thresholdStr)
+			}
+			if threshold < 0.0 || threshold > 1.0 {
+				return confidenceConf, fmt.Errorf("threshold for %s must be between 0.0 and 1.0", level)
+			}
+
+			confidenceConf.Thresholds[level] = threshold
+		}
+	}
+
+	return confidenceConf, nil
+}
+
+var rootCmd *cobra.Command

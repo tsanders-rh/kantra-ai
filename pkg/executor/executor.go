@@ -159,12 +159,13 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 	e.config.Progress.StartPhase(phase.Name)
 	e.state.MarkPhaseStarted(phase.ID)
 
-	// Create batch fixer
-	batchFixer := fixer.NewBatchFixer(
+	// Create batch fixer with confidence configuration
+	batchFixer := fixer.NewBatchFixerWithConfidence(
 		e.config.Provider,
 		e.config.InputPath,
 		e.config.DryRun,
 		e.config.BatchConfig,
+		e.config.ConfidenceConfig,
 	)
 
 	// Execute fixes for each violation in the phase

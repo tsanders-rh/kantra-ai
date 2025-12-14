@@ -10,6 +10,7 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 
 - **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
+- **Confidence Threshold Filtering**: Automatically skip low-confidence fixes based on migration complexity for maximum safety
 - **Batch Processing**: Group similar violations together for 50-80% cost reduction and 70-90% faster execution
 - **50+ AI Providers**: Support for Claude, OpenAI, Groq, Ollama (local), Together AI, Anyscale, Perplexity, OpenRouter, and any OpenAI-compatible API
 - **Smart Filtering**: Filter by violation category, effort level, or specific violation IDs
@@ -492,6 +493,92 @@ Or via CLI flags:
 ```
 
 **Note:** Batch processing is available for both Claude and OpenAI-compatible providers (OpenAI, Groq, Together AI, Ollama, etc.).
+
+## Confidence Threshold Filtering
+
+kantra-ai supports confidence-based filtering that automatically skips low-confidence fixes based on migration complexity, providing an extra layer of safety for automated remediation.
+
+**Key Features:**
+- **Complexity-Aware Thresholds**: Different confidence requirements based on migration complexity (trivial, low, medium, high, expert)
+- **Migration Complexity Integration**: Leverages Konveyor's [migration complexity metadata](https://github.com/konveyor/enhancements/pull/255) from rulesets
+- **Multiple Actions**: Skip, warn-and-apply, or write to manual review file
+- **Manual Review Flagging**: High/expert complexity violations automatically marked for manual review in plans
+
+**How It Works:**
+
+kantra-ai uses AI confidence scores (0.0-1.0) combined with Konveyor's migration complexity levels to determine whether to apply a fix:
+
+| Complexity | Expected AI Success | Default Threshold | Description |
+|------------|-------------------|------------------|-------------|
+| **trivial** | 95%+ | 0.70 | Mechanical find/replace (e.g., package renames) |
+| **low** | 80%+ | 0.75 | Straightforward API equivalents |
+| **medium** | 60%+ | 0.80 | Requires context understanding |
+| **high** | 30-50% | 0.90 | Architectural changes, manual review recommended |
+| **expert** | <30% | 0.95 | Domain expertise required, manual review required |
+
+**Configuration:**
+
+Enable via config file (`.kantra-ai.yaml`):
+```yaml
+confidence:
+  enabled: true              # Enable confidence filtering
+  on-low-confidence: skip    # skip, warn-and-apply, or manual-review-file
+
+  # Optional: Override default thresholds
+  complexity-thresholds:
+    high: 0.95    # Require very high confidence for complex changes
+    expert: 0.98  # Require near-perfect confidence for expert-level changes
+```
+
+Or via CLI flags:
+```bash
+# Skip low-confidence fixes (safest, recommended)
+./kantra-ai remediate \
+  --enable-confidence \
+  --on-low-confidence=skip
+
+# Global minimum confidence (applies to all complexity levels)
+./kantra-ai remediate \
+  --enable-confidence \
+  --min-confidence=0.85
+
+# Custom thresholds per complexity level
+./kantra-ai remediate \
+  --enable-confidence \
+  --complexity-threshold="high=0.95,expert=0.98"
+```
+
+**Example Output:**
+```
+→ [1/5] Violation: javax-to-jakarta-001 (mandatory)
+  Description: Replace javax.servlet with jakarta.servlet
+  Incidents: 23
+
+  • [1/23] src/Controller.java:15
+  ✓ Fixed: src/Controller.java (cost: $0.12, confidence: 0.98)
+
+  • [2/23] src/ComplexServlet.java:42
+  ⚠ Skipped: src/ComplexServlet.java
+    Reason: Confidence 0.65 below threshold 0.90 (high complexity)
+    To force: --min-confidence=0.65 or --enable-confidence=false
+```
+
+**When to Use:**
+- **Production migrations**: Enable with `on-low-confidence: skip` for maximum safety
+- **Rapid prototyping**: Disable or use `warn-and-apply` to maximize automation
+- **High-risk codebases**: Increase thresholds for complex changes
+- **Review workflows**: Use `manual-review-file` to collect low-confidence fixes for human review
+
+**Migration Complexity Sources:**
+1. **Ruleset metadata** (preferred): Konveyor rulesets can include `migration_complexity` field
+2. **Effort-based fallback**: If metadata missing, kantra-ai maps effort levels (0-10) to complexity
+   - Effort 0-2 → trivial
+   - Effort 3-4 → low
+   - Effort 5-6 → medium
+   - Effort 7-8 → high
+   - Effort 9-10 → expert
+
+**Note:** Confidence filtering is **disabled by default** for backward compatibility. Enable it explicitly when you want the extra safety layer.
 
 ## Supported AI Providers
 

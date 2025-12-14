@@ -6,6 +6,7 @@
 package executor
 
 import (
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/ux"
@@ -22,9 +23,10 @@ type Config struct {
 	GitCommit     string            // Git commit strategy (per-violation, per-incident, at-end, "")
 	CreatePR      bool              // Create GitHub pull requests
 	BranchName    string            // Custom branch name prefix
-	Progress      ux.ProgressWriter // Progress reporting
-	Resume        bool              // Resume from last failure
-	BatchConfig   fixer.BatchConfig // Batch processing configuration
+	Progress        ux.ProgressWriter   // Progress reporting
+	Resume          bool                // Resume from last failure
+	BatchConfig     fixer.BatchConfig   // Batch processing configuration
+	ConfidenceConfig confidence.Config  // Confidence threshold configuration
 }
 
 // Result contains the result of plan execution with detailed metrics.

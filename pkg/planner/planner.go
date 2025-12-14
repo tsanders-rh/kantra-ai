@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
@@ -120,12 +121,14 @@ func (p *Planner) buildPlan(resp *provider.PlanResponse, violations []violation.
 		for _, violationID := range providerPhase.ViolationIDs {
 			if v, ok := violationMap[violationID]; ok {
 				plannedViolation := planfile.PlannedViolation{
-					ViolationID:   v.ID,
-					Description:   v.Description,
-					Category:      v.Category,
-					Effort:        v.Effort,
-					IncidentCount: len(v.Incidents),
-					Incidents:     v.Incidents,
+					ViolationID:         v.ID,
+					Description:         v.Description,
+					Category:            v.Category,
+					Effort:              v.Effort,
+					MigrationComplexity: v.MigrationComplexity,
+					ManualReviewRequired: isHighComplexity(v.MigrationComplexity, v.Effort),
+					IncidentCount:       len(v.Incidents),
+					Incidents:           v.Incidents,
 				}
 				phase.Violations = append(phase.Violations, plannedViolation)
 			}
@@ -150,4 +153,10 @@ func mapRiskLevel(risk string) planfile.RiskLevel {
 	default:
 		return planfile.RiskMedium
 	}
+}
+
+// isHighComplexity determines if a violation has high or expert complexity
+// and requires manual review. Uses effort level as fallback if no complexity metadata.
+func isHighComplexity(migrationComplexity string, effort int) bool {
+	return confidence.IsHighComplexity(migrationComplexity, effort, true)
 }

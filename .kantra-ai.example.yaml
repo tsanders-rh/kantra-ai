@@ -38,6 +38,20 @@ verification:
   command: ""         # Custom verification command (empty = auto-detect)
   fail-fast: true     # Stop on first verification failure
 
+# Confidence Threshold Filtering
+# Controls whether to apply AI-generated fixes based on confidence scores and migration complexity
+confidence:
+  enabled: false               # Enable confidence threshold filtering (default: false for backward compatibility)
+  min-confidence: 0.0          # Global minimum confidence (0.0-1.0, 0.0 = use complexity-based thresholds)
+  on-low-confidence: skip      # Action for low-confidence fixes: skip, warn-and-apply, manual-review-file
+  complexity-thresholds:       # Override default thresholds per complexity level (optional)
+    # Default thresholds (uncomment to override):
+    # trivial: 0.70   # 95%+ AI success - mechanical find/replace
+    # low: 0.75       # 80%+ AI success - straightforward API equivalents
+    # medium: 0.80    # 60%+ AI success - requires context understanding
+    # high: 0.90      # 30-50% AI success - architectural changes
+    # expert: 0.95    # <30% AI success - domain expertise required
+
 # General Settings
 dry-run: false  # Preview changes without applying them
 
@@ -126,3 +140,35 @@ dry-run: false  # Preview changes without applying them
 # paths:
 #   analysis: ./analysis/output.yaml
 #   input: ./src
+
+# Conservative mode - skip low-confidence fixes for safety:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# confidence:
+#   enabled: true
+#   on-low-confidence: skip  # Only apply high-confidence fixes
+
+# Aggressive mode - apply all fixes but warn about low confidence:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# confidence:
+#   enabled: true
+#   on-low-confidence: warn-and-apply  # Apply everything, but warn
+
+# Custom confidence thresholds - stricter for complex migrations:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# confidence:
+#   enabled: true
+#   complexity-thresholds:
+#     high: 0.95    # Require very high confidence for complex changes
+#     expert: 0.98  # Require near-perfect confidence for expert-level changes

@@ -7,14 +7,15 @@ type Analysis struct {
 
 // Violation represents a rule that was broken
 type Violation struct {
-	ID          string            `yaml:"id"`
-	Description string            `yaml:"description"`
-	Category    string            `yaml:"category"` // mandatory, optional, potential
-	Effort      int               `yaml:"effort"`
-	Incidents   []Incident        `yaml:"incidents"`
-	RuleSet     string            `yaml:"ruleSet"`
-	Rule        Rule              `yaml:"rule"`
-	Labels      map[string]string `yaml:"labels,omitempty"`
+	ID                  string            `yaml:"id"`
+	Description         string            `yaml:"description"`
+	Category            string            `yaml:"category"` // mandatory, optional, potential
+	Effort              int               `yaml:"effort"`
+	MigrationComplexity string            `yaml:"migration_complexity,omitempty"` // trivial, low, medium, high, expert
+	Incidents           []Incident        `yaml:"incidents"`
+	RuleSet             string            `yaml:"ruleSet"`
+	Rule                Rule              `yaml:"rule"`
+	Labels              map[string]string `yaml:"labels,omitempty"`
 }
 
 // Incident represents a specific occurrence of a violation

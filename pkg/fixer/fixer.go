@@ -7,36 +7,52 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
 // Fixer applies AI-generated fixes to files
 type Fixer struct {
-	provider provider.Provider
-	inputDir string
-	dryRun   bool
+	provider       provider.Provider
+	inputDir       string
+	dryRun         bool
+	confidenceConf confidence.Config
 }
 
 // New creates a new Fixer
 func New(provider provider.Provider, inputDir string, dryRun bool) *Fixer {
 	return &Fixer{
-		provider: provider,
-		inputDir: inputDir,
-		dryRun:   dryRun,
+		provider:       provider,
+		inputDir:       inputDir,
+		dryRun:         dryRun,
+		confidenceConf: confidence.DefaultConfig(),
+	}
+}
+
+// NewWithConfidence creates a new Fixer with confidence configuration
+func NewWithConfidence(provider provider.Provider, inputDir string, dryRun bool, confidenceConf confidence.Config) *Fixer {
+	return &Fixer{
+		provider:       provider,
+		inputDir:       inputDir,
+		dryRun:         dryRun,
+		confidenceConf: confidenceConf,
 	}
 }
 
 // FixResult contains the result of fixing a single incident
 type FixResult struct {
-	ViolationID string
-	IncidentURI string
-	FilePath    string // Relative file path for git tracking
-	Success     bool
-	Cost        float64
-	TokensUsed  int
-	Error       error
-	Explanation string
+	ViolationID       string
+	IncidentURI       string
+	FilePath          string  // Relative file path for git tracking
+	Success           bool
+	Cost              float64
+	TokensUsed        int
+	Error             error
+	Explanation       string
+	Confidence        float64 // AI confidence score (0.0-1.0)
+	SkippedLowConfidence bool    // True if skipped due to low confidence
+	SkipReason        string  // Reason for skipping
 }
 
 // FixIncident fixes a single incident of a violation
@@ -107,10 +123,28 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 	result.Cost = resp.Cost
 	result.TokensUsed = resp.TokensUsed
 	result.Explanation = resp.Explanation
+	result.Confidence = resp.Confidence
 
 	if !resp.Success {
 		result.Error = resp.Error
 		return result, resp.Error
+	}
+
+	// Check confidence threshold before applying fix
+	shouldApply, reason := f.confidenceConf.ShouldApplyFix(resp.Confidence, v.MigrationComplexity, v.Effort)
+	if !shouldApply {
+		result.SkippedLowConfidence = true
+		result.SkipReason = reason
+		result.Success = false // Mark as not successful since we didn't apply it
+
+		// Print skip message
+		if f.confidenceConf.OnLowConfidence == confidence.ActionSkip {
+			fmt.Printf("  ⚠ Skipped: %s\n", fullPath)
+			fmt.Printf("    Reason: %s\n", reason)
+			fmt.Printf("    To force: --min-confidence=%.2f or --ignore-confidence\n", resp.Confidence)
+		}
+
+		return result, nil
 	}
 
 	// Clean up the response (remove markdown code blocks if present)
