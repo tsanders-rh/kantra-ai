@@ -79,6 +79,47 @@ go install github.com/tsanders-rh/kantra-ai/cmd/kantra-ai@latest
      --max-cost=5.00
    ```
 
+## Configuration File
+
+kantra-ai supports configuration files to avoid repetitive command-line flags. Create a `.kantra-ai.yaml` file in your project directory or home directory:
+
+```yaml
+# .kantra-ai.yaml
+provider:
+  name: claude
+  model: claude-sonnet-4-20250514
+
+paths:
+  analysis: ./analysis/output.yaml
+  input: ./src
+
+limits:
+  max-cost: 10.00
+  max-effort: 5
+
+filters:
+  categories:
+    - mandatory
+    - optional
+
+git:
+  commit-strategy: per-violation
+  create-pr: true
+
+verification:
+  enabled: true
+  type: test
+  strategy: at-end
+```
+
+**Configuration priority** (highest to lowest):
+1. CLI flags (e.g., `--provider=openai`)
+2. Configuration file in current directory (`./.kantra-ai.yaml`)
+3. Configuration file in home directory (`~/.kantra-ai.yaml`)
+4. Built-in defaults
+
+See [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) for a complete configuration example with all available options.
+
 ## Usage Examples
 
 ### Filtering Violations

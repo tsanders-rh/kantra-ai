@@ -9,6 +9,7 @@ import (
 
 	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
+	"github.com/tsanders/kantra-ai/pkg/config"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/provider"
@@ -83,6 +84,61 @@ Konveyor violations at reasonable cost and quality.`,
 }
 
 func runRemediate(cmd *cobra.Command, args []string) error {
+	// Load configuration from file (if exists)
+	cfg := config.LoadOrDefault()
+
+	// Apply config file values for flags that weren't explicitly set
+	// CLI flags take precedence over config file values
+	if analysisPath == "" && cfg.Paths.Analysis != "" {
+		analysisPath = cfg.Paths.Analysis
+	}
+	if inputPath == "" && cfg.Paths.Input != "" {
+		inputPath = cfg.Paths.Input
+	}
+	if providerName == "claude" && cfg.Provider.Name != "" { // "claude" is the flag default
+		providerName = cfg.Provider.Name
+	}
+	if model == "" && cfg.Provider.Model != "" {
+		model = cfg.Provider.Model
+	}
+	if violationIDs == "" && len(cfg.Filters.ViolationIDs) > 0 {
+		violationIDs = strings.Join(cfg.Filters.ViolationIDs, ",")
+	}
+	if categories == "" && len(cfg.Filters.Categories) > 0 {
+		categories = strings.Join(cfg.Filters.Categories, ",")
+	}
+	if maxEffort == 0 && cfg.Limits.MaxEffort > 0 {
+		maxEffort = cfg.Limits.MaxEffort
+	}
+	if maxCost == 0 && cfg.Limits.MaxCost > 0 {
+		maxCost = cfg.Limits.MaxCost
+	}
+	if gitCommitStrategy == "" && cfg.Git.CommitStrategy != "" {
+		gitCommitStrategy = cfg.Git.CommitStrategy
+	}
+	if !createPR && cfg.Git.CreatePR {
+		createPR = cfg.Git.CreatePR
+	}
+	if branchName == "" && cfg.Git.BranchPrefix != "" {
+		branchName = cfg.Git.BranchPrefix
+	}
+	if verify == "" && cfg.Verification.Enabled {
+		verify = cfg.Verification.Type
+	}
+	if verifyStrategy == "at-end" && cfg.Verification.Strategy != "" { // "at-end" is the flag default
+		verifyStrategy = cfg.Verification.Strategy
+	}
+	if verifyCommand == "" && cfg.Verification.Command != "" {
+		verifyCommand = cfg.Verification.Command
+	}
+	// For verify-fail-fast, only apply config if it differs from default (true)
+	if verifyFailFast && !cfg.Verification.FailFast {
+		verifyFailFast = cfg.Verification.FailFast
+	}
+	if !dryRun && cfg.DryRun {
+		dryRun = cfg.DryRun
+	}
+
 	ux.PrintHeader("kantra-ai remediate")
 
 	// Load violations

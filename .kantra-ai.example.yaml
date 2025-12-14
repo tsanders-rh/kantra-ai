@@ -1,0 +1,74 @@
+# kantra-ai Configuration File Example
+# Place this file as .kantra-ai.yaml in your project directory or home directory
+# CLI flags will override these settings
+
+# AI Provider Configuration
+provider:
+  name: claude  # or "openai"
+  model: ""     # Optional: claude-sonnet-4-20250514, gpt-4, etc. (uses provider default if empty)
+
+# Input/Output Paths
+paths:
+  analysis: ""  # Path to Konveyor output.yaml (e.g., ./analysis/output.yaml)
+  input: ""     # Path to source code directory (e.g., ./src)
+
+# Cost and Effort Limits
+limits:
+  max-cost: 0.0   # Maximum spending in USD (0 = no limit)
+  max-effort: 0   # Only fix violations with effort <= this value (0 = no limit)
+
+# Filtering Options
+filters:
+  categories: []      # Filter by category, e.g., ["mandatory", "optional"]
+  violation-ids: []   # Filter by specific IDs, e.g., ["javax-to-jakarta-001"]
+
+# Git Integration
+git:
+  commit-strategy: ""  # per-violation, per-incident, or at-end
+  create-pr: false     # Automatically create GitHub pull requests
+  branch-prefix: ""    # Custom branch name (default: kantra-ai/remediation-TIMESTAMP)
+
+# Build/Test Verification
+verification:
+  enabled: false      # Enable build/test verification after fixes
+  type: test          # "build" or "test"
+  strategy: at-end    # per-fix, per-violation, or at-end
+  command: ""         # Custom verification command (empty = auto-detect)
+  fail-fast: true     # Stop on first verification failure
+
+# General Settings
+dry-run: false  # Preview changes without applying them
+
+# Example configurations for common scenarios:
+
+# Minimal config - fix all violations with Claude:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+
+# Conservative config - only mandatory violations, with cost limit:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# limits:
+#   max-cost: 5.00
+# filters:
+#   categories: ["mandatory"]
+
+# Full automation - fixes with git commits, PR creation, and testing:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# git:
+#   commit-strategy: per-violation
+#   create-pr: true
+# verification:
+#   enabled: true
+#   type: test
+#   strategy: at-end
