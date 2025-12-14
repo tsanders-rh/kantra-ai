@@ -55,7 +55,8 @@ func TestNew(t *testing.T) {
 		config := provider.Config{}
 		_, err := New(config)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "OPENAI_API_KEY not set")
+		assert.Contains(t, err.Error(), "OPENAI_API_KEY environment variable is not set")
+		assert.Contains(t, err.Error(), "https://platform.openai.com/api-keys")
 	})
 }
 

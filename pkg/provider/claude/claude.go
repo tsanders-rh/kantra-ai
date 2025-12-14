@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -24,7 +25,14 @@ func New(config provider.Config) (*Provider, error) {
 		apiKey = os.Getenv("ANTHROPIC_API_KEY")
 	}
 	if apiKey == "" {
-		return nil, fmt.Errorf("ANTHROPIC_API_KEY not set")
+		return nil, fmt.Errorf("ANTHROPIC_API_KEY environment variable is not set\n\n" +
+			"To use Claude (Anthropic):\n" +
+			"  1. Get an API key from: https://console.anthropic.com/settings/keys\n" +
+			"  2. Export it as an environment variable:\n" +
+			"     export ANTHROPIC_API_KEY=sk-ant-...\n" +
+			"  3. Or set it in your shell profile (~/.bashrc, ~/.zshrc)\n\n" +
+			"Alternatively, use OpenAI instead:\n" +
+			"  --provider=openai")
 	}
 
 	model := config.Model
@@ -67,7 +75,7 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 	if err != nil {
 		return &provider.FixResponse{
 			Success: false,
-			Error:   fmt.Errorf("claude API error: %w", err),
+			Error:   enhanceAPIError(err),
 		}, nil
 	}
 
@@ -147,4 +155,68 @@ IMPORTANT:
 		req.FileContent,
 		req.Language,
 	)
+}
+
+// enhanceAPIError adds helpful context to Claude API errors
+func enhanceAPIError(err error) error {
+	errMsg := err.Error()
+
+	// Check for common error patterns
+	if contains(errMsg, "401") || contains(errMsg, "unauthorized") || contains(errMsg, "invalid api key") {
+		return fmt.Errorf("Claude API authentication failed: %w\n\n"+
+			"Possible causes:\n"+
+			"  - Invalid or expired API key\n"+
+			"  - API key revoked or deleted\n\n"+
+			"To fix:\n"+
+			"  1. Verify your API key at: https://console.anthropic.com/settings/keys\n"+
+			"  2. Ensure ANTHROPIC_API_KEY is set correctly\n"+
+			"  3. Try generating a new API key", err)
+	}
+
+	if contains(errMsg, "429") || contains(errMsg, "rate limit") {
+		return fmt.Errorf("Claude API rate limit exceeded: %w\n\n"+
+			"You've made too many requests in a short period.\n\n"+
+			"To fix:\n"+
+			"  1. Wait a few minutes and try again\n"+
+			"  2. Reduce the number of violations being fixed\n"+
+			"  3. Upgrade your Anthropic API plan for higher limits", err)
+	}
+
+	if contains(errMsg, "timeout") || contains(errMsg, "deadline exceeded") {
+		return fmt.Errorf("Claude API request timed out: %w\n\n"+
+			"The request took too long to complete.\n\n"+
+			"To fix:\n"+
+			"  1. Check your internet connection\n"+
+			"  2. Try again - this is often a temporary issue\n"+
+			"  3. If persistent, reduce file size or complexity", err)
+	}
+
+	if contains(errMsg, "connection") || contains(errMsg, "network") || contains(errMsg, "dial") {
+		return fmt.Errorf("network error connecting to Claude API: %w\n\n"+
+			"Unable to reach Anthropic's servers.\n\n"+
+			"To fix:\n"+
+			"  1. Check your internet connection\n"+
+			"  2. Verify you can reach: https://api.anthropic.com\n"+
+			"  3. Check if your firewall/proxy is blocking the connection\n"+
+			"  4. Try again in a few moments", err)
+	}
+
+	if contains(errMsg, "500") || contains(errMsg, "502") || contains(errMsg, "503") {
+		return fmt.Errorf("Claude API server error: %w\n\n"+
+			"Anthropic's API is experiencing issues.\n\n"+
+			"To fix:\n"+
+			"  1. Wait a few minutes and try again\n"+
+			"  2. Check Anthropic's status page: https://status.anthropic.com\n"+
+			"  3. If urgent, try --provider=openai instead", err)
+	}
+
+	// Generic API error
+	return fmt.Errorf("Claude API error: %w\n\n"+
+		"Check the error message above for details.\n"+
+		"Visit https://docs.anthropic.com for API documentation.", err)
+}
+
+// contains checks if a string contains a substring (case-insensitive)
+func contains(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }

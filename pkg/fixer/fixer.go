@@ -72,7 +72,16 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 	// Read the current file content
 	fileContent, err := os.ReadFile(fullPath)
 	if err != nil {
-		result.Error = fmt.Errorf("failed to read file: %w", err)
+		result.Error = fmt.Errorf("failed to read file '%s': %w\n\n"+
+			"Possible causes:\n"+
+			"  - File does not exist at the specified path\n"+
+			"  - Insufficient read permissions\n"+
+			"  - File path is relative but --input directory is incorrect\n\n"+
+			"Please verify:\n"+
+			"  1. The file exists: ls -la %s\n"+
+			"  2. You have read permissions: chmod +r %s\n"+
+			"  3. The --input path points to the correct directory",
+			fullPath, err, fullPath, fullPath)
 		return result, err
 	}
 
@@ -112,7 +121,17 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 		fmt.Printf("  [DRY-RUN] Would write %d bytes to %s\n", len(fixedContent), fullPath)
 	} else {
 		if err := os.WriteFile(fullPath, []byte(fixedContent), 0644); err != nil {
-			result.Error = fmt.Errorf("failed to write file: %w", err)
+			result.Error = fmt.Errorf("failed to write file '%s': %w\n\n"+
+				"Possible causes:\n"+
+				"  - Insufficient write permissions\n"+
+				"  - Disk is full or read-only filesystem\n"+
+				"  - File is locked by another process\n"+
+				"  - Parent directory does not exist\n\n"+
+				"Please verify:\n"+
+				"  1. You have write permissions: chmod +w %s\n"+
+				"  2. Sufficient disk space: df -h %s\n"+
+				"  3. File is not locked: lsof %s",
+				fullPath, err, fullPath, filepath.Dir(fullPath), fullPath)
 			return result, err
 		}
 		fmt.Printf("  ✓ Fixed: %s (cost: $%.4f, %d tokens)\n", fullPath, result.Cost, result.TokensUsed)

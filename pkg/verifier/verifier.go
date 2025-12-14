@@ -74,7 +74,11 @@ const (
 // NewVerifier creates a new verifier with the given configuration
 func NewVerifier(config Config) (*Verifier, error) {
 	if config.WorkingDir == "" {
-		return nil, fmt.Errorf("working directory is required")
+		return nil, fmt.Errorf("working directory is required for verification\n\n" +
+			"Usage:\n" +
+			"  ./kantra-ai remediate \\\n" +
+			"    --input=/path/to/project \\\n" +
+			"    --verify=test")
 	}
 
 	if config.Timeout == 0 {
@@ -95,7 +99,17 @@ func (v *Verifier) Verify() (*Result, error) {
 
 	command := v.getVerificationCommand()
 	if command == "" {
-		return nil, fmt.Errorf("no verification command available for project type")
+		return nil, fmt.Errorf("no verification command available for project type: %s\n\n"+
+			"Supported project types:\n"+
+			"  - Go (requires go.mod)\n"+
+			"  - Maven (requires pom.xml)\n"+
+			"  - Gradle (requires build.gradle or build.gradle.kts)\n"+
+			"  - npm (requires package.json)\n\n"+
+			"Solutions:\n"+
+			"  1. Ensure your project has the required build file in --input directory\n"+
+			"  2. Or use a custom verification command:\n"+
+			"     --verify-command=\"make test\"",
+			v.projectType.String())
 	}
 
 	result := &Result{

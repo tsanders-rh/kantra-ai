@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/sashabaranov/go-openai"
 	"github.com/tsanders/kantra-ai/pkg/provider"
@@ -23,7 +24,14 @@ func New(config provider.Config) (*Provider, error) {
 		apiKey = os.Getenv("OPENAI_API_KEY")
 	}
 	if apiKey == "" {
-		return nil, fmt.Errorf("OPENAI_API_KEY not set")
+		return nil, fmt.Errorf("OPENAI_API_KEY environment variable is not set\n\n" +
+			"To use OpenAI:\n" +
+			"  1. Get an API key from: https://platform.openai.com/api-keys\n" +
+			"  2. Export it as an environment variable:\n" +
+			"     export OPENAI_API_KEY=sk-...\n" +
+			"  3. Or set it in your shell profile (~/.bashrc, ~/.zshrc)\n\n" +
+			"Alternatively, use Claude instead:\n" +
+			"  --provider=claude")
 	}
 
 	model := config.Model
@@ -69,7 +77,7 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 	if err != nil {
 		return &provider.FixResponse{
 			Success: false,
-			Error:   fmt.Errorf("openai API error: %w", err),
+			Error:   enhanceAPIError(err),
 		}, nil
 	}
 
@@ -142,4 +150,77 @@ IMPORTANT:
 		req.FileContent,
 		req.Language,
 	)
+}
+
+// enhanceAPIError adds helpful context to OpenAI API errors
+func enhanceAPIError(err error) error {
+	errMsg := err.Error()
+
+	// Check for common error patterns
+	if contains(errMsg, "401") || contains(errMsg, "unauthorized") || contains(errMsg, "invalid api key") {
+		return fmt.Errorf("OpenAI API authentication failed: %w\n\n"+
+			"Possible causes:\n"+
+			"  - Invalid or expired API key\n"+
+			"  - API key revoked or deleted\n\n"+
+			"To fix:\n"+
+			"  1. Verify your API key at: https://platform.openai.com/api-keys\n"+
+			"  2. Ensure OPENAI_API_KEY is set correctly\n"+
+			"  3. Try generating a new API key", err)
+	}
+
+	if contains(errMsg, "429") || contains(errMsg, "rate limit") {
+		return fmt.Errorf("OpenAI API rate limit exceeded: %w\n\n"+
+			"You've made too many requests or exceeded your quota.\n\n"+
+			"To fix:\n"+
+			"  1. Wait a few minutes and try again\n"+
+			"  2. Check your usage and billing: https://platform.openai.com/usage\n"+
+			"  3. Upgrade your OpenAI plan or add credits", err)
+	}
+
+	if contains(errMsg, "insufficient_quota") || contains(errMsg, "quota") {
+		return fmt.Errorf("OpenAI API quota exceeded: %w\n\n"+
+			"You've reached your account spending limit.\n\n"+
+			"To fix:\n"+
+			"  1. Add credits to your account: https://platform.openai.com/account/billing\n"+
+			"  2. Check your usage limits and upgrade if needed\n"+
+			"  3. Or use --provider=claude instead", err)
+	}
+
+	if contains(errMsg, "timeout") || contains(errMsg, "deadline exceeded") {
+		return fmt.Errorf("OpenAI API request timed out: %w\n\n"+
+			"The request took too long to complete.\n\n"+
+			"To fix:\n"+
+			"  1. Check your internet connection\n"+
+			"  2. Try again - this is often a temporary issue\n"+
+			"  3. If persistent, reduce file size or complexity", err)
+	}
+
+	if contains(errMsg, "connection") || contains(errMsg, "network") || contains(errMsg, "dial") {
+		return fmt.Errorf("network error connecting to OpenAI API: %w\n\n"+
+			"Unable to reach OpenAI's servers.\n\n"+
+			"To fix:\n"+
+			"  1. Check your internet connection\n"+
+			"  2. Verify you can reach: https://api.openai.com\n"+
+			"  3. Check if your firewall/proxy is blocking the connection\n"+
+			"  4. Try again in a few moments", err)
+	}
+
+	if contains(errMsg, "500") || contains(errMsg, "502") || contains(errMsg, "503") {
+		return fmt.Errorf("OpenAI API server error: %w\n\n"+
+			"OpenAI's API is experiencing issues.\n\n"+
+			"To fix:\n"+
+			"  1. Wait a few minutes and try again\n"+
+			"  2. Check OpenAI's status page: https://status.openai.com\n"+
+			"  3. If urgent, try --provider=claude instead", err)
+	}
+
+	// Generic API error
+	return fmt.Errorf("OpenAI API error: %w\n\n"+
+		"Check the error message above for details.\n"+
+		"Visit https://platform.openai.com/docs for API documentation.", err)
+}
+
+// contains checks if a string contains a substring (case-insensitive)
+func contains(s, substr string) bool {
+	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))
 }
