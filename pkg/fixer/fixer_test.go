@@ -36,6 +36,14 @@ func (m *MockProvider) EstimateCost(req provider.FixRequest) (float64, error) {
 	return args.Get(0).(float64), args.Error(1)
 }
 
+func (m *MockProvider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
+	args := m.Called(ctx, req)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*provider.PlanResponse), args.Error(1)
+}
+
 func TestDetectLanguage(t *testing.T) {
 	tests := []struct {
 		name     string

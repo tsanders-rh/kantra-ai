@@ -220,6 +220,13 @@ func enhanceAPIError(err error) error {
 		"Visit https://platform.openai.com/docs for API documentation.", err)
 }
 
+// GeneratePlan generates a phased migration plan using OpenAI
+func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
+	return &provider.PlanResponse{
+		Error: fmt.Errorf("plan generation not yet implemented for OpenAI provider - use --provider=claude"),
+	}, nil
+}
+
 // contains checks if a string contains a substring (case-insensitive)
 func contains(s, substr string) bool {
 	return strings.Contains(strings.ToLower(s), strings.ToLower(substr))

@@ -12,6 +12,7 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/config"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/gitutil"
+	"github.com/tsanders/kantra-ai/pkg/planner"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
@@ -37,6 +38,11 @@ var (
 	verifyStrategy      string
 	verifyCommand       string
 	verifyFailFast      bool
+
+	// Plan command flags
+	planOutputPath      string
+	planMaxPhases       int
+	planRiskTolerance   string
 )
 
 func main() {
@@ -76,7 +82,32 @@ Konveyor violations at reasonable cost and quality.`,
 	_ = remediateCmd.MarkFlagRequired("analysis")
 	_ = remediateCmd.MarkFlagRequired("input")
 
+	planCmd := &cobra.Command{
+		Use:   "plan",
+		Short: "Generate a phased migration plan",
+		Long: `Generate an AI-powered phased migration plan from Konveyor violations.
+
+The plan command analyzes violations and creates a structured plan with multiple
+phases that can be reviewed, edited, and executed incrementally.`,
+		RunE: runPlan,
+	}
+
+	planCmd.Flags().StringVar(&analysisPath, "analysis", "", "Path to Konveyor analysis output.yaml (required)")
+	planCmd.Flags().StringVar(&inputPath, "input", "", "Path to application source code (required)")
+	planCmd.Flags().StringVar(&providerName, "provider", "claude", "AI provider: claude (openai not yet supported for planning)")
+	planCmd.Flags().StringVar(&planOutputPath, "output", ".kantra-ai-plan.yaml", "Output plan file path")
+	planCmd.Flags().IntVar(&planMaxPhases, "max-phases", 0, "Maximum number of phases (0 = auto, typically 3-5)")
+	planCmd.Flags().StringVar(&planRiskTolerance, "risk-tolerance", "balanced", "Risk tolerance: conservative, balanced, aggressive")
+	planCmd.Flags().StringVar(&violationIDs, "violation-ids", "", "Comma-separated violation IDs to include")
+	planCmd.Flags().StringVar(&categories, "categories", "", "Comma-separated categories: mandatory, optional, potential")
+	planCmd.Flags().IntVar(&maxEffort, "max-effort", 0, "Maximum effort level (0 = no limit)")
+	planCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
+
+	_ = planCmd.MarkFlagRequired("analysis")
+	_ = planCmd.MarkFlagRequired("input")
+
 	rootCmd.AddCommand(remediateCmd)
+	rootCmd.AddCommand(planCmd)
 
 	if err := rootCmd.Execute(); err != nil {
 		os.Exit(1)
@@ -499,6 +530,84 @@ summary:
 		fmt.Println()
 		ux.PrintWarning("DRY-RUN mode - no changes were made")
 	}
+
+	return nil
+}
+
+func runPlan(cmd *cobra.Command, args []string) error {
+	startTime := time.Now()
+
+	ux.PrintHeader("Generating Migration Plan")
+
+	// Create provider
+	prov, err := createProvider(providerName, model)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("📋 Analysis: %s\n", analysisPath)
+	fmt.Printf("📂 Input: %s\n", inputPath)
+	fmt.Printf("🤖 Provider: %s\n", prov.Name())
+	fmt.Printf("📝 Output: %s\n", planOutputPath)
+	fmt.Println()
+
+	// Parse filters
+	var violationIDList []string
+	if violationIDs != "" {
+		violationIDList = strings.Split(violationIDs, ",")
+	}
+
+	var categoryList []string
+	if categories != "" {
+		categoryList = strings.Split(categories, ",")
+	}
+
+	// Create planner
+	plannerConfig := planner.Config{
+		AnalysisPath:  analysisPath,
+		InputPath:     inputPath,
+		Provider:      prov,
+		OutputPath:    planOutputPath,
+		MaxPhases:     planMaxPhases,
+		RiskTolerance: planRiskTolerance,
+		Categories:    categoryList,
+		ViolationIDs:  violationIDList,
+		MaxEffort:     maxEffort,
+	}
+
+	p := planner.New(plannerConfig)
+
+	// Generate plan
+	fmt.Println("Analyzing violations and generating plan...")
+	fmt.Println()
+
+	ctx := context.Background()
+	result, err := p.Generate(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to generate plan: %w", err)
+	}
+
+	duration := time.Since(startTime)
+
+	// Print success message
+	ux.PrintHeader("Plan Generated Successfully")
+
+	rows := [][]string{
+		{"📝 Plan file:", ux.Success(result.PlanPath)},
+		{"📊 Total phases:", ux.Success(fmt.Sprintf("%d", result.TotalPhases))},
+		{"💰 Estimated total cost:", ux.FormatCost(result.TotalCost)},
+		{"💵 Plan generation cost:", ux.FormatCost(result.GenerateCost)},
+		{"🎫 Tokens used:", ux.FormatTokens(result.TokensUsed)},
+		{"⏱  Duration:", ux.FormatDuration(duration)},
+	}
+
+	ux.PrintSummaryTable(rows)
+
+	fmt.Println()
+	fmt.Println("Next steps:")
+	fmt.Printf("  • Review plan:    cat %s\n", result.PlanPath)
+	fmt.Printf("  • Edit if needed: vim %s\n", result.PlanPath)
+	fmt.Println("  • Execute:        kantra-ai execute")
 
 	return nil
 }
