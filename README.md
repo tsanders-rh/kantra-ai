@@ -8,9 +8,12 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 
 ## Features
 
+- **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
 - **Multiple AI Providers**: Support for Claude (Anthropic) and OpenAI with easy provider switching
 - **Smart Filtering**: Filter by violation category, effort level, or specific violation IDs
+- **Resume Capability**: Resume from failures with incident-level state tracking
+- **Interactive Approval**: Review and approve phases before execution
 - **Git Integration**: Automatic commit creation with configurable strategies (per-violation, per-incident, or batch)
 - **GitHub PR Automation**: Automatically create pull requests with detailed fix summaries
 - **Build/Test Verification**: Run tests or builds after fixes to ensure they don't break existing functionality
@@ -78,6 +81,116 @@ go install github.com/tsanders-rh/kantra-ai/cmd/kantra-ai@latest
      --provider=claude \
      --max-cost=5.00
    ```
+
+## Two Workflows
+
+kantra-ai supports two workflows depending on the size and complexity of your migration:
+
+### 1. Direct Remediation (Quick Fixes)
+
+For small migrations with < 20 violations, use the `remediate` command for immediate fixes:
+
+```bash
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude
+```
+
+**Best for**: Simple migrations, testing, proof-of-concept
+
+### 2. Phased Migration (Large-Scale)
+
+For larger migrations with 20+ violations, use the `plan` → `execute` workflow:
+
+**Step 1: Generate a plan** with AI-powered grouping and risk assessment:
+
+```bash
+./kantra-ai plan \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude
+
+# Output:
+# Plan saved to: .kantra-ai-plan.yaml
+#   Total phases: 3
+#   Total violations: 45
+#   Estimated cost: $4.30
+```
+
+**Step 2: Review and edit the plan** (optional):
+
+```bash
+# Review the generated plan
+cat .kantra-ai-plan.yaml
+
+# Edit if needed (mark phases as deferred, adjust order, etc.)
+vim .kantra-ai-plan.yaml
+```
+
+**Step 3: Execute the plan** with progress tracking:
+
+```bash
+./kantra-ai execute \
+  --input=./your-app \
+  --provider=claude
+
+# State is saved to .kantra-ai-state.yaml for resume capability
+```
+
+**Step 4: Resume from failures** if needed:
+
+```bash
+# If execution fails mid-way, resume from the failure point
+./kantra-ai execute \
+  --input=./your-app \
+  --provider=claude \
+  --resume
+```
+
+**Benefits of phased migration**:
+- **AI-powered grouping**: Violations grouped by risk, category, and effort
+- **Incremental execution**: Execute one phase at a time
+- **Resume capability**: Continue from where you left off after failures
+- **State tracking**: Incident-level progress tracking
+- **Interactive approval**: Review phases before execution (with `--interactive`)
+
+### Interactive Phase Approval
+
+For full control over what gets executed, use interactive mode:
+
+```bash
+./kantra-ai plan \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --interactive
+
+# Output:
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Phase 1 of 3: Critical Mandatory Fixes - High Effort
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#
+# Order:    1
+# Risk:     🔴 HIGH
+# Category: mandatory
+# Effort:   5-7
+#
+# Why this grouping:
+#   These violations require significant refactoring of core APIs.
+#   Should be done first but requires careful review.
+#
+# Violations (2):
+#   • javax-to-jakarta-001 (23 incidents)
+#   • javax-to-jakarta-002 (18 incidents)
+#
+# Actions:
+#   [a] Approve and continue
+#   [d] Defer (skip this phase)
+#   [v] View incident details
+#   [q] Quit and save plan
+#
+# Choice:
+```
 
 ## Configuration File
 
@@ -236,6 +349,8 @@ See [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) for a complete configur
 
 ## Command-Line Options
 
+### `kantra-ai remediate` - Direct Remediation
+
 | Flag | Description | Example |
 |------|-------------|---------|
 | `--analysis` | Path to Konveyor output.yaml (required) | `--analysis=./output.yaml` |
@@ -255,21 +370,60 @@ See [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) for a complete configur
 | `--verify-command` | Custom verification command (overrides auto-detection) | `--verify-command="make test"` |
 | `--verify-fail-fast` | Stop on first verification failure (default: true) | `--verify-fail-fast=false` |
 
+### `kantra-ai plan` - Generate Migration Plan
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--analysis` | Path to Konveyor output.yaml (required) | `--analysis=./output.yaml` |
+| `--input` | Path to source code directory (required) | `--input=./src` |
+| `--provider` | AI provider: `claude` (OpenAI not yet supported for planning) | `--provider=claude` |
+| `--model` | Specific model override (optional) | `--model=claude-opus-4-20250514` |
+| `--output` | Output plan file path (default: .kantra-ai-plan.yaml) | `--output=my-plan.yaml` |
+| `--max-phases` | Maximum number of phases (0 = auto, typically 3-5) | `--max-phases=5` |
+| `--risk-tolerance` | Risk tolerance: `conservative`, `balanced`, `aggressive` | `--risk-tolerance=conservative` |
+| `--categories` | Filter by category | `--categories=mandatory` |
+| `--violation-ids` | Filter by specific violation IDs | `--violation-ids=v001,v002` |
+| `--max-effort` | Maximum effort level filter | `--max-effort=5` |
+| `--interactive` | Enable interactive phase approval | `--interactive` |
+
+### `kantra-ai execute` - Execute Migration Plan
+
+| Flag | Description | Example |
+|------|-------------|---------|
+| `--plan` | Path to plan file (default: .kantra-ai-plan.yaml) | `--plan=./my-plan.yaml` |
+| `--state` | Path to state file (default: .kantra-ai-state.yaml) | `--state=./my-state.yaml` |
+| `--input` | Path to source code directory (required) | `--input=./src` |
+| `--provider` | AI provider: `claude` or `openai` | `--provider=claude` |
+| `--model` | Specific model override (optional) | `--model=gpt-4` |
+| `--phase` | Execute specific phase only (e.g., phase-1) | `--phase=phase-1` |
+| `--resume` | Resume from last failure | `--resume` |
+| `--dry-run` | Preview changes without applying them | `--dry-run` |
+| `--git-commit` | Git commit strategy | `--git-commit=per-violation` |
+| `--create-pr` | Create GitHub pull request(s) | `--create-pr` |
+| `--branch` | Custom branch name for PR | `--branch=feature/fixes` |
+| `--verify` | Run verification after fixes | `--verify=test` |
+| `--verify-strategy` | When to verify | `--verify-strategy=at-end` |
+| `--verify-command` | Custom verification command | `--verify-command="make test"` |
+| `--verify-fail-fast` | Stop on first verification failure | `--verify-fail-fast=false` |
+
 ## Architecture
 
 ```
 kantra-ai/
 ├── cmd/
-│   └── kantra-ai/        # CLI entry point
+│   └── kantra-ai/        # CLI entry point (remediate, plan, execute)
 ├── pkg/
 │   ├── violation/        # Konveyor output.yaml parser
 │   ├── provider/         # AI provider interface
 │   │   ├── claude/       # Claude (Anthropic) implementation
 │   │   └── openai/       # OpenAI implementation
 │   ├── fixer/            # Code modification engine
+│   ├── planner/          # AI-powered plan generation
+│   ├── planfile/         # Plan and state YAML management
+│   ├── executor/         # Plan execution with resume capability
 │   ├── verifier/         # Build/test verification
 │   └── gitutil/          # Git & GitHub integration
-└── examples/             # Example violations and test cases
+└── examples/             # Example violations and plans
 ```
 
 ## How It Works
@@ -320,8 +474,10 @@ Contributions welcome! Please read [DESIGN.md](./DESIGN.md) for architectural de
 - [x] Git commit automation
 - [x] GitHub PR creation
 - [x] Build/test verification
+- [x] Phased migration planning with AI grouping
+- [x] Interactive phase approval mode
+- [x] Resume capability with state tracking
 - [ ] Additional AI providers (Gemini, etc.)
-- [ ] Interactive fix review mode
 - [ ] Batch processing optimizations
 - [ ] Integration with Konveyor CLI
 
