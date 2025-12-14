@@ -1,10 +1,15 @@
+// Package planner generates AI-powered migration plans from Konveyor violations.
+//
+// The planner analyzes violations and uses AI to group them into logical phases
+// based on risk, category, and effort. Each phase includes AI-generated explanations
+// of why violations are grouped together and estimated costs/durations.
 package planner
 
 import (
 	"github.com/tsanders/kantra-ai/pkg/provider"
 )
 
-// Config holds configuration for plan generation
+// Config holds configuration for plan generation.
 type Config struct {
 	AnalysisPath  string   // Path to Konveyor output.yaml
 	InputPath     string   // Path to source code directory
@@ -18,7 +23,7 @@ type Config struct {
 	Interactive   bool     // Enable interactive approval mode
 }
 
-// Result contains the result of plan generation
+// Result contains the result of plan generation with cost and phase metrics.
 type Result struct {
 	PlanPath     string  // Path where plan was saved
 	TotalPhases  int     // Number of phases generated

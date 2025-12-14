@@ -10,13 +10,14 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/ux"
 )
 
-// InteractiveApproval presents phases to the user for approval
+// InteractiveApproval presents phases to the user for interactive approval.
+// Users can approve, defer, or view details for each phase before execution.
 type InteractiveApproval struct {
 	plan   *planfile.Plan
 	reader *bufio.Reader
 }
 
-// NewInteractiveApproval creates a new interactive approval session
+// NewInteractiveApproval creates a new interactive approval session for the given plan.
 func NewInteractiveApproval(plan *planfile.Plan) *InteractiveApproval {
 	return &InteractiveApproval{
 		plan:   plan,
@@ -24,7 +25,9 @@ func NewInteractiveApproval(plan *planfile.Plan) *InteractiveApproval {
 	}
 }
 
-// Run executes the interactive approval flow
+// Run executes the interactive approval flow, presenting each phase to the user.
+// Users can approve (a), defer (d), view details (v), or quit (q) for each phase.
+// Returns an error if the approval process is interrupted or fails.
 func (ia *InteractiveApproval) Run() error {
 	fmt.Println()
 	ux.PrintHeader("Interactive Plan Approval")

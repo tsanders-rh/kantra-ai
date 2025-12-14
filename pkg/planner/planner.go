@@ -10,12 +10,13 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
-// Planner generates migration plans from violations
+// Planner generates AI-powered migration plans from violations.
 type Planner struct {
 	config Config
 }
 
-// New creates a new Planner
+// New creates a new Planner with the given configuration.
+// It sets default values for OutputPath and RiskTolerance if not provided.
 func New(config Config) *Planner {
 	// Set defaults
 	if config.OutputPath == "" {
@@ -30,7 +31,10 @@ func New(config Config) *Planner {
 	}
 }
 
-// Generate creates a migration plan
+// Generate creates an AI-powered migration plan by analyzing violations,
+// filtering based on configuration, and using the AI provider to group
+// violations into phases with risk assessment and explanations.
+// If Interactive mode is enabled, prompts the user to approve/defer each phase.
 func (p *Planner) Generate(ctx context.Context) (*Result, error) {
 	// Load violations from analysis file
 	analysis, err := violation.LoadAnalysis(p.config.AnalysisPath)
@@ -84,7 +88,8 @@ func (p *Planner) Generate(ctx context.Context) (*Result, error) {
 	}, nil
 }
 
-// buildPlan converts provider response to planfile.Plan
+// buildPlan converts the AI provider's response into a planfile.Plan structure.
+// It maps violations from the provider response to the plan format and sets metadata.
 func (p *Planner) buildPlan(resp *provider.PlanResponse, violations []violation.Violation) *planfile.Plan {
 	plan := planfile.NewPlan(p.config.Provider.Name(), len(violations))
 	plan.Metadata.CreatedAt = time.Now()
@@ -132,7 +137,8 @@ func (p *Planner) buildPlan(resp *provider.PlanResponse, violations []violation.
 	return plan
 }
 
-// mapRiskLevel converts string risk level to planfile.RiskLevel
+// mapRiskLevel converts a string risk level ("low", "medium", "high")
+// to a planfile.RiskLevel constant. Returns RiskMedium as default for unknown values.
 func mapRiskLevel(risk string) planfile.RiskLevel {
 	switch risk {
 	case "low":

@@ -4,7 +4,8 @@ import (
 	"fmt"
 )
 
-// ValidatePlan validates a plan structure
+// ValidatePlan validates a migration plan structure for correctness.
+// Checks version, provider, phase structure, and ensures no duplicate phase IDs.
 func ValidatePlan(plan *Plan) error {
 	if plan == nil {
 		return fmt.Errorf("plan is nil")
@@ -112,7 +113,8 @@ func isValidRiskLevel(risk RiskLevel) bool {
 	}
 }
 
-// ValidateState validates an execution state structure
+// ValidateState validates an execution state structure for correctness.
+// Checks version, timestamps, phase statuses, and violation tracking consistency.
 func ValidateState(state *ExecutionState) error {
 	if state == nil {
 		return fmt.Errorf("state is nil")

@@ -7,9 +7,11 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// PlanVersion is the current plan file format version.
 const PlanVersion = "1.0"
 
-// LoadPlan reads a plan from a YAML file
+// LoadPlan reads and validates a migration plan from a YAML file.
+// Returns an error if the file doesn't exist, is invalid YAML, or fails validation.
 func LoadPlan(path string) (*Plan, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -28,7 +30,8 @@ func LoadPlan(path string) (*Plan, error) {
 	return &plan, nil
 }
 
-// SavePlan writes a plan to a YAML file
+// SavePlan validates and writes a migration plan to a YAML file.
+// Returns an error if the plan is invalid or the file cannot be written.
 func SavePlan(plan *Plan, path string) error {
 	if err := ValidatePlan(plan); err != nil {
 		return fmt.Errorf("invalid plan: %w", err)
@@ -46,7 +49,7 @@ func SavePlan(plan *Plan, path string) error {
 	return nil
 }
 
-// NewPlan creates a new plan with default values
+// NewPlan creates a new migration plan with default values and empty phases list.
 func NewPlan(provider string, totalViolations int) *Plan {
 	return &Plan{
 		Version: PlanVersion,

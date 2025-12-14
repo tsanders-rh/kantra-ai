@@ -10,14 +10,15 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
-// Executor executes migration plans
+// Executor executes migration plans with state tracking and resume capability.
 type Executor struct {
 	config Config
 	plan   *planfile.Plan
 	state  *planfile.ExecutionState
 }
 
-// New creates a new Executor
+// New creates a new Executor with the given configuration.
+// It sets default values for PlanPath, StatePath, and Progress if not provided.
 func New(config Config) (*Executor, error) {
 	// Set defaults
 	if config.PlanPath == "" {
@@ -35,7 +36,10 @@ func New(config Config) (*Executor, error) {
 	}, nil
 }
 
-// Execute runs the plan execution
+// Execute runs the plan execution, processing violations phase-by-phase.
+// It loads the plan and state files, determines which phases to execute,
+// and runs fixes for each incident. State is saved after each phase to
+// enable resume capability. Returns detailed execution results and metrics.
 func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 	// Load plan
 	plan, err := planfile.LoadPlan(e.config.PlanPath)
@@ -108,7 +112,9 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 	return result, nil
 }
 
-// getPhasesToExecute determines which phases should be executed
+// getPhasesToExecute determines which phases should be executed based on
+// configuration filters (PhaseID, deferred status) and resume state.
+// Returns a list of phases to execute in order.
 func (e *Executor) getPhasesToExecute() []planfile.Phase {
 	phases := make([]planfile.Phase, 0)
 
@@ -137,7 +143,9 @@ func (e *Executor) getPhasesToExecute() []planfile.Phase {
 	return phases
 }
 
-// executePhase executes a single phase
+// executePhase executes a single phase by iterating through all violations
+// and incidents, applying fixes using the AI provider. It tracks successes
+// and failures in the state file and returns detailed metrics for the phase.
 func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) PhaseResult {
 	result := PhaseResult{
 		PhaseID:   phase.ID,
@@ -217,7 +225,8 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 	return result
 }
 
-// buildViolation constructs a violation.Violation from a PlannedViolation
+// buildViolation constructs a violation.Violation from a planfile.PlannedViolation.
+// This converts the plan's violation representation into the format expected by the fixer.
 func (e *Executor) buildViolation(pv planfile.PlannedViolation) violation.Violation {
 	return violation.Violation{
 		ID:          pv.ViolationID,
