@@ -262,10 +262,154 @@ func TestPRConfig_Structure(t *testing.T) {
 		BranchPrefix: "kantra-ai/remediation",
 		BaseBranch:   "main",
 		GitHubToken:  "ghp_test123",
+		DryRun:       false,
 	}
 
 	assert.Equal(t, PRStrategyPerViolation, config.Strategy)
 	assert.Equal(t, "kantra-ai/remediation", config.BranchPrefix)
 	assert.Equal(t, "main", config.BaseBranch)
 	assert.Equal(t, "ghp_test123", config.GitHubToken)
+	assert.False(t, config.DryRun)
+}
+
+func TestNewPRTracker_DryRunMode(t *testing.T) {
+	t.Run("dry-run mode does not require GitHub token", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		config := PRConfig{
+			Strategy:    PRStrategyAtEnd,
+			GitHubToken: "", // Empty token is OK in dry-run
+			DryRun:      true,
+		}
+
+		tracker, err := NewPRTracker(config, tmpDir, "claude", nil)
+		require.NoError(t, err)
+		assert.NotNil(t, tracker)
+		assert.Nil(t, tracker.githubClient) // No GitHub client in dry-run
+		assert.True(t, tracker.config.DryRun)
+	})
+
+	t.Run("dry-run mode skips GitHub client creation", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		config := PRConfig{
+			Strategy:    PRStrategyPerViolation,
+			GitHubToken: "test-token",
+			DryRun:      true,
+		}
+
+		tracker, err := NewPRTracker(config, tmpDir, "openai", nil)
+		require.NoError(t, err)
+		assert.Nil(t, tracker.githubClient)
+		assert.Equal(t, "openai", tracker.providerName)
+	})
+}
+
+func TestPRTracker_DryRunFinalize(t *testing.T) {
+	t.Run("dry-run at-end shows preview without creating branches", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				Strategy:     PRStrategyAtEnd,
+				BranchPrefix: "test-branch",
+				DryRun:       true,
+			},
+			workingDir:       tmpDir,
+			providerName:     "claude",
+			fixesByViolation: make(map[string][]FixRecord),
+			allFixes:         make([]FixRecord, 0),
+			createdPRs:       make([]CreatedPR, 0),
+			progress:         &NoOpProgressWriter{},
+		}
+
+		// Track a fix
+		v := violation.Violation{ID: "v1", Description: "Test"}
+		incident := violation.Incident{LineNumber: 10}
+		result := &fixer.FixResult{FilePath: "test.java", Cost: 0.01, TokensUsed: 10}
+		err := tracker.TrackForPR(v, incident, result)
+		require.NoError(t, err)
+
+		// Finalize should succeed without creating branches
+		err = tracker.Finalize()
+		require.NoError(t, err)
+
+		// Verify a "mock" PR was tracked
+		assert.Len(t, tracker.createdPRs, 1)
+		assert.Equal(t, 0, tracker.createdPRs[0].Number)
+		assert.Contains(t, tracker.createdPRs[0].URL, "DRY RUN")
+	})
+
+	t.Run("dry-run per-violation shows multiple PR previews", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				Strategy:     PRStrategyPerViolation,
+				BranchPrefix: "test-branch",
+				DryRun:       true,
+			},
+			workingDir:       tmpDir,
+			providerName:     "claude",
+			fixesByViolation: make(map[string][]FixRecord),
+			allFixes:         make([]FixRecord, 0),
+			createdPRs:       make([]CreatedPR, 0),
+			progress:         &NoOpProgressWriter{},
+		}
+
+		// Track fixes for two violations
+		v1 := violation.Violation{ID: "v1", Description: "Test 1"}
+		v2 := violation.Violation{ID: "v2", Description: "Test 2"}
+
+		err := tracker.TrackForPR(v1, violation.Incident{LineNumber: 10}, &fixer.FixResult{FilePath: "test1.java"})
+		require.NoError(t, err)
+		err = tracker.TrackForPR(v2, violation.Incident{LineNumber: 20}, &fixer.FixResult{FilePath: "test2.java"})
+		require.NoError(t, err)
+
+		// Finalize should show previews for both PRs
+		err = tracker.Finalize()
+		require.NoError(t, err)
+
+		// Verify both "mock" PRs were tracked
+		assert.Len(t, tracker.createdPRs, 2)
+		assert.Equal(t, "v1", tracker.createdPRs[0].ViolationID)
+		assert.Equal(t, "v2", tracker.createdPRs[1].ViolationID)
+	})
+
+	t.Run("dry-run per-incident shows PR preview for each fix", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				Strategy:     PRStrategyPerIncident,
+				BranchPrefix: "test-branch",
+				DryRun:       true,
+			},
+			workingDir:       tmpDir,
+			providerName:     "claude",
+			fixesByViolation: make(map[string][]FixRecord),
+			allFixes:         make([]FixRecord, 0),
+			createdPRs:       make([]CreatedPR, 0),
+			progress:         &NoOpProgressWriter{},
+		}
+
+		// Track three fixes
+		v := violation.Violation{ID: "v1", Description: "Test"}
+		for i := 0; i < 3; i++ {
+			err := tracker.TrackForPR(v, violation.Incident{LineNumber: i * 10}, &fixer.FixResult{FilePath: "test.java"})
+			require.NoError(t, err)
+		}
+
+		// Finalize should show previews for all three PRs
+		err := tracker.Finalize()
+		require.NoError(t, err)
+
+		// Verify all three "mock" PRs were tracked
+		assert.Len(t, tracker.createdPRs, 3)
+	})
 }

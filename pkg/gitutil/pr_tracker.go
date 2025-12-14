@@ -43,6 +43,7 @@ type PRConfig struct {
 	BranchPrefix string // Base name for branches
 	BaseBranch   string // Target branch (empty = auto-detect)
 	GitHubToken  string
+	DryRun       bool // If true, show what would be done without actually doing it
 }
 
 // PendingPR represents a PR that needs to be created
@@ -102,21 +103,28 @@ type PRTracker struct {
 //	progress := &gitutil.StdoutProgressWriter{}
 //	tracker, err := gitutil.NewPRTracker(config, "/path/to/repo", "claude", progress)
 func NewPRTracker(config PRConfig, workingDir string, providerName string, progress ProgressWriter) (*PRTracker, error) {
-	// Validate config
-	if config.GitHubToken == "" {
-		return nil, fmt.Errorf("GitHub token is required")
-	}
+	var githubClient *GitHubClient
+	var currentBranch string
+	var err error
 
-	// Create GitHub client
-	githubClient, err := NewGitHubClient(workingDir, config.GitHubToken)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create GitHub client: %w", err)
-	}
+	// Skip GitHub client creation in dry-run mode
+	if !config.DryRun {
+		// Validate config
+		if config.GitHubToken == "" {
+			return nil, fmt.Errorf("GitHub token is required")
+		}
 
-	// Get current branch to restore later
-	currentBranch, err := GetCurrentBranch(workingDir)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get current branch: %w", err)
+		// Create GitHub client
+		githubClient, err = NewGitHubClient(workingDir, config.GitHubToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create GitHub client: %w", err)
+		}
+
+		// Get current branch to restore later
+		currentBranch, err = GetCurrentBranch(workingDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get current branch: %w", err)
+		}
 	}
 
 	// Use NoOp progress writer if none provided
@@ -179,26 +187,44 @@ func (pt *PRTracker) TrackForPR(v violation.Violation, incident violation.Incide
 // Progress is reported via the ProgressWriter, and created PRs can be retrieved
 // afterwards using GetCreatedPRs().
 //
+// In dry-run mode, this method will print what would be done without actually
+// creating branches, pushing to GitHub, or creating pull requests.
+//
 // Returns an error if branch creation, pushing, or PR creation fails. The error
 // will include helpful messages for common failure scenarios.
 func (pt *PRTracker) Finalize() error {
 	// Determine base branch (target for PR)
 	baseBranch := pt.config.BaseBranch
 	if baseBranch == "" {
-		// Try to get from GitHub API
-		branch, err := pt.githubClient.GetDefaultBranch()
-		if err != nil {
-			// Fallback to local detection
-			branch, err = GetDefaultBranch(pt.workingDir)
+		if !pt.config.DryRun && pt.githubClient != nil {
+			// Try to get from GitHub API
+			branch, err := pt.githubClient.GetDefaultBranch()
 			if err != nil {
-				// Final fallback
-				baseBranch = "main"
+				// Fallback to local detection
+				branch, err = GetDefaultBranch(pt.workingDir)
+				if err != nil {
+					// Final fallback
+					baseBranch = "main"
+				} else {
+					baseBranch = branch
+				}
 			} else {
 				baseBranch = branch
 			}
 		} else {
-			baseBranch = branch
+			// In dry-run mode or if GitHub client is nil, use local detection
+			branch, err := GetDefaultBranch(pt.workingDir)
+			if err != nil {
+				baseBranch = "main" // Final fallback
+			} else {
+				baseBranch = branch
+			}
 		}
+	}
+
+	if pt.config.DryRun {
+		pt.progress.Printf("\n=== DRY RUN MODE: Pull Request Preview ===\n")
+		pt.progress.Printf("Base branch: %s\n", baseBranch)
 	}
 
 	// Create PRs based on strategy
@@ -262,9 +288,11 @@ func (pt *PRTracker) createPRsPerViolation(baseBranch string) error {
 			ViolationID: violationID,
 		})
 
-		// Return to original branch for next PR
-		if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
-			return fmt.Errorf("failed to return to original branch: %w", err)
+		// Return to original branch for next PR (skip in dry-run)
+		if !pt.config.DryRun {
+			if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
+				return fmt.Errorf("failed to return to original branch: %w", err)
+			}
 		}
 	}
 
@@ -317,9 +345,11 @@ func (pt *PRTracker) createPRsPerIncident(baseBranch string) error {
 			ViolationID: fix.Violation.ID,
 		})
 
-		// Return to original branch for next PR
-		if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
-			return fmt.Errorf("failed to return to original branch: %w", err)
+		// Return to original branch for next PR (skip in dry-run)
+		if !pt.config.DryRun {
+			if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
+				return fmt.Errorf("failed to return to original branch: %w", err)
+			}
 		}
 	}
 
@@ -356,9 +386,11 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 		BranchName: branchName,
 	})
 
-	// Return to original branch
-	if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
-		return fmt.Errorf("failed to return to original branch: %w", err)
+	// Return to original branch (skip in dry-run)
+	if !pt.config.DryRun {
+		if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
+			return fmt.Errorf("failed to return to original branch: %w", err)
+		}
 	}
 
 	return nil
@@ -367,12 +399,21 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 // createAndPushBranch creates a new branch from current HEAD and pushes it to the remote.
 // Reports progress and provides helpful error messages for common failure scenarios.
 //
+// In dry-run mode, this method prints what would be done without actually creating
+// or pushing the branch.
+//
 // Common errors and their causes:
 //   - Branch already exists: Suggests deletion command
 //   - SSH key not configured: Suggests HTTPS remote or SSH setup
 //   - No write access (403): Suggests checking token scope
 //   - Network errors: Suggests checking internet connection
 func (pt *PRTracker) createAndPushBranch(branchName string) error {
+	if pt.config.DryRun {
+		pt.progress.Printf("  [DRY RUN] Would create branch: %s\n", branchName)
+		pt.progress.Printf("  [DRY RUN] Would push to remote\n")
+		return nil
+	}
+
 	// Create branch
 	pt.progress.Printf("  Creating branch: %s\n", branchName)
 	if err := CreateBranch(pt.workingDir, branchName); err != nil {
@@ -410,6 +451,8 @@ func (pt *PRTracker) createAndPushBranch(branchName string) error {
 // createPR creates a pull request on GitHub via the GitHub API.
 // Reports progress and provides helpful error messages for common API errors.
 //
+// In dry-run mode, this method prints the PR details without actually creating it.
+//
 // Parameters:
 //   - title: PR title
 //   - body: PR body (markdown formatted)
@@ -421,6 +464,24 @@ func (pt *PRTracker) createAndPushBranch(branchName string) error {
 //   - PR already exists (422): A PR already exists for this head branch
 //   - Other GitHub API errors: Authentication, permissions, validation failures
 func (pt *PRTracker) createPR(title, body, head, base string) (*PullRequestResponse, error) {
+	if pt.config.DryRun {
+		pt.progress.Printf("  [DRY RUN] Would create pull request:\n")
+		pt.progress.Printf("    Title: %s\n", title)
+		pt.progress.Printf("    Base: %s <- Head: %s\n", base, head)
+		pt.progress.Printf("    Body preview (first 200 chars):\n")
+		bodyPreview := body
+		if len(bodyPreview) > 200 {
+			bodyPreview = bodyPreview[:200] + "..."
+		}
+		pt.progress.Printf("    %s\n", strings.ReplaceAll(bodyPreview, "\n", "\n    "))
+
+		// Return mock response for dry-run
+		return &PullRequestResponse{
+			Number:  0,
+			HTMLURL: "[DRY RUN - PR would be created here]",
+		}, nil
+	}
+
 	pt.progress.Printf("  Creating pull request...\n")
 
 	req := PullRequestRequest{

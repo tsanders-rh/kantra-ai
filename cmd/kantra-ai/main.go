@@ -111,9 +111,9 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("--create-pr requires --git-commit to be set")
 		}
 
-		// Check for GitHub token
+		// Check for GitHub token (not required in dry-run mode)
 		githubToken := os.Getenv("GITHUB_TOKEN")
-		if githubToken == "" {
+		if githubToken == "" && !dryRun {
 			return fmt.Errorf("--create-pr requires GITHUB_TOKEN environment variable\n\n" +
 				"To set up:\n" +
 				"  1. Create a token at: https://github.com/settings/tokens\n" +
@@ -137,6 +137,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			Strategy:     prStrategy,
 			BranchPrefix: branchName,
 			GitHubToken:  githubToken,
+			DryRun:       dryRun,
 		}
 
 		progress := &gitutil.StdoutProgressWriter{}
