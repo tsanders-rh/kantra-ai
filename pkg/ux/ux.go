@@ -1,3 +1,6 @@
+// Package ux provides user experience utilities for kantra-ai's command-line interface.
+// It includes colored output formatting, progress tracking, spinners, and consistent
+// message styling for success, error, warning, and informational messages.
 package ux
 
 import (

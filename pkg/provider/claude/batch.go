@@ -25,7 +25,7 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 	// Call Claude API
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:       anthropic.F(p.model),
-		MaxTokens:   anthropic.F(int64(8192)),
+		MaxTokens:   anthropic.F(int64(PlanningMaxTokens)), // Higher limit for batch processing
 		Temperature: anthropic.F(p.temperature),
 		Messages: anthropic.F([]anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),

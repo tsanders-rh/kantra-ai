@@ -1,3 +1,6 @@
+// Package gitutil provides Git integration for kantra-ai, including commit tracking,
+// pull request creation, and verification workflows. It supports multiple commit strategies
+// (per-incident, per-violation, at-end) and integrates with GitHub's API for automated PR creation.
 package gitutil
 
 import (

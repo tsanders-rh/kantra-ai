@@ -50,8 +50,8 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 
 	// Calculate costs
 	// Note: For custom providers (Groq, Together, etc.), pricing may vary
-	// Using GPT-4 pricing as baseline: $30/1M input, $60/1M output
-	// TODO: Make pricing configurable per provider
+	// Currently using GPT-4 pricing as baseline: $30/1M input, $60/1M output
+	// Future enhancement: Make pricing configurable per provider preset
 	inputTokens := resp.Usage.PromptTokens
 	outputTokens := resp.Usage.CompletionTokens
 	inputCost := float64(inputTokens) * 30.0 / 1000000.0

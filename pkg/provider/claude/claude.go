@@ -14,6 +14,13 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
+const (
+	// DefaultMaxTokens is the default maximum tokens for fix generation
+	DefaultMaxTokens = 4096
+	// PlanningMaxTokens is the maximum tokens for plan generation (requires more output)
+	PlanningMaxTokens = 8192
+)
+
 // Provider implements the Claude AI provider
 type Provider struct {
 	client      *anthropic.Client
@@ -68,7 +75,7 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:       anthropic.F(p.model),
-		MaxTokens:   anthropic.F(int64(4096)),
+		MaxTokens:   anthropic.F(int64(DefaultMaxTokens)),
 		Temperature: anthropic.F(p.temperature),
 		Messages: anthropic.F([]anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
@@ -272,8 +279,8 @@ func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (
 
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:       anthropic.F(p.model),
-		MaxTokens:   anthropic.F(int64(8192)), // Higher limit for planning
-		Temperature: anthropic.F(0.3),         // Slightly higher for creativity in planning
+		MaxTokens:   anthropic.F(int64(PlanningMaxTokens)), // Higher limit for planning
+		Temperature: anthropic.F(0.3),                      // Slightly higher for creativity in planning
 		Messages: anthropic.F([]anthropic.MessageParam{
 			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
 		}),

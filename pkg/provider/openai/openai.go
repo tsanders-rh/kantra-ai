@@ -11,6 +11,13 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/provider"
 )
 
+const (
+	// DefaultMaxTokens is the default maximum tokens for fix generation
+	DefaultMaxTokens = 4096
+	// PlanningMaxTokens is the maximum tokens for plan generation (requires more output)
+	PlanningMaxTokens = 8192
+)
+
 // Provider implements the OpenAI provider
 type Provider struct {
 	client      *openai.Client
@@ -74,7 +81,7 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 	resp, err := p.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 		Model:       p.model,
 		Temperature: p.temperature,
-		MaxTokens:   4096,
+		MaxTokens:   DefaultMaxTokens,
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleUser,

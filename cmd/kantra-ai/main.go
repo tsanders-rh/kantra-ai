@@ -430,6 +430,14 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	}
 
 	for i, v := range filtered {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			ux.PrintWarning("\nOperation cancelled by user")
+			goto summary
+		default:
+		}
+
 		fmt.Printf("\n%s [%d/%d] Violation: %s (%s)\n",
 			ux.Bold("→"), i+1, len(filtered), ux.Info(v.ID), ux.Dim(v.Category))
 		fmt.Printf("  %s %s\n", ux.Dim("Description:"), v.Description)

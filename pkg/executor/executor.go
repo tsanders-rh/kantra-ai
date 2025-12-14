@@ -91,6 +91,13 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 
 	// Execute phases
 	for _, phase := range phasesToExecute {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			return result, ctx.Err()
+		default:
+		}
+
 		phaseResult := e.executePhase(ctx, &phase)
 
 		result.ExecutedPhases++
@@ -199,6 +206,14 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 
 	// Execute fixes for each violation in the phase
 	for _, plannedViolation := range phase.Violations {
+		// Check for context cancellation
+		select {
+		case <-ctx.Done():
+			result.Error = ctx.Err()
+			return result
+		default:
+		}
+
 		// Check if we should skip this violation (already completed)
 		violationStatus, exists := e.state.Violations[plannedViolation.ViolationID]
 		if exists && violationStatus.Status == planfile.StatusCompleted && !e.config.Resume {

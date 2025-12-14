@@ -11,6 +11,11 @@ import (
 	"time"
 )
 
+const (
+	// GitHubAPITimeout is the timeout for GitHub API requests
+	GitHubAPITimeout = 30 * time.Second
+)
+
 // GitHubClient handles GitHub API interactions
 type GitHubClient struct {
 	token   string
@@ -75,7 +80,7 @@ func NewGitHubClient(workingDir string, token string) (*GitHubClient, error) {
 		repo:    repo,
 		baseURL: "https://api.github.com",
 		client: &http.Client{
-			Timeout: 30 * time.Second,
+			Timeout: GitHubAPITimeout,
 		},
 	}, nil
 }

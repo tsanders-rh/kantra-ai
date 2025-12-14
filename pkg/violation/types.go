@@ -1,30 +1,38 @@
+// Package violation provides types and utilities for working with Konveyor analysis results.
+// It handles loading and filtering violations from output.yaml files produced by Konveyor static analysis.
 package violation
 
-// Analysis represents the root structure of kantra output.yaml
+// Analysis represents the root structure of Konveyor's output.yaml file.
+// It contains all violations found during static analysis of an application.
 type Analysis struct {
 	Violations []Violation `yaml:"violations"`
 }
 
-// Violation represents a rule that was broken
+// Violation represents a specific rule that was violated in the analyzed codebase.
+// Each violation can have multiple incidents (specific occurrences across different files/lines).
+// Violations are categorized by severity (mandatory/optional/potential) and assigned
+// effort levels (0-10) and migration complexity (trivial/low/medium/high/expert).
 type Violation struct {
-	ID                  string            `yaml:"id"`
-	Description         string            `yaml:"description"`
-	Category            string            `yaml:"category"` // mandatory, optional, potential
-	Effort              int               `yaml:"effort"`
-	MigrationComplexity string            `yaml:"migration_complexity,omitempty"` // trivial, low, medium, high, expert
-	Incidents           []Incident        `yaml:"incidents"`
-	RuleSet             string            `yaml:"ruleSet"`
-	Rule                Rule              `yaml:"rule"`
-	Labels              map[string]string `yaml:"labels,omitempty"`
+	ID                  string            `yaml:"id"`                                 // Unique identifier for the rule
+	Description         string            `yaml:"description"`                        // Human-readable description of the violation
+	Category            string            `yaml:"category"`                           // mandatory, optional, or potential
+	Effort              int               `yaml:"effort"`                             // Estimated effort to fix (0-10 scale)
+	MigrationComplexity string            `yaml:"migration_complexity,omitempty"`     // trivial, low, medium, high, or expert
+	Incidents           []Incident        `yaml:"incidents"`                          // Specific occurrences of this violation
+	RuleSet             string            `yaml:"ruleSet"`                            // Ruleset that detected this violation
+	Rule                Rule              `yaml:"rule"`                               // Detailed rule information
+	Labels              map[string]string `yaml:"labels,omitempty"`                   // Additional metadata labels
 }
 
-// Incident represents a specific occurrence of a violation
+// Incident represents a specific occurrence of a violation in the codebase.
+// Each incident points to a file and line number where the violation was detected,
+// along with context (code snippet, variables) to aid in understanding and fixing.
 type Incident struct {
-	URI        string `yaml:"uri"`        // file:///path/to/file.java
-	Message    string `yaml:"message"`    // Specific message for this incident
-	CodeSnip   string `yaml:"codeSnip"`   // Code snippet showing context
-	LineNumber int    `yaml:"lineNumber"` // Line where violation occurs
-	Variables  map[string]interface{} `yaml:"variables,omitempty"`
+	URI        string                 `yaml:"uri"`                 // File URI (e.g., file:///path/to/file.java)
+	Message    string                 `yaml:"message"`             // Specific message for this incident
+	CodeSnip   string                 `yaml:"codeSnip"`            // Code snippet showing context around the violation
+	LineNumber int                    `yaml:"lineNumber"`          // Line number where violation occurs
+	Variables  map[string]interface{} `yaml:"variables,omitempty"` // Template variables for this incident
 }
 
 // Rule contains metadata about the rule that was violated
