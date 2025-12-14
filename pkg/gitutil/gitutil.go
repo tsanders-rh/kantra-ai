@@ -49,6 +49,16 @@ func CreateCommit(workingDir string, message string) error {
 	return nil
 }
 
+// ResetChanges resets all uncommitted changes in the working directory
+func ResetChanges(workingDir string) error {
+	cmd := exec.Command("git", "reset", "--hard", "HEAD")
+	cmd.Dir = workingDir
+	if output, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("failed to reset changes: %w\nOutput: %s", err, string(output))
+	}
+	return nil
+}
+
 // IsGitInstalled checks if git is installed and available in PATH
 func IsGitInstalled() bool {
 	_, err := exec.LookPath("git")

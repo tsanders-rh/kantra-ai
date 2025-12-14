@@ -13,22 +13,27 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
+	"github.com/tsanders/kantra-ai/pkg/verifier"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
 var (
-	analysisPath      string
-	inputPath         string
-	providerName      string
-	violationIDs      string
-	categories        string
-	maxEffort         int
-	maxCost           float64
-	dryRun            bool
-	model             string
-	gitCommitStrategy string
-	createPR          bool
-	branchName        string
+	analysisPath        string
+	inputPath           string
+	providerName        string
+	violationIDs        string
+	categories          string
+	maxEffort           int
+	maxCost             float64
+	dryRun              bool
+	model               string
+	gitCommitStrategy   string
+	createPR            bool
+	branchName          string
+	verify              string
+	verifyStrategy      string
+	verifyCommand       string
+	verifyFailFast      bool
 )
 
 func main() {
@@ -59,6 +64,10 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
 	remediateCmd.Flags().BoolVar(&createPR, "create-pr", false, "Create GitHub pull request(s) after remediation (requires --git-commit)")
 	remediateCmd.Flags().StringVar(&branchName, "branch", "", "Branch name for PR (default: kantra-ai/remediation-TIMESTAMP)")
+	remediateCmd.Flags().StringVar(&verify, "verify", "", "Verification type: build, test (runs after fixes to ensure they don't break build/tests)")
+	remediateCmd.Flags().StringVar(&verifyStrategy, "verify-strategy", "at-end", "When to verify: per-fix, per-violation, at-end")
+	remediateCmd.Flags().StringVar(&verifyCommand, "verify-command", "", "Custom verification command (overrides auto-detection)")
+	remediateCmd.Flags().BoolVar(&verifyFailFast, "verify-fail-fast", true, "Stop on first verification failure")
 
 	// MarkFlagRequired only errors if flag doesn't exist, which can't happen here
 	_ = remediateCmd.MarkFlagRequired("analysis")
@@ -86,6 +95,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 	// Initialize git tracker if requested
 	var commitTracker *gitutil.CommitTracker
+	var verifiedTracker *gitutil.VerifiedCommitTracker
 	if gitCommitStrategy != "" {
 		if !gitutil.IsGitInstalled() {
 			return fmt.Errorf("--git-commit requires git to be installed")
@@ -99,8 +109,39 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
-		fmt.Printf("✓ Git commits enabled (%s strategy)\n\n", gitCommitStrategy)
+		// Check if verification is requested
+		if verify != "" {
+			// Parse verification configuration
+			verifyType, err := verifier.ParseVerificationType(verify)
+			if err != nil {
+				return err
+			}
+
+			verifyStrat, err := verifier.ParseVerificationStrategy(verifyStrategy)
+			if err != nil {
+				return err
+			}
+
+			verifyConfig := verifier.Config{
+				Type:          verifyType,
+				Strategy:      verifyStrat,
+				WorkingDir:    inputPath,
+				CustomCommand: verifyCommand,
+				FailFast:      verifyFailFast,
+				SkipOnDryRun:  dryRun,
+			}
+
+			verifiedTracker, err = gitutil.NewVerifiedCommitTracker(strategy, inputPath, providerName, verifyConfig)
+			if err != nil {
+				return fmt.Errorf("failed to initialize verification: %w", err)
+			}
+			commitTracker = verifiedTracker.GetCommitTracker()
+			fmt.Printf("✓ Git commits enabled (%s strategy)\n", gitCommitStrategy)
+			fmt.Printf("✓ Verification enabled (%s, %s strategy)\n\n", verify, verifyStrategy)
+		} else {
+			commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
+			fmt.Printf("✓ Git commits enabled (%s strategy)\n\n", gitCommitStrategy)
+		}
 	}
 
 	// Initialize PR tracker if requested
@@ -234,8 +275,15 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 				// Track for git commit if enabled
 				if commitTracker != nil && !dryRun {
-					if err := commitTracker.TrackFix(v, incident, result); err != nil {
-						fmt.Printf("    ⚠ Git commit failed: %v\n", err)
+					// Use verified tracker if verification is enabled
+					if verifiedTracker != nil {
+						if err := verifiedTracker.TrackFix(v, incident, result); err != nil {
+							fmt.Printf("    ⚠ Git commit/verification failed: %v\n", err)
+						}
+					} else {
+						if err := commitTracker.TrackFix(v, incident, result); err != nil {
+							fmt.Printf("    ⚠ Git commit failed: %v\n", err)
+						}
 					}
 				}
 
@@ -262,8 +310,27 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 summary:
 	// Finalize git commits if enabled
 	if commitTracker != nil && !dryRun {
-		if err := commitTracker.Finalize(); err != nil {
-			fmt.Printf("\n⚠ Final git commit failed: %v\n", err)
+		// Use verified tracker if verification is enabled
+		if verifiedTracker != nil {
+			if err := verifiedTracker.Finalize(); err != nil {
+				fmt.Printf("\n⚠ Final git commit/verification failed: %v\n", err)
+			}
+			// Print verification stats
+			stats := verifiedTracker.GetStats()
+			if stats.TotalVerifications > 0 {
+				fmt.Printf("\nVerification Summary:\n")
+				fmt.Printf("  Total verifications: %d\n", stats.TotalVerifications)
+				fmt.Printf("  ✓ Passed: %d\n", stats.PassedVerifications)
+				if stats.FailedVerifications > 0 {
+					fmt.Printf("  ✗ Failed: %d\n", stats.FailedVerifications)
+					fmt.Printf("  ⚠ Fixes skipped due to failures: %d\n", stats.SkippedFixes)
+				}
+				fmt.Println()
+			}
+		} else {
+			if err := commitTracker.Finalize(); err != nil {
+				fmt.Printf("\n⚠ Final git commit failed: %v\n", err)
+			}
 		}
 	}
 
