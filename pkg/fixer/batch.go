@@ -157,24 +157,55 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 			if fix.Success {
 				// Check confidence threshold before applying
 				shouldApply, reason := bf.confidenceConf.ShouldApplyFix(fix.Confidence, v.MigrationComplexity, v.Effort)
+				filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
+				fullPath := filepath.Join(bf.inputDir, filePath)
+
 				if !shouldApply {
-					fixResult.SkippedLowConfidence = true
-					fixResult.SkipReason = reason
-					fixResult.Success = false // Mark as not successful since we didn't apply it
-
-					filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
-					fullPath := filepath.Join(bf.inputDir, filePath)
-
-					// Print skip message
-					if bf.confidenceConf.OnLowConfidence == confidence.ActionSkip {
+					// Handle based on configured action
+					switch bf.confidenceConf.OnLowConfidence {
+					case confidence.ActionSkip:
+						fixResult.SkippedLowConfidence = true
+						fixResult.SkipReason = reason
+						fixResult.Success = false
 						fmt.Printf("  ⚠ Skipped: %s\n", fullPath)
 						fmt.Printf("    Reason: %s\n", reason)
+
+					case confidence.ActionWarnAndApply:
+						// Print warning but continue to apply the fix
+						fmt.Printf("  ⚠ Warning (low confidence): %s\n", fullPath)
+						fmt.Printf("    Reason: %s\n", reason)
+						fmt.Printf("    Applying anyway (action: warn-and-apply)\n")
+						// Write the fixed file if not dry-run
+						if !bf.dryRun {
+							if err := os.WriteFile(fullPath, []byte(fix.FixedContent), 0644); err != nil {
+								fixResult.Success = false
+								fixResult.Error = fmt.Errorf("failed to write file: %w", err)
+							}
+						}
+
+					case confidence.ActionManualReviewFile:
+						fixResult.SkippedLowConfidence = true
+						fixResult.SkipReason = reason
+						fixResult.Success = false
+						// Write to manual review file - need incident info
+						// Find the matching incident for this fix
+						for _, incident := range result.job.incidents {
+							if incident.URI == fix.IncidentURI {
+								tmpFixer := &Fixer{inputDir: bf.inputDir}
+								if err := tmpFixer.writeToReviewFile(v, incident, &fixResult, reason, fix.Confidence); err != nil {
+									fmt.Printf("  ⚠ Failed to write to review file: %v\n", err)
+								} else {
+									fmt.Printf("  ⚠ Low confidence: %s\n", fullPath)
+									fmt.Printf("    Reason: %s\n", reason)
+									fmt.Printf("    Added to .kantra-ai-review.yaml for manual review\n")
+								}
+								break
+							}
+						}
 					}
 				} else {
-					// Write the fixed file if not dry-run
+					// Confidence is good, apply the fix
 					if !bf.dryRun {
-						filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
-						fullPath := filepath.Join(bf.inputDir, filePath)
 						if err := os.WriteFile(fullPath, []byte(fix.FixedContent), 0644); err != nil {
 							fixResult.Success = false
 							fixResult.Error = fmt.Errorf("failed to write file: %w", err)

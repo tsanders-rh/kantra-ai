@@ -94,6 +94,11 @@ func (c *Config) ShouldApplyFix(confidence float64, complexity string, effort in
 		return true, "" // Confidence filtering disabled
 	}
 
+	// Validate confidence range
+	if confidence < 0.0 || confidence > 1.0 {
+		return false, fmt.Sprintf("invalid confidence value %.2f (must be 0.0-1.0)", confidence)
+	}
+
 	// Determine effective complexity
 	effectiveComplexity := complexity
 	if effectiveComplexity == "" && c.UseEffortFallback {
@@ -125,6 +130,21 @@ func IsHighComplexity(complexity string, effort int, useEffortFallback bool) boo
 	}
 
 	return effectiveComplexity == ComplexityHigh || effectiveComplexity == ComplexityExpert
+}
+
+// IsValidComplexity checks if a string is a valid complexity level
+func IsValidComplexity(level string) bool {
+	switch level {
+	case ComplexityTrivial, ComplexityLow, ComplexityMedium, ComplexityHigh, ComplexityExpert:
+		return true
+	default:
+		return false
+	}
+}
+
+// ValidComplexityLevels returns all valid complexity level strings
+func ValidComplexityLevels() []string {
+	return []string{ComplexityTrivial, ComplexityLow, ComplexityMedium, ComplexityHigh, ComplexityExpert}
 }
 
 // ComplexityDescription returns a human-readable description of a complexity level

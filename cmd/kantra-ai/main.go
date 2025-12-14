@@ -849,6 +849,12 @@ func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 			level := strings.TrimSpace(parts[0])
 			thresholdStr := strings.TrimSpace(parts[1])
 
+			// Validate complexity level
+			if !confidence.IsValidComplexity(level) {
+				return confidenceConf, fmt.Errorf("invalid complexity level '%s'. Valid levels: %v",
+					level, confidence.ValidComplexityLevels())
+			}
+
 			threshold, err := strconv.ParseFloat(thresholdStr, 64)
 			if err != nil {
 				return confidenceConf, fmt.Errorf("invalid threshold value for %s: %s", level, thresholdStr)

@@ -2,6 +2,7 @@ package openai
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -89,7 +90,37 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 		}, nil
 	}
 
-	fixedContent := resp.Choices[0].Message.Content
+	responseText := resp.Choices[0].Message.Content
+
+	// Parse JSON response
+	type Response struct {
+		FixedContent string  `json:"fixed_content"`
+		Confidence   float64 `json:"confidence"`
+		Explanation  string  `json:"explanation"`
+	}
+
+	// Try to extract JSON from response (may be wrapped in markdown)
+	jsonData := extractJSONFromMarkdown(responseText)
+
+	var parsedResp Response
+	if err := json.Unmarshal(jsonData, &parsedResp); err != nil {
+		// If JSON parsing fails, fall back to treating entire response as code with default confidence
+		inputCost := float64(resp.Usage.PromptTokens) * 30.0 / 1000000.0
+		outputCost := float64(resp.Usage.CompletionTokens) * 60.0 / 1000000.0
+		return &provider.FixResponse{
+			Success:      true,
+			FixedContent: responseText,
+			Explanation:  "Fixed by GPT-4 (JSON parse failed, using raw response)",
+			Confidence:   0.85, // Default when JSON parsing fails
+			TokensUsed:   resp.Usage.TotalTokens,
+			Cost:         inputCost + outputCost,
+		}, nil
+	}
+
+	// Validate confidence range
+	if parsedResp.Confidence < 0.0 || parsedResp.Confidence > 1.0 {
+		parsedResp.Confidence = 0.85 // Clamp to reasonable default
+	}
 
 	// Calculate cost (GPT-4 pricing: $30/$60 per 1M tokens)
 	inputCost := float64(resp.Usage.PromptTokens) * 30.0 / 1000000.0
@@ -98,9 +129,9 @@ func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*
 
 	return &provider.FixResponse{
 		Success:      true,
-		FixedContent: fixedContent,
-		Explanation:  "Fixed by GPT-4",
-		Confidence:   0.85,
+		FixedContent: parsedResp.FixedContent,
+		Explanation:  parsedResp.Explanation,
+		Confidence:   parsedResp.Confidence,
 		TokensUsed:   resp.Usage.TotalTokens,
 		Cost:         totalCost,
 	}, nil
@@ -140,14 +171,32 @@ FULL FILE CONTENT:
 %s
 
 TASK:
-Fix this violation by modifying the code. Return ONLY the complete fixed file content, with no explanation or markdown code blocks. The output must be valid %s code that can be written directly to the file.
+Fix this violation by modifying the code. Return a JSON object with the following fields:
+- "fixed_content": The complete fixed file content (entire file, not just changed lines)
+- "confidence": A confidence score between 0.0 and 1.0 indicating how certain you are the fix is correct
+- "explanation": A brief explanation of what was changed
+
+Your response must be ONLY the JSON object, with no markdown code blocks or extra text.
+
+Example response format:
+{
+  "fixed_content": "<complete file content here>",
+  "confidence": 0.95,
+  "explanation": "Replaced deprecated API call with modern equivalent"
+}
+
+CONFIDENCE SCORING GUIDELINES:
+- 0.95-1.0: Simple mechanical changes (package renames, obvious API equivalents)
+- 0.85-0.94: Straightforward changes with clear replacements
+- 0.75-0.84: Changes requiring some context understanding
+- 0.60-0.74: Complex changes with multiple valid approaches
+- Below 0.60: Uncertain or requires significant domain knowledge
 
 IMPORTANT:
-- Return the ENTIRE file content, not just the changed lines
-- Do not include markdown formatting or code blocks
-- Do not include explanations before or after the code
+- Return valid %s code in the fixed_content field
 - Ensure the fix is syntactically correct
-- Preserve all other code unchanged`,
+- Preserve all other code unchanged
+- Be honest about your confidence level`,
 		req.Violation.Category,
 		req.Violation.Description,
 		req.Violation.Rule.ID,

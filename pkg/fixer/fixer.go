@@ -6,10 +6,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
+	"gopkg.in/yaml.v3"
 )
 
 // Fixer applies AI-generated fixes to files
@@ -133,18 +135,38 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 	// Check confidence threshold before applying fix
 	shouldApply, reason := f.confidenceConf.ShouldApplyFix(resp.Confidence, v.MigrationComplexity, v.Effort)
 	if !shouldApply {
-		result.SkippedLowConfidence = true
-		result.SkipReason = reason
-		result.Success = false // Mark as not successful since we didn't apply it
-
-		// Print skip message
-		if f.confidenceConf.OnLowConfidence == confidence.ActionSkip {
+		// Handle based on configured action
+		switch f.confidenceConf.OnLowConfidence {
+		case confidence.ActionSkip:
+			result.SkippedLowConfidence = true
+			result.SkipReason = reason
+			result.Success = false
 			fmt.Printf("  ⚠ Skipped: %s\n", fullPath)
 			fmt.Printf("    Reason: %s\n", reason)
-			fmt.Printf("    To force: --min-confidence=%.2f or --ignore-confidence\n", resp.Confidence)
-		}
+			fmt.Printf("    To force: --enable-confidence=false or --min-confidence=%.2f\n", resp.Confidence)
+			return result, nil
 
-		return result, nil
+		case confidence.ActionWarnAndApply:
+			// Print warning but continue to apply the fix
+			fmt.Printf("  ⚠ Warning (low confidence): %s\n", fullPath)
+			fmt.Printf("    Reason: %s\n", reason)
+			fmt.Printf("    Applying anyway (action: warn-and-apply)\n")
+			// Continue to apply fix below
+
+		case confidence.ActionManualReviewFile:
+			result.SkippedLowConfidence = true
+			result.SkipReason = reason
+			result.Success = false
+			// Write to manual review file
+			if err := f.writeToReviewFile(v, incident, result, reason, resp.Confidence); err != nil {
+				fmt.Printf("  ⚠ Failed to write to review file: %v\n", err)
+			} else {
+				fmt.Printf("  ⚠ Low confidence: %s\n", fullPath)
+				fmt.Printf("    Reason: %s\n", reason)
+				fmt.Printf("    Added to .kantra-ai-review.yaml for manual review\n")
+			}
+			return result, nil
+		}
 	}
 
 	// Clean up the response (remove markdown code blocks if present)
@@ -212,4 +234,60 @@ func cleanResponse(content string) string {
 	content = strings.TrimSuffix(content, "```")
 
 	return content
+}
+
+// reviewFileMutex protects concurrent writes to the review file
+var reviewFileMutex sync.Mutex
+
+// ReviewItem represents a low-confidence fix requiring manual review
+type ReviewItem struct {
+	ViolationID  string  `yaml:"violation_id"`
+	FilePath     string  `yaml:"file_path"`
+	LineNumber   int     `yaml:"line_number"`
+	Description  string  `yaml:"description"`
+	Confidence   float64 `yaml:"confidence"`
+	Reason       string  `yaml:"reason"`
+	Category     string  `yaml:"category"`
+	Effort       int     `yaml:"effort"`
+	Complexity   string  `yaml:"complexity,omitempty"`
+}
+
+// writeToReviewFile appends a low-confidence fix to the manual review file
+func (f *Fixer) writeToReviewFile(v violation.Violation, incident violation.Incident, result *FixResult, reason string, confidenceScore float64) error {
+	reviewFileMutex.Lock()
+	defer reviewFileMutex.Unlock()
+
+	reviewPath := filepath.Join(f.inputDir, ".kantra-ai-review.yaml")
+
+	// Load existing reviews if file exists
+	var reviews []ReviewItem
+	if data, err := os.ReadFile(reviewPath); err == nil {
+		_ = yaml.Unmarshal(data, &reviews) // Ignore errors, start fresh if corrupt
+	}
+
+	// Add new review item
+	item := ReviewItem{
+		ViolationID:  v.ID,
+		FilePath:     result.FilePath,
+		LineNumber:   incident.LineNumber,
+		Description:  v.Description,
+		Confidence:   confidenceScore,
+		Reason:       reason,
+		Category:     v.Category,
+		Effort:       v.Effort,
+		Complexity:   v.MigrationComplexity,
+	}
+	reviews = append(reviews, item)
+
+	// Write back to file
+	data, err := yaml.Marshal(reviews)
+	if err != nil {
+		return fmt.Errorf("failed to marshal review items: %w", err)
+	}
+
+	if err := os.WriteFile(reviewPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write review file: %w", err)
+	}
+
+	return nil
 }

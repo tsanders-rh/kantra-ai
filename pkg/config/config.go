@@ -186,8 +186,14 @@ func (c *ConfidenceConfig) ToConfidenceConfig() confidence.Config {
 	// Apply user configuration
 	conf.Enabled = c.Enabled
 
-	// If global min-confidence is set, apply it to all complexity levels
+	// If global min-confidence is set, validate and apply it to all complexity levels
 	if c.MinConfidence > 0 {
+		// Validate range
+		if c.MinConfidence > 1.0 {
+			fmt.Fprintf(os.Stderr, "Warning: min-confidence %.2f > 1.0, clamping to 1.0\n", c.MinConfidence)
+			c.MinConfidence = 1.0
+		}
+
 		for level := range conf.Thresholds {
 			conf.Thresholds[level] = c.MinConfidence
 		}
@@ -197,6 +203,20 @@ func (c *ConfidenceConfig) ToConfidenceConfig() confidence.Config {
 	// Override specific complexity thresholds if provided
 	if len(c.ComplexityThresholds) > 0 {
 		for level, threshold := range c.ComplexityThresholds {
+			// Validate complexity level
+			if !confidence.IsValidComplexity(level) {
+				fmt.Fprintf(os.Stderr, "Warning: invalid complexity level '%s', skipping. Valid levels: %v\n",
+					level, confidence.ValidComplexityLevels())
+				continue
+			}
+
+			// Validate threshold range
+			if threshold < 0.0 || threshold > 1.0 {
+				fmt.Fprintf(os.Stderr, "Warning: threshold %.2f for %s out of range [0.0, 1.0], skipping\n",
+					threshold, level)
+				continue
+			}
+
 			conf.Thresholds[level] = threshold
 		}
 	}
