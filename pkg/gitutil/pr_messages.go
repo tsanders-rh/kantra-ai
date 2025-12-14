@@ -8,11 +8,8 @@ import (
 
 // FormatPRTitleForViolation creates a PR title for a violation
 func FormatPRTitleForViolation(violationID, description string) string {
-	// Keep title concise (GitHub truncates at ~72 chars in some views)
-	shortDesc := description
-	if len(shortDesc) > 50 {
-		shortDesc = shortDesc[:47] + "..."
-	}
+	// Keep title concise with just the violation ID
+	// Full description is included in the PR body
 	return fmt.Sprintf("fix: Konveyor violation %s", violationID)
 }
 
