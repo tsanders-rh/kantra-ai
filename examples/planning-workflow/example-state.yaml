@@ -1,0 +1,70 @@
+version: "1.0"
+plan_file: .kantra-ai-plan.yaml
+started_at: "2025-12-14T12:15:00Z"
+updated_at: "2025-12-14T12:35:00Z"
+
+execution_summary:
+  total_phases: 3
+  completed_phases: 1
+  pending_phases: 2
+  failed_phases: 0
+  total_cost: 1.85
+  total_fixes_applied: 41
+  failed_fixes: 0
+
+phases:
+  - phase_id: phase-1
+    status: completed
+    started_at: "2025-12-14T12:15:00Z"
+    completed_at: "2025-12-14T12:35:00Z"
+    fixes_applied: 41
+    cost: 1.85
+
+  - phase_id: phase-2
+    status: pending
+
+  - phase_id: phase-3
+    status: pending
+
+violations:
+  javax-to-jakarta-servlet:
+    status: completed
+    total_incidents: 23
+    completed_incidents: 23
+    failed_incidents: 0
+    cost: 1.15
+    incidents:
+      "file:///src/main/java/com/example/web/UserServlet.java:3":
+        status: completed
+        cost: 0.05
+        timestamp: "2025-12-14T12:16:00Z"
+      "file:///src/main/java/com/example/web/LoginFilter.java:5":
+        status: completed
+        cost: 0.05
+        timestamp: "2025-12-14T12:16:30Z"
+      # Additional incidents would be listed here...
+
+  javax-to-jakarta-persistence:
+    status: completed
+    total_incidents: 18
+    completed_incidents: 18
+    failed_incidents: 0
+    cost: 0.70
+    incidents:
+      "file:///src/main/java/com/example/model/User.java:4":
+        status: completed
+        cost: 0.04
+        timestamp: "2025-12-14T12:20:00Z"
+      # Additional incidents would be listed here...
+
+  web-xml-namespace:
+    status: pending
+
+  persistence-xml-namespace:
+    status: pending
+
+  logging-modernization:
+    status: pending
+
+# No last_failure because execution hasn't failed
+last_failure: null

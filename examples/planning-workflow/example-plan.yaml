@@ -1,0 +1,124 @@
+version: "1.0"
+metadata:
+  provider: claude
+  created_at: "2025-12-14T12:00:00Z"
+  total_violations: 45
+  estimated_cost: 4.30
+
+phases:
+  - id: phase-1
+    name: Critical Mandatory Fixes - Namespace Migration
+    order: 1
+    risk: high
+    category: mandatory
+    effort_range: [5, 7]
+    explanation: |
+      These violations involve migrating from javax.* to jakarta.* namespaces
+      across core servlet and JPA components. This is critical for Jakarta EE 9+
+      compatibility and affects multiple core files. The risk is high due to
+      potential runtime behavior changes, but these must be addressed first as
+      they block all other modernization work.
+
+      Recommended approach: Review each change carefully and run comprehensive
+      tests after applying fixes. Consider deploying to a staging environment
+      before production.
+
+    estimated_cost: 1.85
+    estimated_duration_minutes: 25
+    deferred: false
+
+    violations:
+      - violation_id: javax-to-jakarta-servlet
+        description: Replace javax.servlet with jakarta.servlet
+        category: mandatory
+        effort: 7
+        incident_count: 23
+        incidents:
+          - uri: file:///src/main/java/com/example/web/UserServlet.java
+            line_number: 3
+            message: "import javax.servlet.http.HttpServlet"
+          - uri: file:///src/main/java/com/example/web/LoginFilter.java
+            line_number: 5
+            message: "import javax.servlet.Filter"
+          # Additional incidents would be listed here...
+
+      - violation_id: javax-to-jakarta-persistence
+        description: Replace javax.persistence with jakarta.persistence
+        category: mandatory
+        effort: 6
+        incident_count: 18
+        incidents:
+          - uri: file:///src/main/java/com/example/model/User.java
+            line_number: 4
+            message: "import javax.persistence.Entity"
+          # Additional incidents would be listed here...
+
+  - id: phase-2
+    name: Mandatory Medium Effort - XML Configuration Updates
+    order: 2
+    risk: medium
+    category: mandatory
+    effort_range: [3, 5]
+    explanation: |
+      Update XML configuration files for Jakarta EE compatibility. This includes
+      web.xml, persistence.xml, and other deployment descriptors. These changes
+      are lower risk than code changes but still mandatory for the migration.
+
+      The medium risk rating reflects that XML errors typically cause deployment
+      failures rather than subtle runtime bugs, making them easier to catch during
+      testing.
+
+    estimated_cost: 0.95
+    estimated_duration_minutes: 15
+    deferred: false
+
+    violations:
+      - violation_id: web-xml-namespace
+        description: Update web.xml namespace to jakarta.servlet
+        category: mandatory
+        effort: 4
+        incident_count: 1
+        incidents:
+          - uri: file:///src/main/webapp/WEB-INF/web.xml
+            line_number: 2
+            message: 'xmlns="http://java.sun.com/xml/ns/javaee"'
+
+      - violation_id: persistence-xml-namespace
+        description: Update persistence.xml namespace
+        category: mandatory
+        effort: 3
+        incident_count: 1
+        incidents:
+          - uri: file:///src/main/resources/META-INF/persistence.xml
+            line_number: 2
+            message: 'xmlns="http://java.sun.com/xml/ns/persistence"'
+
+  - id: phase-3
+    name: Optional Improvements - Logging Modernization
+    order: 3
+    risk: low
+    category: optional
+    effort_range: [2, 4]
+    explanation: |
+      Modernize logging from java.util.logging to SLF4J with Logback. This is
+      optional but highly recommended for better logging control and performance.
+      Low risk as logging changes are isolated and easily testable.
+
+      This can be deferred if time/budget is limited, or executed incrementally
+      per component.
+
+    estimated_cost: 1.50
+    estimated_duration_minutes: 20
+    deferred: false
+
+    violations:
+      - violation_id: logging-modernization
+        description: Migrate from java.util.logging to SLF4J
+        category: optional
+        effort: 3
+        incident_count: 12
+        incidents:
+          - uri: file:///src/main/java/com/example/service/UserService.java
+            line_number: 8
+            message: "private static final Logger logger = Logger.getLogger"
+          # Additional incidents would be listed here...
