@@ -77,7 +77,30 @@ type PRTracker struct {
 	createdPRs []CreatedPR
 }
 
-// NewPRTracker creates a new PR tracker
+// NewPRTracker creates a new PR tracker for managing GitHub pull request creation.
+//
+// The PR tracker coordinates with git commits to create pull requests on GitHub
+// based on the configured strategy (per-violation, per-incident, or at-end).
+//
+// Parameters:
+//   - config: PR configuration including strategy, branch naming, and GitHub token
+//   - workingDir: Path to the git repository working directory
+//   - providerName: Name of the AI provider used for fixes (for PR body metadata)
+//   - progress: Optional progress reporter (use nil for no progress output)
+//
+// Returns:
+//   - A configured PRTracker ready to track fixes and create PRs
+//   - An error if the GitHub token is missing or GitHub client creation fails
+//
+// Example:
+//
+//	config := gitutil.PRConfig{
+//	    Strategy:     gitutil.PRStrategyPerViolation,
+//	    BranchPrefix: "kantra-ai/remediation",
+//	    GitHubToken:  os.Getenv("GITHUB_TOKEN"),
+//	}
+//	progress := &gitutil.StdoutProgressWriter{}
+//	tracker, err := gitutil.NewPRTracker(config, "/path/to/repo", "claude", progress)
 func NewPRTracker(config PRConfig, workingDir string, providerName string, progress ProgressWriter) (*PRTracker, error) {
 	// Validate config
 	if config.GitHubToken == "" {
@@ -114,7 +137,18 @@ func NewPRTracker(config PRConfig, workingDir string, providerName string, progr
 	}, nil
 }
 
-// TrackForPR records that a fix should be included in a PR
+// TrackForPR records that a fix should be included in a pull request.
+//
+// Call this method after each successful fix to track it for PR creation.
+// Fixes are organized by violation ID for per-violation PRs and also
+// stored in order for per-incident and at-end strategies.
+//
+// Parameters:
+//   - v: The violation that was fixed
+//   - incident: The specific incident that was fixed
+//   - result: The fix result containing file path, cost, and tokens used
+//
+// Returns nil (currently never returns an error, but signature allows for future validation)
 func (pt *PRTracker) TrackForPR(v violation.Violation, incident violation.Incident, result *fixer.FixResult) error {
 	record := FixRecord{
 		Violation: v,
@@ -133,7 +167,20 @@ func (pt *PRTracker) TrackForPR(v violation.Violation, incident violation.Incide
 	return nil
 }
 
-// Finalize creates all pending PRs based on strategy
+// Finalize creates pull requests on GitHub based on the configured strategy.
+//
+// This method should be called after all fixes have been tracked via TrackForPR.
+// It will create branches, push them to GitHub, and create pull requests according
+// to the strategy:
+//   - PRStrategyPerViolation: One PR per violation type (groups all incidents)
+//   - PRStrategyPerIncident: One PR per individual incident/file
+//   - PRStrategyAtEnd: Single PR with all fixes combined
+//
+// Progress is reported via the ProgressWriter, and created PRs can be retrieved
+// afterwards using GetCreatedPRs().
+//
+// Returns an error if branch creation, pushing, or PR creation fails. The error
+// will include helpful messages for common failure scenarios.
 func (pt *PRTracker) Finalize() error {
 	// Determine base branch (target for PR)
 	baseBranch := pt.config.BaseBranch
@@ -317,7 +364,14 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 	return nil
 }
 
-// createAndPushBranch creates a new branch from current HEAD and pushes it
+// createAndPushBranch creates a new branch from current HEAD and pushes it to the remote.
+// Reports progress and provides helpful error messages for common failure scenarios.
+//
+// Common errors and their causes:
+//   - Branch already exists: Suggests deletion command
+//   - SSH key not configured: Suggests HTTPS remote or SSH setup
+//   - No write access (403): Suggests checking token scope
+//   - Network errors: Suggests checking internet connection
 func (pt *PRTracker) createAndPushBranch(branchName string) error {
 	// Create branch
 	pt.progress.Printf("  Creating branch: %s\n", branchName)
@@ -353,7 +407,19 @@ func (pt *PRTracker) createAndPushBranch(branchName string) error {
 	return nil
 }
 
-// createPR creates a pull request on GitHub
+// createPR creates a pull request on GitHub via the GitHub API.
+// Reports progress and provides helpful error messages for common API errors.
+//
+// Parameters:
+//   - title: PR title
+//   - body: PR body (markdown formatted)
+//   - head: Source branch name
+//   - base: Target branch name (usually "main" or "master")
+//
+// Common errors and their causes:
+//   - No commits (422): Branch has no commits vs base branch
+//   - PR already exists (422): A PR already exists for this head branch
+//   - Other GitHub API errors: Authentication, permissions, validation failures
 func (pt *PRTracker) createPR(title, body, head, base string) (*PullRequestResponse, error) {
 	pt.progress.Printf("  Creating pull request...\n")
 
