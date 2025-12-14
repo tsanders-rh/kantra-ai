@@ -23,6 +23,7 @@ AI-powered remediation for Konveyor violations.
 - Applies fixes to source files
 - Tracks success/failure and costs
 - Creates git commits (optional, with configurable strategies)
+- Creates GitHub pull requests (optional, with automatic branch management)
 
 ## 🚀 Quick Start
 
@@ -31,6 +32,9 @@ AI-powered remediation for Konveyor violations.
 # Required
 go 1.21+
 export ANTHROPIC_API_KEY=sk-ant-...  # or OPENAI_API_KEY
+
+# Optional: For PR creation
+export GITHUB_TOKEN=ghp_...  # GitHub personal access token with 'repo' scope
 
 # For testing
 kantra analyze --input=./your-app --output=./analysis
@@ -86,6 +90,31 @@ go build -o kantra-ai ./cmd/kantra-ai
   --input=./your-app \
   --provider=claude \
   --git-commit=at-end
+
+# Create GitHub pull request after fixes (requires GITHUB_TOKEN)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=at-end \
+  --create-pr
+
+# Create multiple PRs (one per violation)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=per-violation \
+  --create-pr
+
+# Custom branch name for PR
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --provider=claude \
+  --git-commit=at-end \
+  --create-pr \
+  --branch=feature/konveyor-migration
 ```
 
 ## 📊 Validation Tracking
@@ -112,7 +141,7 @@ validation/           # Test results tracking
 
 After validation succeeds:
 - ✅ Git workflow (commits per violation/incident/batch)
-- PR creation automation
+- ✅ PR creation automation (single or multiple PRs with customizable strategies)
 - Cost controls and limits
 - Multiple providers and comparison
 - Verification (syntax check, build, tests)

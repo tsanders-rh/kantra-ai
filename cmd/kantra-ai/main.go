@@ -27,6 +27,8 @@ var (
 	dryRun            bool
 	model             string
 	gitCommitStrategy string
+	createPR          bool
+	branchName        string
 )
 
 func main() {
@@ -55,6 +57,8 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().BoolVar(&dryRun, "dry-run", false, "Show what would be done without making changes")
 	remediateCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
 	remediateCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
+	remediateCmd.Flags().BoolVar(&createPR, "create-pr", false, "Create GitHub pull request(s) after remediation (requires --git-commit)")
+	remediateCmd.Flags().StringVar(&branchName, "branch", "", "Branch name for PR (default: kantra-ai/remediation-TIMESTAMP)")
 
 	// MarkFlagRequired only errors if flag doesn't exist, which can't happen here
 	_ = remediateCmd.MarkFlagRequired("analysis")
@@ -97,6 +101,50 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 		commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
 		fmt.Printf("✓ Git commits enabled (%s strategy)\n\n", gitCommitStrategy)
+	}
+
+	// Initialize PR tracker if requested
+	var prTracker *gitutil.PRTracker
+	if createPR {
+		// Validate prerequisites
+		if gitCommitStrategy == "" {
+			return fmt.Errorf("--create-pr requires --git-commit to be set")
+		}
+
+		// Check for GitHub token
+		githubToken := os.Getenv("GITHUB_TOKEN")
+		if githubToken == "" {
+			return fmt.Errorf("--create-pr requires GITHUB_TOKEN environment variable\n\n" +
+				"To set up:\n" +
+				"  1. Create a token at: https://github.com/settings/tokens\n" +
+				"  2. Grant 'repo' scope\n" +
+				"  3. Export: export GITHUB_TOKEN=your_token_here")
+		}
+
+		// Parse PR strategy from commit strategy
+		prStrategy, err := gitutil.ParsePRStrategy(gitCommitStrategy)
+		if err != nil {
+			return err
+		}
+
+		// Generate branch name if not provided
+		if branchName == "" {
+			branchName = fmt.Sprintf("kantra-ai/remediation-%d", time.Now().Unix())
+		}
+
+		// Initialize PR tracker
+		prConfig := gitutil.PRConfig{
+			Strategy:     prStrategy,
+			BranchPrefix: branchName,
+			GitHubToken:  githubToken,
+		}
+
+		prTracker, err = gitutil.NewPRTracker(prConfig, inputPath, providerName)
+		if err != nil {
+			return fmt.Errorf("failed to initialize PR tracker: %w", err)
+		}
+
+		fmt.Printf("✓ PR creation enabled (%s strategy)\n\n", gitCommitStrategy)
 	}
 
 	// Parse filters
@@ -189,6 +237,13 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 					}
 				}
 
+				// Track for PR if enabled
+				if prTracker != nil && !dryRun {
+					if err := prTracker.TrackForPR(v, incident, result); err != nil {
+						fmt.Printf("    ⚠ PR tracking failed: %v\n", err)
+					}
+				}
+
 				// Check if we've exceeded max cost
 				if maxCost > 0 && totalCost >= maxCost {
 					fmt.Printf("\n⚠ Max cost ($%.2f) reached. Stopping.\n", maxCost)
@@ -207,6 +262,43 @@ summary:
 	if commitTracker != nil && !dryRun {
 		if err := commitTracker.Finalize(); err != nil {
 			fmt.Printf("\n⚠ Final git commit failed: %v\n", err)
+		}
+	}
+
+	// Create pull requests if enabled
+	if prTracker != nil && !dryRun {
+		fmt.Println("\nCreating pull request(s)...")
+		if err := prTracker.Finalize(); err != nil {
+			// Format error message
+			ghErr, ok := err.(*gitutil.GitHubError)
+			if ok {
+				switch ghErr.StatusCode {
+				case 401:
+					fmt.Printf("\n⚠ PR creation failed: Invalid GITHUB_TOKEN\n")
+					fmt.Println("  Verify your token at: https://github.com/settings/tokens")
+				case 403:
+					fmt.Printf("\n⚠ PR creation failed: Insufficient permissions\n")
+					fmt.Println("  Your token needs 'repo' scope")
+				case 422:
+					fmt.Printf("\n⚠ PR creation failed: %v\n", err)
+					fmt.Println("  A PR may already exist for this branch")
+				default:
+					fmt.Printf("\n⚠ PR creation failed: %v\n", err)
+				}
+			} else {
+				fmt.Printf("\n⚠ PR creation failed: %v\n", err)
+			}
+		} else {
+			// Print created PRs
+			prs := prTracker.GetCreatedPRs()
+			fmt.Printf("\n✓ Created %d pull request(s):\n", len(prs))
+			for _, pr := range prs {
+				if pr.ViolationID != "" {
+					fmt.Printf("  - PR #%d (%s): %s\n", pr.Number, pr.ViolationID, pr.URL)
+				} else {
+					fmt.Printf("  - PR #%d: %s\n", pr.Number, pr.URL)
+				}
+			}
 		}
 	}
 
