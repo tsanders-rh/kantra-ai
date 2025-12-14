@@ -341,3 +341,72 @@ func TestShouldApplyFix_ReasonIncludesAction(t *testing.T) {
 		})
 	}
 }
+
+func TestShouldApplyFix_EmptyComplexityNoFallback(t *testing.T) {
+	config := DefaultConfig()
+	config.Enabled = true
+	config.UseEffortFallback = false // Disable effort fallback
+
+	// With empty complexity and no fallback, should use default threshold
+	shouldApply, reason := config.ShouldApplyFix(0.82, "", 9)
+
+	// Default is 0.80, so 0.82 should pass
+	assert.True(t, shouldApply)
+	assert.Empty(t, reason)
+
+	// Test below default threshold
+	shouldApply, reason = config.ShouldApplyFix(0.75, "", 9)
+	assert.False(t, shouldApply)
+	assert.NotEmpty(t, reason)
+	assert.Contains(t, reason, "medium") // Should fall back to medium
+}
+
+func TestStats_ConcurrentAccess(t *testing.T) {
+	stats := NewStats()
+
+	// Simulate concurrent access from multiple goroutines
+	const numGoroutines = 10
+	const fixesPerGoroutine = 100
+
+	done := make(chan bool)
+
+	for i := 0; i < numGoroutines; i++ {
+		go func(id int) {
+			complexity := ComplexityMedium
+			if id%2 == 0 {
+				complexity = ComplexityHigh
+			}
+
+			for j := 0; j < fixesPerGoroutine; j++ {
+				applied := j%3 != 0 // Apply 2/3, skip 1/3
+				stats.RecordFix(complexity, applied)
+			}
+			done <- true
+		}(i)
+	}
+
+	// Wait for all goroutines
+	for i := 0; i < numGoroutines; i++ {
+		<-done
+	}
+
+	// Verify totals - with mutex protection, these should be accurate
+	expectedTotal := numGoroutines * fixesPerGoroutine
+	// j%3 != 0 gives: skip on 0,3,6,9... = 34 skips, 66 applies (for 0-99)
+	expectedApplied := numGoroutines * 66
+	expectedSkipped := numGoroutines * 34
+
+	assert.Equal(t, expectedTotal, stats.TotalFixes, "TotalFixes should match")
+	assert.Equal(t, expectedApplied, stats.AppliedFixes, "AppliedFixes should match")
+	assert.Equal(t, expectedSkipped, stats.SkippedFixes, "SkippedFixes should match")
+
+	// Verify complexity breakdown
+	// 5 goroutines used Medium, 5 used High (id%2 == 0)
+	assert.Equal(t, fixesPerGoroutine*5, stats.ByComplexity[ComplexityMedium].Total)
+	assert.Equal(t, fixesPerGoroutine*5, stats.ByComplexity[ComplexityHigh].Total)
+
+	// Verify Summary doesn't panic during concurrent access
+	summary := stats.Summary()
+	assert.NotEmpty(t, summary)
+	assert.Contains(t, summary, fmt.Sprintf("%d/%d", expectedApplied, expectedTotal))
+}

@@ -2,6 +2,7 @@ package confidence
 
 import (
 	"fmt"
+	"sync"
 )
 
 // Complexity levels based on Konveyor enhancement proposal
@@ -89,7 +90,10 @@ func EffortToComplexity(effort int) string {
 	}
 }
 
-// GetThreshold returns the confidence threshold for a given complexity level
+// GetThreshold returns the confidence threshold for a given complexity level.
+// If the complexity level is not found in the configured thresholds map,
+// it returns the default threshold. This allows graceful handling of unknown
+// or custom complexity levels.
 func (c *Config) GetThreshold(complexity string) float64 {
 	if threshold, ok := c.Thresholds[complexity]; ok {
 		return threshold
@@ -182,8 +186,11 @@ func ComplexityDescription(complexity string) string {
 	return "Unknown complexity"
 }
 
-// Stats tracks confidence-based filtering statistics
+// Stats tracks confidence-based filtering statistics.
+// This struct is thread-safe and can be used concurrently from multiple
+// goroutines (e.g., in batch processing with worker pools).
 type Stats struct {
+	mu               sync.Mutex
 	TotalFixes       int
 	AppliedFixes     int
 	SkippedFixes     int
@@ -204,8 +211,19 @@ func NewStats() *Stats {
 	}
 }
 
-// RecordFix records a fix attempt
+// RecordFix records a fix attempt with its complexity level and outcome.
+// The complexity parameter should be one of the ComplexityXXX constants
+// (trivial, low, medium, high, expert). The applied parameter indicates
+// whether the fix was actually applied (true) or skipped due to low
+// confidence (false). This method updates both the overall statistics
+// and the per-complexity breakdown.
+//
+// This method is thread-safe and can be called concurrently from multiple
+// goroutines.
 func (s *Stats) RecordFix(complexity string, applied bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	s.TotalFixes++
 	if applied {
 		s.AppliedFixes++
@@ -225,8 +243,13 @@ func (s *Stats) RecordFix(complexity string, applied bool) {
 	}
 }
 
-// Summary returns a formatted summary of the stats
+// Summary returns a formatted summary of the stats.
+// This method is thread-safe and can be called while other goroutines
+// are recording fixes.
 func (s *Stats) Summary() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
 	if s.TotalFixes == 0 {
 		return "No fixes attempted"
 	}
