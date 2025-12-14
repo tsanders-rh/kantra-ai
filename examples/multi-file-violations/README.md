@@ -213,6 +213,175 @@ Or copy one to `.kantra-ai.yaml` in the example directory and just run:
 ./kantra-ai remediate
 ```
 
+## Pull Request Creation
+
+### Prerequisites
+
+To create pull requests, you need:
+
+1. **GitHub Token** with `repo` scope:
+   ```bash
+   # Create at: https://github.com/settings/tokens
+   export GITHUB_TOKEN=ghp_your_token_here
+   ```
+
+2. **GitHub Repository** - This example directory must be:
+   - A git repository with commits
+   - Connected to a GitHub remote
+   - Pushed to GitHub
+
+### Setup for PR Testing
+
+```bash
+# Navigate to example directory
+cd examples/multi-file-violations
+
+# Initialize as git repo (if not already)
+git init
+git add .
+git commit -m "Initial commit with violations"
+
+# Connect to GitHub (create empty repo first on github.com)
+git remote add origin https://github.com/YOUR_USERNAME/kantra-ai-multi-file-test.git
+git branch -M main
+git push -u origin main
+
+# Return to kantra-ai root
+cd ../..
+```
+
+### PR Strategy Examples
+
+#### Per-Violation Strategy (2 PRs)
+
+Creates **2 pull requests** (one per violation type):
+
+```bash
+# Set environment variables
+export GITHUB_TOKEN=ghp_your_token
+export ANTHROPIC_API_KEY=sk-ant-your_key  # or OPENAI_API_KEY
+
+# Run with PR creation
+./kantra-ai remediate \
+  --analysis=./examples/multi-file-violations/output.yaml \
+  --input=./examples/multi-file-violations \
+  --provider=claude \
+  --git-commit=per-violation \
+  --create-pr
+```
+
+**Result:**
+- PR #1: Fix javax-to-jakarta violations (UserController + DataService)
+- PR #2: Fix hardcoded-credentials violations (DataService + DatabaseConfig)
+
+**Branch names:**
+- `kantra-ai/remediation-javax-to-jakarta-001-TIMESTAMP`
+- `kantra-ai/remediation-hardcoded-credentials-001-TIMESTAMP`
+
+#### Per-Incident Strategy (3 PRs)
+
+Creates **3 pull requests** (one per file):
+
+```bash
+./kantra-ai remediate \
+  --analysis=./examples/multi-file-violations/output.yaml \
+  --input=./examples/multi-file-violations \
+  --provider=claude \
+  --git-commit=per-incident \
+  --create-pr
+```
+
+**Result:**
+- PR #1: Fix violations in UserController.java
+- PR #2: Fix violations in DataService.java
+- PR #3: Fix violations in DatabaseConfig.java
+
+#### At-End Strategy (1 PR)
+
+Creates **1 pull request** with all fixes:
+
+```bash
+./kantra-ai remediate \
+  --analysis=./examples/multi-file-violations/output.yaml \
+  --input=./examples/multi-file-violations \
+  --provider=claude \
+  --git-commit=at-end \
+  --create-pr
+```
+
+**Result:**
+- PR #1: Batch remediation of 2 violations (all 3 files)
+
+**Branch name:**
+- `kantra-ai/remediation-TIMESTAMP`
+
+### Custom Branch Names
+
+```bash
+# Use custom branch prefix
+./kantra-ai remediate \
+  --analysis=./examples/multi-file-violations/output.yaml \
+  --input=./examples/multi-file-violations \
+  --provider=claude \
+  --git-commit=per-violation \
+  --create-pr \
+  --branch=feature/konveyor-migration
+```
+
+### Dry-Run Mode
+
+Preview PRs without creating them:
+
+```bash
+./kantra-ai remediate \
+  --analysis=./examples/multi-file-violations/output.yaml \
+  --input=./examples/multi-file-violations \
+  --provider=claude \
+  --git-commit=per-violation \
+  --create-pr \
+  --dry-run
+```
+
+This will:
+- Show what fixes would be applied
+- Show what commits would be created
+- Show what PRs would be created
+- **Not** actually create any PRs or push to GitHub
+
+### Verifying PRs
+
+After running with `--create-pr`, check your GitHub repository:
+
+1. **View Pull Requests:**
+   ```
+   https://github.com/YOUR_USERNAME/YOUR_REPO/pulls
+   ```
+
+2. **Check PR Content:**
+   - Summary section with violation details
+   - List of files modified with line numbers
+   - AI remediation details (provider, cost, tokens)
+   - Link to kantra-ai in footer
+
+3. **Review Changes:**
+   - Click "Files changed" tab
+   - Verify javax → jakarta replacements
+   - Verify credentials → environment variables
+   - Check that code logic is preserved
+
+### Cleanup After Testing
+
+```bash
+# Close/delete test PRs on GitHub
+# Then delete remote branches
+git push origin --delete kantra-ai/remediation-*
+
+# Or reset local repository
+cd examples/multi-file-violations
+git reset --hard HEAD~10  # Reset last 10 commits
+git push --force  # Force push reset (use with caution!)
+```
+
 ## Learning Points
 
 1. **Commit strategies** affect git history organization, not what gets fixed

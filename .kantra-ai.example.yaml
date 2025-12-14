@@ -24,9 +24,10 @@ filters:
 
 # Git Integration
 git:
-  commit-strategy: ""  # per-violation, per-incident, or at-end
-  create-pr: false     # Automatically create GitHub pull requests
-  branch-prefix: ""    # Custom branch name (default: kantra-ai/remediation-TIMESTAMP)
+  commit-strategy: ""  # per-violation, per-incident, or at-end (empty = no commits)
+  create-pr: false     # Automatically create GitHub pull requests (requires commit-strategy and GITHUB_TOKEN)
+  branch-prefix: ""    # Custom branch name prefix (default: kantra-ai/remediation-TIMESTAMP)
+                       # Note: Actual branch names may include violation IDs or indices depending on strategy
 
 # Build/Test Verification
 verification:
@@ -66,9 +67,20 @@ dry-run: false  # Preview changes without applying them
 #   analysis: ./analysis/output.yaml
 #   input: ./src
 # git:
-#   commit-strategy: per-violation
-#   create-pr: true
+#   commit-strategy: per-violation  # Creates one commit per violation type
+#   create-pr: true                  # Creates one PR per violation (requires GITHUB_TOKEN)
 # verification:
 #   enabled: true
 #   type: test
 #   strategy: at-end
+
+# PR creation with custom branch name:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# git:
+#   commit-strategy: at-end
+#   create-pr: true
+#   branch-prefix: feature/konveyor-migration  # Single PR with custom branch name
