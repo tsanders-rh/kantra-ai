@@ -290,7 +290,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 			result, err := fix.FixIncident(ctx, v, incident)
 			if bar != nil {
-				bar.Add(1)
+				_ = bar.Add(1) // Ignore progress bar errors
 			}
 
 			if err != nil {
@@ -339,7 +339,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 	// Finish progress bar
 	if bar != nil {
-		bar.Finish()
+		_ = bar.Finish() // Ignore progress bar errors
 		fmt.Println()
 	}
 
