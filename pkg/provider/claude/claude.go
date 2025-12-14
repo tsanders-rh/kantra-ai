@@ -379,14 +379,14 @@ func parsePlanResponse(responseText string, violations []violation.Violation) ([
 // extractJSON extracts JSON from a response that might contain markdown code blocks
 func extractJSON(text string) string {
 	// Try to extract JSON from markdown code blocks
-	re := regexp.MustCompile("(?s)```(?:json)?\\s*([\\[{].*?[\\]}])\\s*```")
+	re := regexp.MustCompile(`(?s)` + "```" + `(?:json)?\s*([\[{].*?[\]}])\s*` + "```")
 	matches := re.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return matches[1]
 	}
 
 	// If no code blocks, try to find JSON array or object directly
-	re = regexp.MustCompile("(?s)(\\[.*\\])")
+	re = regexp.MustCompile(`(?s)(\[.*\])`)
 	matches = re.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return matches[1]
