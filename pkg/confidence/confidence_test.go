@@ -1,6 +1,7 @@
 package confidence
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -23,6 +24,7 @@ func TestEffortToComplexity(t *testing.T) {
 		effort   int
 		expected string
 	}{
+		// Normal range (0-10)
 		{0, ComplexityTrivial},
 		{2, ComplexityTrivial},
 		{3, ComplexityLow},
@@ -33,10 +35,17 @@ func TestEffortToComplexity(t *testing.T) {
 		{8, ComplexityHigh},
 		{9, ComplexityExpert},
 		{10, ComplexityExpert},
+		// Edge cases - negative (should clamp to 0 -> Trivial)
+		{-1, ComplexityTrivial},
+		{-10, ComplexityTrivial},
+		// Edge cases - over 10 (should clamp to 10 -> Expert)
+		{11, ComplexityExpert},
+		{15, ComplexityExpert},
+		{100, ComplexityExpert},
 	}
 
 	for _, tt := range tests {
-		t.Run(string(rune('0'+tt.effort)), func(t *testing.T) {
+		t.Run(fmt.Sprintf("effort_%d", tt.effort), func(t *testing.T) {
 			result := EffortToComplexity(tt.effort)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -249,4 +258,86 @@ func TestStats_AllApplied(t *testing.T) {
 	summary := stats.Summary()
 	assert.Contains(t, summary, "2/2")
 	assert.NotContains(t, summary, "Skipped")
+}
+
+func TestStats_ComplexityBreakdown(t *testing.T) {
+	stats := NewStats()
+
+	// Add fixes across multiple complexity levels
+	stats.RecordFix(ComplexityTrivial, true)
+	stats.RecordFix(ComplexityTrivial, true)
+	stats.RecordFix(ComplexityLow, true)
+	stats.RecordFix(ComplexityMedium, false)
+	stats.RecordFix(ComplexityHigh, false)
+	stats.RecordFix(ComplexityExpert, false)
+
+	summary := stats.Summary()
+
+	// Verify overall stats
+	assert.Contains(t, summary, "3/6")
+	assert.Contains(t, summary, "50.0%")
+	assert.Contains(t, summary, "Skipped: 3")
+
+	// Verify complexity breakdown is included
+	assert.Contains(t, summary, "By complexity:")
+	assert.Contains(t, summary, "trivial: 2 applied, 0 skipped")
+	assert.Contains(t, summary, "low: 1 applied, 0 skipped")
+	assert.Contains(t, summary, "medium: 0 applied, 1 skipped")
+	assert.Contains(t, summary, "high: 0 applied, 1 skipped")
+	assert.Contains(t, summary, "expert: 0 applied, 1 skipped")
+}
+
+func TestStats_InvalidConfidence(t *testing.T) {
+	config := DefaultConfig()
+	config.Enabled = true
+
+	tests := []struct {
+		name       string
+		confidence float64
+		shouldFail bool
+	}{
+		{"valid 0.0", 0.0, false},
+		{"valid 0.5", 0.5, false},
+		{"valid 1.0", 1.0, false},
+		{"invalid -0.1", -0.1, true},
+		{"invalid 1.1", 1.1, true},
+		{"invalid 2.0", 2.0, true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			shouldApply, reason := config.ShouldApplyFix(tt.confidence, ComplexityMedium, 5)
+			if tt.shouldFail {
+				assert.False(t, shouldApply)
+				assert.Contains(t, reason, "invalid confidence")
+			}
+		})
+	}
+}
+
+func TestShouldApplyFix_ReasonIncludesAction(t *testing.T) {
+	tests := []struct {
+		name           string
+		action         Action
+		expectedAction string
+	}{
+		{"skip action", ActionSkip, "skip"},
+		{"warn-and-apply action", ActionWarnAndApply, "warn-and-apply"},
+		{"manual-review action", ActionManualReviewFile, "manual-review"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			config := DefaultConfig()
+			config.Enabled = true
+			config.OnLowConfidence = tt.action
+
+			// Use low confidence to trigger reason generation
+			shouldApply, reason := config.ShouldApplyFix(0.60, ComplexityMedium, 5)
+
+			assert.False(t, shouldApply)
+			assert.NotEmpty(t, reason)
+			assert.Contains(t, reason, "action: "+tt.expectedAction)
+		})
+	}
 }

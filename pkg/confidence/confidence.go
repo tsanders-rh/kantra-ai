@@ -65,7 +65,16 @@ func DefaultComplexityThresholds() map[string]float64 {
 
 // EffortToComplexity maps effort levels (0-10) to complexity levels
 // Used as fallback when migration_complexity metadata is missing
+// Clamps effort to [0, 10] range to handle edge cases
 func EffortToComplexity(effort int) string {
+	// Clamp to valid range
+	if effort < 0 {
+		effort = 0
+	}
+	if effort > 10 {
+		effort = 10
+	}
+
 	switch {
 	case effort <= 2:
 		return ComplexityTrivial
@@ -75,7 +84,7 @@ func EffortToComplexity(effort int) string {
 		return ComplexityMedium
 	case effort <= 8:
 		return ComplexityHigh
-	default:
+	default: // 9-10
 		return ComplexityExpert
 	}
 }
@@ -114,9 +123,19 @@ func (c *Config) ShouldApplyFix(confidence float64, complexity string, effort in
 		return true, ""
 	}
 
-	// Below threshold
-	reason := fmt.Sprintf("confidence %.2f below threshold %.2f (complexity: %s)",
-		confidence, threshold, effectiveComplexity)
+	// Below threshold - include action in reason for clarity
+	actionStr := "unknown"
+	switch c.OnLowConfidence {
+	case ActionSkip:
+		actionStr = "skip"
+	case ActionWarnAndApply:
+		actionStr = "warn-and-apply"
+	case ActionManualReviewFile:
+		actionStr = "manual-review"
+	}
+
+	reason := fmt.Sprintf("confidence %.2f below threshold %.2f (complexity: %s, action: %s)",
+		confidence, threshold, effectiveComplexity, actionStr)
 
 	return false, reason
 }
@@ -217,6 +236,19 @@ func (s *Stats) Summary() string {
 
 	if s.SkippedFixes > 0 {
 		summary += fmt.Sprintf(", Skipped: %d (low confidence)", s.SkippedFixes)
+	}
+
+	// Add breakdown by complexity level if we have complexity data
+	if len(s.ByComplexity) > 0 {
+		summary += "\n  By complexity:"
+
+		// Iterate in order of increasing complexity
+		for _, level := range []string{ComplexityTrivial, ComplexityLow, ComplexityMedium, ComplexityHigh, ComplexityExpert} {
+			if stats, ok := s.ByComplexity[level]; ok && stats.Total > 0 {
+				summary += fmt.Sprintf("\n    %s: %d applied, %d skipped",
+					level, stats.Applied, stats.Skipped)
+			}
+		}
 	}
 
 	return summary

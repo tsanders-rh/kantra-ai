@@ -854,13 +854,12 @@ func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 		if minConfidence < 0.0 || minConfidence > 1.0 {
 			return confidenceConf, fmt.Errorf("--min-confidence must be between 0.0 and 1.0")
 		}
-		if minConfidence > 0 {
-			// Apply global minimum to all thresholds
-			for level := range confidenceConf.Thresholds {
-				confidenceConf.Thresholds[level] = minConfidence
-			}
-			confidenceConf.Default = minConfidence
+		// Apply global minimum to all thresholds
+		// Note: 0.0 is valid and means "accept all fixes regardless of confidence"
+		for level := range confidenceConf.Thresholds {
+			confidenceConf.Thresholds[level] = minConfidence
 		}
+		confidenceConf.Default = minConfidence
 	}
 
 	if flagChanged("on-low-confidence") {
