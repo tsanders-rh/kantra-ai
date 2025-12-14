@@ -1,0 +1,116 @@
+package planfile
+
+import (
+	"time"
+
+	"github.com/tsanders/kantra-ai/pkg/violation"
+)
+
+// Plan represents a migration plan with phased execution
+type Plan struct {
+	Version  string       `yaml:"version"`
+	Metadata PlanMetadata `yaml:"metadata"`
+	Phases   []Phase      `yaml:"phases"`
+}
+
+// PlanMetadata contains plan-level information
+type PlanMetadata struct {
+	CreatedAt       time.Time `yaml:"created_at"`
+	Provider        string    `yaml:"provider"`
+	TotalViolations int       `yaml:"total_violations"`
+}
+
+// Phase represents a logical grouping of violations to fix together
+type Phase struct {
+	ID                      string              `yaml:"id"`
+	Name                    string              `yaml:"name"`
+	Order                   int                 `yaml:"order"`
+	Risk                    RiskLevel           `yaml:"risk"`
+	Category                string              `yaml:"category"`
+	EffortRange             [2]int              `yaml:"effort_range"`
+	Explanation             string              `yaml:"explanation"`
+	Violations              []PlannedViolation  `yaml:"violations"`
+	EstimatedCost           float64             `yaml:"estimated_cost"`
+	EstimatedDurationMinutes int                `yaml:"estimated_duration_minutes"`
+	Deferred                bool                `yaml:"deferred"`
+}
+
+// RiskLevel indicates the risk associated with a phase
+type RiskLevel string
+
+const (
+	RiskLow    RiskLevel = "low"
+	RiskMedium RiskLevel = "medium"
+	RiskHigh   RiskLevel = "high"
+)
+
+// PlannedViolation represents a violation included in a phase
+type PlannedViolation struct {
+	ViolationID   string               `yaml:"violation_id"`
+	Description   string               `yaml:"description"`
+	Category      string               `yaml:"category"`
+	Effort        int                  `yaml:"effort"`
+	IncidentCount int                  `yaml:"incident_count"`
+	Incidents     []violation.Incident `yaml:"incidents"`
+}
+
+// ExecutionState tracks the progress of executing a plan
+type ExecutionState struct {
+	Version          string                     `yaml:"version"`
+	PlanFile         string                     `yaml:"plan_file"`
+	StartedAt        time.Time                  `yaml:"started_at"`
+	UpdatedAt        time.Time                  `yaml:"updated_at"`
+	ExecutionSummary ExecutionSummary           `yaml:"execution_summary"`
+	Phases           []PhaseStatus              `yaml:"phases"`
+	Violations       map[string]ViolationStatus `yaml:"violations"`
+	LastFailure      *FailureInfo               `yaml:"last_failure,omitempty"`
+}
+
+// ExecutionSummary provides high-level execution statistics
+type ExecutionSummary struct {
+	TotalPhases     int     `yaml:"total_phases"`
+	CompletedPhases int     `yaml:"completed_phases"`
+	PendingPhases   int     `yaml:"pending_phases"`
+	TotalCost       float64 `yaml:"total_cost"`
+}
+
+// PhaseStatus tracks the execution status of a phase
+type PhaseStatus struct {
+	PhaseID      string       `yaml:"phase_id"`
+	Status       StatusType   `yaml:"status"`
+	StartedAt    *time.Time   `yaml:"started_at,omitempty"`
+	CompletedAt  *time.Time   `yaml:"completed_at,omitempty"`
+	FixesApplied int          `yaml:"fixes_applied"`
+	Cost         float64      `yaml:"cost"`
+}
+
+// ViolationStatus tracks the execution status of a violation
+type ViolationStatus struct {
+	Status    StatusType                 `yaml:"status"`
+	Incidents map[string]IncidentStatus  `yaml:"incidents"`
+}
+
+// IncidentStatus tracks the execution status of a specific incident
+type IncidentStatus struct {
+	Status    StatusType `yaml:"status"`
+	Cost      float64    `yaml:"cost"`
+	Timestamp time.Time  `yaml:"timestamp"`
+}
+
+// StatusType represents the execution status
+type StatusType string
+
+const (
+	StatusPending    StatusType = "pending"
+	StatusInProgress StatusType = "in_progress"
+	StatusCompleted  StatusType = "completed"
+	StatusFailed     StatusType = "failed"
+)
+
+// FailureInfo captures details about the last failure
+type FailureInfo struct {
+	PhaseID      string `yaml:"phase_id"`
+	ViolationID  string `yaml:"violation_id"`
+	IncidentURI  string `yaml:"incident_uri"`
+	Error        string `yaml:"error"`
+}
