@@ -1,0 +1,65 @@
+---
+violations:
+  - name: javax-to-jakarta
+    description: Replace javax.servlet imports with jakarta.servlet
+    category: mandatory
+    labels:
+      - konveyor.io/source=java-ee
+      - konveyor.io/target=jakarta-ee
+    effort: 1
+    incidents:
+      - uri: file:///src/api/UserController.java
+        message: Replace javax.servlet.http.HttpServlet with jakarta.servlet.http.HttpServlet
+        codeSnip: |
+          import javax.servlet.http.HttpServlet;
+        lineNumber: 3
+      - uri: file:///src/api/UserController.java
+        message: Replace javax.servlet.http.HttpServletRequest with jakarta.servlet.http.HttpServletRequest
+        codeSnip: |
+          import javax.servlet.http.HttpServletRequest;
+        lineNumber: 4
+      - uri: file:///src/api/UserController.java
+        message: Replace javax.servlet.http.HttpServletResponse with jakarta.servlet.http.HttpServletResponse
+        codeSnip: |
+          import javax.servlet.http.HttpServletResponse;
+        lineNumber: 5
+      - uri: file:///src/service/DataService.java
+        message: Replace javax.servlet.ServletContext with jakarta.servlet.ServletContext
+        codeSnip: |
+          import javax.servlet.ServletContext;
+        lineNumber: 3
+    rule:
+      ruleID: javax-to-jakarta-00001
+      description: Javax packages must be replaced with Jakarta equivalents
+      category: mandatory
+      effort: 1
+
+  - name: hardcoded-credentials
+    description: Database credentials are hardcoded and should use environment variables or secure configuration
+    category: mandatory
+    labels:
+      - konveyor.io/source=security
+      - konveyor.io/target=security
+    effort: 3
+    incidents:
+      - uri: file:///src/service/DataService.java
+        message: Hardcoded database credentials found. Use environment variables or secure configuration instead
+        codeSnip: |
+          String username = "admin";
+          String password = "Password123!";
+        lineNumber: 18
+      - uri: file:///src/config/DatabaseConfig.java
+        message: Hardcoded database password found. Use environment variables or secure vault
+        codeSnip: |
+          props.setProperty("db.password", "SuperSecret123");
+        lineNumber: 14
+      - uri: file:///src/config/DatabaseConfig.java
+        message: Hardcoded admin password found. Use environment variables or secure vault
+        codeSnip: |
+          return "admin123";
+        lineNumber: 20
+    rule:
+      ruleID: security-hardcoded-credentials-00001
+      description: Credentials should not be hardcoded in source code
+      category: mandatory
+      effort: 3

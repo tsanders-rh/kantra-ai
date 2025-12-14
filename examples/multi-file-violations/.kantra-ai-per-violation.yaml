@@ -1,0 +1,19 @@
+# Config for per-violation strategy
+# Creates one commit per violation type (groups related fixes)
+# Result: 2 commits (javax-to-jakarta, hardcoded-credentials)
+
+provider:
+  name: claude
+
+paths:
+  analysis: ./examples/multi-file-violations/output.yaml
+  input: ./examples/multi-file-violations
+
+git:
+  commit-strategy: per-violation
+  # Violations are grouped by type:
+  # Commit 1: javax-to-jakarta (fixes UserController + DataService)
+  # Commit 2: hardcoded-credentials (fixes DataService + DatabaseConfig)
+
+verification:
+  enabled: false  # Disable for faster testing

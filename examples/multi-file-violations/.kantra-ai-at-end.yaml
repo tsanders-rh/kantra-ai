@@ -1,0 +1,20 @@
+# Config for at-end strategy
+# Creates one commit with all fixes
+# Result: 1 commit (all fixes together)
+
+provider:
+  name: claude
+
+paths:
+  analysis: ./examples/multi-file-violations/output.yaml
+  input: ./examples/multi-file-violations
+
+git:
+  commit-strategy: at-end
+  # All fixes in one commit:
+  # - UserController.java (javax fixes)
+  # - DataService.java (javax + credentials fixes)
+  # - DatabaseConfig.java (credentials fixes)
+
+verification:
+  enabled: false  # Disable for faster testing

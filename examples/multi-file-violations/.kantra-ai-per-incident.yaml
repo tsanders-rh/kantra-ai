@@ -1,0 +1,20 @@
+# Config for per-incident strategy
+# Creates one commit per file that has violations
+# Result: 3 commits (one for each file: UserController, DataService, DatabaseConfig)
+
+provider:
+  name: claude
+
+paths:
+  analysis: ./examples/multi-file-violations/output.yaml
+  input: ./examples/multi-file-violations
+
+git:
+  commit-strategy: per-incident
+  # Each file gets its own commit
+  # UserController.java -> commit 1
+  # DataService.java -> commit 2
+  # DatabaseConfig.java -> commit 3
+
+verification:
+  enabled: false  # Disable for faster testing

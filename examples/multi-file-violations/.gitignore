@@ -1,0 +1,9 @@
+# Ignore git metadata from testing
+.git/
+
+# Ignore any backup files created during testing
+*.bak
+*.orig
+
+# Ignore config file if copied for testing
+.kantra-ai.yaml
