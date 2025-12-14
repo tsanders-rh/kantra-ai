@@ -56,6 +56,11 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 		if strings.HasPrefix(filePath, absInputDir) {
 			filePath = strings.TrimPrefix(filePath, absInputDir)
 			filePath = strings.TrimPrefix(filePath, string(filepath.Separator))
+		} else {
+			// Path looks absolute but doesn't match input dir
+			// This happens with URIs like file:///src/file.java
+			// Strip leading slash(es) to make it relative
+			filePath = strings.TrimLeft(filePath, string(filepath.Separator))
 		}
 	}
 
