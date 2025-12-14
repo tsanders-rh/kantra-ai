@@ -45,10 +45,11 @@ type FixResponse struct {
 
 // Config holds provider configuration
 type Config struct {
-	Name        string // Provider name: claude, openai
-	APIKey      string // API key
-	Model       string // Model to use
+	Name        string  // Provider name: claude, openai, or preset (groq, ollama, etc.)
+	APIKey      string  // API key
+	Model       string  // Model to use
 	Temperature float64 // Temperature (0.0-1.0)
+	BaseURL     string  // Custom base URL for OpenAI-compatible APIs
 }
 
 // PlanRequest contains the context needed to generate a migration plan
@@ -105,4 +106,51 @@ type IncidentFix struct {
 	Explanation  string  // AI's explanation of the change
 	Confidence   float64 // Confidence score (0.0-1.0)
 	Error        error   // Error if this fix failed
+}
+
+// ProviderPresets maps provider names to their OpenAI-compatible base URLs
+// This allows users to use --provider=groq instead of manually setting base URLs
+var ProviderPresets = map[string]ProviderPreset{
+	"groq": {
+		BaseURL:     "https://api.groq.com/openai/v1",
+		Description: "Groq - Fast inference with Llama, Mixtral, and Gemma models",
+		DefaultModel: "llama-3.1-70b-versatile",
+	},
+	"together": {
+		BaseURL:     "https://api.together.xyz/v1",
+		Description: "Together AI - Open source models (Llama, Mixtral, Qwen, etc.)",
+		DefaultModel: "meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+	},
+	"anyscale": {
+		BaseURL:     "https://api.endpoints.anyscale.com/v1",
+		Description: "Anyscale - Llama, Mistral, and Mixtral models",
+		DefaultModel: "meta-llama/Meta-Llama-3.1-70B-Instruct",
+	},
+	"perplexity": {
+		BaseURL:     "https://api.perplexity.ai",
+		Description: "Perplexity AI - Llama and Mistral models with online context",
+		DefaultModel: "llama-3.1-sonar-large-128k-online",
+	},
+	"ollama": {
+		BaseURL:     "http://localhost:11434/v1",
+		Description: "Ollama - Local models (requires Ollama running locally)",
+		DefaultModel: "codellama",
+	},
+	"lmstudio": {
+		BaseURL:     "http://localhost:1234/v1",
+		Description: "LM Studio - Local models (requires LM Studio running locally)",
+		DefaultModel: "local-model",
+	},
+	"openrouter": {
+		BaseURL:     "https://openrouter.ai/api/v1",
+		Description: "OpenRouter - Access to 100+ models through one API",
+		DefaultModel: "meta-llama/llama-3.1-70b-instruct",
+	},
+}
+
+// ProviderPreset contains configuration for a provider preset
+type ProviderPreset struct {
+	BaseURL      string // OpenAI-compatible base URL
+	Description  string // Human-readable description
+	DefaultModel string // Default model for this provider
 }

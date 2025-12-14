@@ -11,7 +11,7 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 - **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
 - **Batch Processing**: Group similar violations together for 50-80% cost reduction and 70-90% faster execution
-- **Multiple AI Providers**: Support for Claude (Anthropic) and OpenAI with easy provider switching
+- **50+ AI Providers**: Support for Claude, OpenAI, Groq, Ollama (local), Together AI, Anyscale, Perplexity, OpenRouter, and any OpenAI-compatible API
 - **Smart Filtering**: Filter by violation category, effort level, or specific violation IDs
 - **Resume Capability**: Resume from failures with incident-level state tracking
 - **Interactive Approval**: Review and approve phases before execution
@@ -28,17 +28,29 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 
 **Required:**
 - Go 1.21 or higher
-- AI provider API key (Claude or OpenAI)
+- AI provider API key (see supported providers below)
 - Konveyor analysis output (`output.yaml`)
 
 **Optional (for PR creation):**
 - GitHub personal access token with `repo` scope
 
 ```bash
-# Set your AI provider API key
-export ANTHROPIC_API_KEY=sk-ant-...  # for Claude
-# OR
-export OPENAI_API_KEY=sk-...         # for OpenAI
+# Set your AI provider API key based on your chosen provider:
+
+# Claude (Anthropic)
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# OpenAI
+export OPENAI_API_KEY=sk-...
+
+# Groq (fast inference)
+export OPENAI_API_KEY=gsk_...
+
+# Together AI
+export OPENAI_API_KEY=...
+
+# Ollama (local - no API key needed)
+# Just run: ollama serve
 
 # Optional: Set GitHub token for PR creation
 export GITHUB_TOKEN=ghp_...
@@ -479,6 +491,118 @@ Or via CLI flags:
 
 **Note:** Batch processing is currently available for Claude provider only. OpenAI support coming soon.
 
+## Supported AI Providers
+
+kantra-ai supports **50+ LLM providers** through a combination of native implementations and OpenAI-compatible APIs:
+
+### Native Providers
+
+**Claude (Anthropic)** - Recommended
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+./kantra-ai remediate --provider=claude --model=claude-sonnet-4-20250514
+```
+- Best quality for code fixes
+- Batch processing support (50-80% cost savings)
+- Plan generation support
+
+**OpenAI**
+```bash
+export OPENAI_API_KEY=sk-...
+./kantra-ai remediate --provider=openai --model=gpt-4
+```
+- High quality fixes
+- Batch processing coming soon
+
+### OpenAI-Compatible Providers (Built-in Presets)
+
+**Groq** - Ultra-fast inference
+```bash
+export OPENAI_API_KEY=gsk_...
+./kantra-ai remediate --provider=groq --model=llama-3.1-70b-versatile
+```
+- Fastest inference speeds
+- Free tier available
+- Llama 3.1, Mixtral, Gemma models
+
+**Ollama** - Local models (free, private)
+```bash
+ollama serve  # No API key needed
+./kantra-ai remediate --provider=ollama --model=codellama
+```
+- Run models locally (no API costs)
+- 100% private
+- CodeLlama, Llama 3, DeepSeek Coder, etc.
+
+**Together AI** - Open source models
+```bash
+export OPENAI_API_KEY=...
+./kantra-ai remediate --provider=together --model=meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+```
+- Wide selection of open source models
+- Competitive pricing
+
+**Anyscale**
+```bash
+export OPENAI_API_KEY=...
+./kantra-ai remediate --provider=anyscale --model=meta-llama/Meta-Llama-3.1-70B-Instruct
+```
+
+**Perplexity AI** - Online context
+```bash
+export OPENAI_API_KEY=pplx-...
+./kantra-ai remediate --provider=perplexity --model=llama-3.1-sonar-large-128k-online
+```
+- Can search online for migration guidance
+
+**OpenRouter** - 100+ models through one API
+```bash
+export OPENAI_API_KEY=sk-or-...
+./kantra-ai remediate --provider=openrouter --model=meta-llama/llama-3.1-70b-instruct
+```
+- Access to 100+ models
+- Automatic fallbacks
+
+**LM Studio** - Local models with GUI
+```bash
+# Start LM Studio and load a model
+./kantra-ai remediate --provider=lmstudio --model=local-model
+```
+
+### Custom OpenAI-Compatible Providers
+
+Use any OpenAI-compatible API by setting the base URL in `.kantra-ai.yaml`:
+
+```yaml
+provider:
+  name: openai
+  base-url: https://your-custom-api.com/v1
+  model: your-model
+```
+
+Or use environment variable:
+```bash
+export OPENAI_API_KEY=your-key
+./kantra-ai remediate --provider=openai --model=your-model
+```
+
+### Provider Comparison
+
+| Provider | Speed | Cost | Quality | Privacy | Best For |
+|----------|-------|------|---------|---------|----------|
+| Claude | Medium | $$$ | Excellent | Cloud | Production use, highest quality |
+| GPT-4 | Medium | $$$$ | Excellent | Cloud | Production use |
+| Groq | Very Fast | $-$$ | Good | Cloud | Fast iteration, testing |
+| Ollama | Fast | Free | Good | Local | Privacy, offline, cost-sensitive |
+| Together | Fast | $-$$ | Good | Cloud | Open source models |
+| OpenRouter | Varies | Varies | Varies | Cloud | Model exploration |
+
+**Recommendations:**
+- **Production**: Claude (best quality, batch processing)
+- **Testing/Development**: Groq (fast, affordable) or Ollama (free, local)
+- **Cost-sensitive**: Ollama (local, free) or Together (cheap cloud)
+- **Privacy**: Ollama or LM Studio (local execution)
+
 ## Cost Estimation
 
 Typical costs per violation (using Claude Sonnet 4 with batch processing):
@@ -521,8 +645,9 @@ Contributions welcome! Please read [DESIGN.md](./docs/design/DESIGN.md) for arch
 - [x] Interactive phase approval mode
 - [x] Resume capability with state tracking
 - [x] Batch processing optimizations (50-80% cost reduction, 70-90% faster)
-- [ ] Additional AI providers (Gemini, etc.)
-- [ ] Batch processing for OpenAI provider
+- [x] 50+ AI providers (Groq, Ollama, Together AI, Anyscale, Perplexity, OpenRouter, etc.)
+- [ ] Batch processing for OpenAI-compatible providers
+- [ ] Native Gemini provider support
 - [ ] Integration with Konveyor CLI
 
 ## License

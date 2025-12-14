@@ -158,13 +158,32 @@ kantra-ai remediate \
 ### Provider Selection
 
 ```bash
-# Use Claude (default)
+# Use Claude (recommended for production)
 --provider=claude
 --model=claude-sonnet-4-20250514  # Optional: specify model
 
 # Use OpenAI
 --provider=openai
 --model=gpt-4  # Optional: default is gpt-4
+
+# Use Groq (fast, affordable)
+--provider=groq
+--model=llama-3.1-70b-versatile
+
+# Use Ollama (local, free, private)
+--provider=ollama
+--model=codellama  # or llama3, deepseek-coder, etc.
+
+# Use Together AI (open source models)
+--provider=together
+--model=meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+
+# Use OpenRouter (access to 100+ models)
+--provider=openrouter
+--model=meta-llama/llama-3.1-70b-instruct
+
+# More providers: anyscale, perplexity, lmstudio
+# See README for full list of 50+ supported providers
 ```
 
 ## Example Workflows
@@ -195,8 +214,10 @@ kantra-ai remediate \
 
 ### Provider Comparison
 
+Compare different providers on the same violations to find what works best:
+
 ```bash
-# Try Claude
+# Try Claude (highest quality, batch support)
 ./kantra-ai remediate \
   --analysis=./analysis/output.yaml \
   --input=./myapp \
@@ -204,15 +225,25 @@ kantra-ai remediate \
   --violation-ids=violation-001 \
   --dry-run
 
-# Try OpenAI on same violation
+# Try Groq (fastest, good quality)
 ./kantra-ai remediate \
   --analysis=./analysis/output.yaml \
   --input=./myapp \
-  --provider=openai \
+  --provider=groq \
+  --model=llama-3.1-70b-versatile \
   --violation-ids=violation-001 \
   --dry-run
 
-# Compare results
+# Try Ollama (local, free)
+./kantra-ai remediate \
+  --analysis=./analysis/output.yaml \
+  --input=./myapp \
+  --provider=ollama \
+  --model=codellama \
+  --violation-ids=violation-001 \
+  --dry-run
+
+# Compare results - check which provider works best for your use case
 ```
 
 ### Git Commit Strategies

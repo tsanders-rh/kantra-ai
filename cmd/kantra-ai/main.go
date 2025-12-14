@@ -746,12 +746,25 @@ func createProvider(name string, model string) (provider.Provider, error) {
 		Temperature: 0.2,
 	}
 
+	// Check if this is a provider preset (groq, ollama, etc.)
+	if preset, ok := provider.ProviderPresets[name]; ok {
+		// Use OpenAI provider with custom base URL
+		config.BaseURL = preset.BaseURL
+
+		// Use preset's default model if no model specified
+		if config.Model == "" {
+			config.Model = preset.DefaultModel
+		}
+
+		return openai.New(config)
+	}
+
 	switch name {
 	case "claude":
 		return claude.New(config)
 	case "openai":
 		return openai.New(config)
 	default:
-		return nil, fmt.Errorf("unknown provider: %s", name)
+		return nil, fmt.Errorf("unknown provider: %s (available: claude, openai, groq, together, anyscale, perplexity, ollama, lmstudio, openrouter)", name)
 	}
 }

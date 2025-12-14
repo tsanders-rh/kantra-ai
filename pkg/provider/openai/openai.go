@@ -44,7 +44,15 @@ func New(config provider.Config) (*Provider, error) {
 		temperature = 0.2 // Low temperature for code fixes
 	}
 
-	client := openai.NewClient(apiKey)
+	// Create client configuration
+	clientConfig := openai.DefaultConfig(apiKey)
+
+	// Support custom base URLs for OpenAI-compatible APIs (Groq, Ollama, etc.)
+	if config.BaseURL != "" {
+		clientConfig.BaseURL = config.BaseURL
+	}
+
+	client := openai.NewClientWithConfig(clientConfig)
 
 	return &Provider{
 		client:      client,
