@@ -253,6 +253,7 @@ type ReviewItem struct {
 }
 
 // writeToReviewFile appends a low-confidence fix to the manual review file
+// Uses atomic write-rename pattern to prevent corruption from concurrent writes
 func (f *Fixer) writeToReviewFile(v violation.Violation, incident violation.Incident, result *FixResult, reason string, confidenceScore float64) error {
 	reviewFileMutex.Lock()
 	defer reviewFileMutex.Unlock()
@@ -279,14 +280,24 @@ func (f *Fixer) writeToReviewFile(v violation.Violation, incident violation.Inci
 	}
 	reviews = append(reviews, item)
 
-	// Write back to file
+	// Marshal data
 	data, err := yaml.Marshal(reviews)
 	if err != nil {
 		return fmt.Errorf("failed to marshal review items: %w", err)
 	}
 
-	if err := os.WriteFile(reviewPath, data, 0644); err != nil {
-		return fmt.Errorf("failed to write review file: %w", err)
+	// Use atomic write-rename pattern for safe concurrent writes
+	// 1. Write to temporary file
+	tmpPath := reviewPath + ".tmp"
+	if err := os.WriteFile(tmpPath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write temporary review file: %w", err)
+	}
+
+	// 2. Atomically rename temporary file to target (atomic on Unix/Windows)
+	if err := os.Rename(tmpPath, reviewPath); err != nil {
+		// Clean up temp file on error
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("failed to rename review file: %w", err)
 	}
 
 	return nil

@@ -145,6 +145,7 @@ func (c *GitHubClient) CreatePullRequest(req PullRequestRequest) (*PullRequestRe
 			break
 		}
 
+		// Close response body before retrying
 		resp.Body.Close()
 		lastErr = fmt.Errorf("HTTP %d (attempt %d)", resp.StatusCode, attempt+1)
 	}
@@ -152,10 +153,14 @@ func (c *GitHubClient) CreatePullRequest(req PullRequestRequest) (*PullRequestRe
 	if resp == nil {
 		return nil, fmt.Errorf("all retry attempts failed: %w", lastErr)
 	}
+	// Ensure response body is always closed (whether we broke or completed loop)
 	defer resp.Body.Close()
 
-	// Read response body
-	respBody, err := io.ReadAll(resp.Body)
+	// Read response body with size limit to prevent memory exhaustion
+	// GitHub API responses are typically small, 10MB is generous
+	const maxResponseSize = 10 * 1024 * 1024 // 10MB
+	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read response: %w", err)
 	}

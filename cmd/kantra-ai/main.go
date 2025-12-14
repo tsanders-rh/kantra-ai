@@ -443,7 +443,9 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 			result, err := fix.FixIncident(ctx, v, incident)
 			if bar != nil {
-				_ = bar.Add(1) // Ignore progress bar errors
+				if err := bar.Add(1); err != nil {
+					ux.PrintWarning("Progress bar update failed: %v", err)
+				}
 			}
 
 			// Track confidence filtering stats
@@ -498,7 +500,9 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 	// Finish progress bar
 	if bar != nil {
-		_ = bar.Finish() // Ignore progress bar errors
+		if err := bar.Finish(); err != nil {
+			ux.PrintWarning("Progress bar finish failed: %v", err)
+		}
 		fmt.Println()
 	}
 
