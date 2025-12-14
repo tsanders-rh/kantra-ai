@@ -193,7 +193,7 @@ func TestLoadOrDefault(t *testing.T) {
 	t.Run("loads config when found", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
@@ -215,7 +215,7 @@ provider:
 	t.Run("returns defaults when no config found", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ provider:
 	t.Run("returns defaults on parse error", func(t *testing.T) {
 		tmpDir := t.TempDir()
 		originalWd, _ := os.Getwd()
-		defer os.Chdir(originalWd)
+		defer func() { _ = os.Chdir(originalWd) }() // Ignore cleanup errors
 
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
