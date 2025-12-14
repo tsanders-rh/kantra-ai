@@ -28,7 +28,9 @@ func setupMockGitHubServer(t *testing.T) *httptest.Server {
 				"default_branch": "main",
 			}
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 
@@ -49,7 +51,9 @@ func setupMockGitHubServer(t *testing.T) *httptest.Server {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(response)
+			if err := json.NewEncoder(w).Encode(response); err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+			}
 			return
 		}
 
@@ -346,7 +350,7 @@ func TestGitHubClient_ErrorHandling(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnauthorized)
-			json.NewEncoder(w).Encode(map[string]string{
+			_ = json.NewEncoder(w).Encode(map[string]string{
 				"message": "Bad credentials",
 			})
 		}))
@@ -377,7 +381,7 @@ func TestGitHubClient_ErrorHandling(t *testing.T) {
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusUnprocessableEntity)
-			json.NewEncoder(w).Encode(map[string]interface{}{
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
 				"message": "Validation Failed",
 				"errors": []map[string]string{
 					{"message": "A pull request already exists"},
@@ -442,7 +446,7 @@ func TestGitHubClient_RetryLogic(t *testing.T) {
 			if r.URL.Path == "/repos/test-owner/test-repo/pulls" {
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusCreated)
-				json.NewEncoder(w).Encode(map[string]interface{}{
+				_ = json.NewEncoder(w).Encode(map[string]interface{}{
 					"number":   1,
 					"html_url": "https://github.com/test-owner/test-repo/pull/1",
 				})
