@@ -252,5 +252,5 @@ kantra-ai execute --input=./your-app --provider=claude --resume
 ## See Also
 
 - [Main README](../../README.md) - Full documentation
-- [DESIGN.md](../../DESIGN.md) - Architecture and design decisions
-- [PLANNING_WORKFLOW_DESIGN.md](../../PLANNING_WORKFLOW_DESIGN.md) - Detailed planning workflow design
+- [DESIGN.md](../../docs/design/DESIGN.md) - Architecture and design decisions
+- [PLANNING_WORKFLOW_DESIGN.md](../../docs/design/PLANNING_WORKFLOW_DESIGN.md) - Detailed planning workflow design

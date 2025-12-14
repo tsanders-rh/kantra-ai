@@ -497,18 +497,18 @@ PRs created by kantra-ai include:
 - **AI provider information** for traceability
 - **Professional formatting** with markdown
 
-Example PR: [See PR template in TESTING.md](./PR-TESTING-GUIDE.md)
+Example PR: [See PR template in TESTING.md](./docs/guides/PR-TESTING-GUIDE.md)
 
 ## Testing
 
-See [TESTING.md](./TESTING.md) for comprehensive testing instructions, including:
+See [TESTING.md](./docs/guides/TESTING.md) for comprehensive testing instructions, including:
 - Setting up test environments
 - Testing PR creation with real GitHub repositories
 - Troubleshooting common issues
 
 ## Contributing
 
-Contributions welcome! Please read [DESIGN.md](./DESIGN.md) for architectural details and future plans.
+Contributions welcome! Please read [DESIGN.md](./docs/design/DESIGN.md) for architectural details and future plans.
 
 ## Roadmap
 

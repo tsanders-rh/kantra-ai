@@ -298,6 +298,6 @@ curl https://api.anthropic.com/v1/messages \
 ## Getting Help
 
 - Check [README.md](./README.md) for full documentation
-- Review [DESIGN.md](./DESIGN.md) for architecture details
+- Review [DESIGN.md](../design/DESIGN.md) for architecture details
 - See [examples/](./examples/) for more test cases
 - Open an issue on GitHub
