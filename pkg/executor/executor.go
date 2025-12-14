@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/ux"
@@ -83,6 +84,11 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 		StatePath:   e.config.StatePath,
 	}
 
+	// Initialize confidence stats if enabled
+	if e.config.ConfidenceConfig.Enabled {
+		result.ConfidenceStats = confidence.NewStats()
+	}
+
 	// Execute phases
 	for _, phase := range phasesToExecute {
 		phaseResult := e.executePhase(ctx, &phase)
@@ -93,6 +99,23 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 		result.FailedFixes += phaseResult.FailedFixes
 		result.TotalCost += phaseResult.Cost
 		result.TotalTokens += phaseResult.Tokens
+
+		// Merge phase confidence stats into overall stats
+		if result.ConfidenceStats != nil && phaseResult.ConfidenceStats != nil {
+			result.ConfidenceStats.TotalFixes += phaseResult.ConfidenceStats.TotalFixes
+			result.ConfidenceStats.AppliedFixes += phaseResult.ConfidenceStats.AppliedFixes
+			result.ConfidenceStats.SkippedFixes += phaseResult.ConfidenceStats.SkippedFixes
+
+			// Merge complexity-level stats
+			for complexity, phaseComplexityStats := range phaseResult.ConfidenceStats.ByComplexity {
+				if _, ok := result.ConfidenceStats.ByComplexity[complexity]; !ok {
+					result.ConfidenceStats.ByComplexity[complexity] = &confidence.ComplexityStats{}
+				}
+				result.ConfidenceStats.ByComplexity[complexity].Total += phaseComplexityStats.Total
+				result.ConfidenceStats.ByComplexity[complexity].Applied += phaseComplexityStats.Applied
+				result.ConfidenceStats.ByComplexity[complexity].Skipped += phaseComplexityStats.Skipped
+			}
+		}
 
 		if phaseResult.Error != nil {
 			result.FailedPhases++
@@ -168,6 +191,12 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 		e.config.ConfidenceConfig,
 	)
 
+	// Create stats tracker for confidence filtering (if enabled)
+	var confidenceStats *confidence.Stats
+	if e.config.ConfidenceConfig.Enabled {
+		confidenceStats = confidence.NewStats()
+	}
+
 	// Execute fixes for each violation in the phase
 	for _, plannedViolation := range phase.Violations {
 		// Check if we should skip this violation (already completed)
@@ -218,6 +247,12 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 			incident := incidentsToFix[i]
 			incidentURI := incident.URI
 
+			// Track confidence filtering stats
+			if confidenceStats != nil {
+				applied := fixResult.Success && !fixResult.SkippedLowConfidence
+				confidenceStats.RecordFix(v.MigrationComplexity, applied)
+			}
+
 			if !fixResult.Success {
 				result.FailedFixes++
 				errorMsg := ""
@@ -250,6 +285,9 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 
 	e.config.Progress.EndPhase()
 
+	// Store confidence stats in result
+	result.ConfidenceStats = confidenceStats
+
 	return result
 }
 
@@ -257,11 +295,12 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 // This converts the plan's violation representation into the format expected by the fixer.
 func (e *Executor) buildViolation(pv planfile.PlannedViolation) violation.Violation {
 	return violation.Violation{
-		ID:          pv.ViolationID,
-		Description: pv.Description,
-		Category:    pv.Category,
-		Effort:      pv.Effort,
-		Incidents:   pv.Incidents,
+		ID:                  pv.ViolationID,
+		Description:         pv.Description,
+		Category:            pv.Category,
+		Effort:              pv.Effort,
+		MigrationComplexity: pv.MigrationComplexity,
+		Incidents:           pv.Incidents,
 		Rule: violation.Rule{
 			ID:      pv.ViolationID,
 			Message: pv.Description,

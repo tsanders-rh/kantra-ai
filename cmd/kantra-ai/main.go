@@ -411,6 +411,12 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	failCount := 0
 	startTime := time.Now()
 
+	// Create stats tracker for confidence filtering
+	var confidenceStats *confidence.Stats
+	if confidenceConf.Enabled {
+		confidenceStats = confidence.NewStats()
+	}
+
 	// Count total incidents for progress bar
 	totalIncidents := 0
 	for _, v := range filtered {
@@ -438,6 +444,12 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			result, err := fix.FixIncident(ctx, v, incident)
 			if bar != nil {
 				_ = bar.Add(1) // Ignore progress bar errors
+			}
+
+			// Track confidence filtering stats
+			if confidenceStats != nil {
+				applied := result != nil && result.Success && !result.SkippedLowConfidence
+				confidenceStats.RecordFix(v.MigrationComplexity, applied)
 			}
 
 			if err != nil {
@@ -585,6 +597,13 @@ summary:
 	}
 
 	ux.PrintSummaryTable(rows)
+
+	// Print confidence filtering stats if enabled
+	if confidenceStats != nil && confidenceStats.TotalFixes > 0 {
+		fmt.Println()
+		ux.PrintSection("Confidence Filtering Stats")
+		fmt.Printf("  %s\n", confidenceStats.Summary())
+	}
 
 	if dryRun {
 		fmt.Println()
@@ -766,6 +785,13 @@ func printExecutionSummary(result *executor.Result, duration time.Duration) {
 	}
 
 	ux.PrintSummaryTable(rows)
+
+	// Print confidence filtering stats if enabled
+	if result.ConfidenceStats != nil && result.ConfidenceStats.TotalFixes > 0 {
+		fmt.Println()
+		ux.PrintSection("Confidence Filtering Stats")
+		fmt.Printf("  %s\n", result.ConfidenceStats.Summary())
+	}
 
 	fmt.Println()
 	fmt.Printf("📊 State saved to: %s\n", result.StatePath)

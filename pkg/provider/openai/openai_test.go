@@ -130,9 +130,12 @@ func TestBuildPrompt(t *testing.T) {
 	assert.Contains(t, prompt, "TASK")
 	assert.Contains(t, prompt, "valid python code")
 
-	// Verify formatting instructions
-	assert.Contains(t, prompt, "Return the ENTIRE file content")
-	assert.Contains(t, prompt, "Do not include markdown formatting")
+	// Verify JSON response format instructions
+	assert.Contains(t, prompt, "Return a JSON object")
+	assert.Contains(t, prompt, "fixed_content")
+	assert.Contains(t, prompt, "confidence")
+	assert.Contains(t, prompt, "explanation")
+	assert.Contains(t, prompt, "CONFIDENCE SCORING GUIDELINES")
 }
 
 func TestBuildPrompt_DifferentLanguages(t *testing.T) {
