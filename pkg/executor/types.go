@@ -1,0 +1,46 @@
+package executor
+
+import (
+	"github.com/tsanders/kantra-ai/pkg/provider"
+	"github.com/tsanders/kantra-ai/pkg/ux"
+)
+
+// Config holds configuration for plan execution
+type Config struct {
+	PlanPath      string            // Path to plan file (default: .kantra-ai-plan.yaml)
+	StatePath     string            // Path to state file (default: .kantra-ai-state.yaml)
+	InputPath     string            // Path to source code directory (required)
+	Provider      provider.Provider // AI provider for fixes
+	PhaseID       string            // Specific phase to execute (empty = all)
+	DryRun        bool              // Preview without applying changes
+	GitCommit     string            // Git commit strategy (per-violation, per-incident, at-end, "")
+	CreatePR      bool              // Create GitHub pull requests
+	BranchName    string            // Custom branch name prefix
+	Progress      ux.ProgressWriter // Progress reporting
+	Resume        bool              // Resume from last failure
+}
+
+// Result contains the result of plan execution
+type Result struct {
+	TotalPhases     int     // Total phases in plan
+	ExecutedPhases  int     // Phases that were executed
+	CompletedPhases int     // Phases that completed successfully
+	FailedPhases    int     // Phases that failed
+	TotalFixes      int     // Total fixes attempted
+	SuccessfulFixes int     // Fixes that succeeded
+	FailedFixes     int     // Fixes that failed
+	TotalCost       float64 // Total cost incurred
+	TotalTokens     int     // Total tokens used
+	StatePath       string  // Path to state file
+}
+
+// PhaseResult contains the result of executing a single phase
+type PhaseResult struct {
+	PhaseID         string
+	PhaseName       string
+	SuccessfulFixes int
+	FailedFixes     int
+	Cost            float64
+	Tokens          int
+	Error           error
+}

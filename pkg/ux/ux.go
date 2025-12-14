@@ -169,6 +169,41 @@ func FormatWarning(s string) string {
 	return Warning(s)
 }
 
+// ProgressWriter is an interface for reporting execution progress
+type ProgressWriter interface {
+	Info(format string, args ...interface{})
+	Error(format string, args ...interface{})
+	StartPhase(phaseName string)
+	EndPhase()
+}
+
+// NoOpProgressWriter is a no-op implementation of ProgressWriter
+type NoOpProgressWriter struct{}
+
+func (n *NoOpProgressWriter) Info(format string, args ...interface{})       {}
+func (n *NoOpProgressWriter) Error(format string, args ...interface{})      {}
+func (n *NoOpProgressWriter) StartPhase(phaseName string)                   {}
+func (n *NoOpProgressWriter) EndPhase()                                     {}
+
+// ConsoleProgressWriter writes progress to console
+type ConsoleProgressWriter struct{}
+
+func (c *ConsoleProgressWriter) Info(format string, args ...interface{}) {
+	PrintInfo(format, args...)
+}
+
+func (c *ConsoleProgressWriter) Error(format string, args ...interface{}) {
+	PrintError(format, args...)
+}
+
+func (c *ConsoleProgressWriter) StartPhase(phaseName string) {
+	PrintSection(phaseName)
+}
+
+func (c *ConsoleProgressWriter) EndPhase() {
+	// No-op for now
+}
+
 // PrintSummaryTable prints a summary table
 func PrintSummaryTable(rows [][]string) {
 	if len(rows) == 0 {
