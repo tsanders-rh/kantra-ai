@@ -62,6 +62,14 @@ func (p *Planner) Generate(ctx context.Context) (*Result, error) {
 	// Convert provider response to planfile.Plan
 	plan := p.buildPlan(planResp, filtered)
 
+	// Run interactive approval if enabled
+	if p.config.Interactive {
+		approval := NewInteractiveApproval(plan)
+		if err := approval.Run(); err != nil {
+			return nil, fmt.Errorf("interactive approval failed: %w", err)
+		}
+	}
+
 	// Save plan to file
 	if err := planfile.SavePlan(plan, p.config.OutputPath); err != nil {
 		return nil, fmt.Errorf("failed to save plan: %w", err)

@@ -15,6 +15,7 @@ type Config struct {
 	Categories    []string // Filter by categories
 	ViolationIDs  []string // Filter by violation IDs
 	MaxEffort     int      // Only include violations with effort <= this value
+	Interactive   bool     // Enable interactive approval mode
 }
 
 // Result contains the result of plan generation

@@ -164,6 +164,11 @@ func FormatDuration(d time.Duration) string {
 	return Dim(d.Round(time.Second).String())
 }
 
+// FormatWarning returns a warning-colored string
+func FormatWarning(s string) string {
+	return Warning(s)
+}
+
 // PrintSummaryTable prints a summary table
 func PrintSummaryTable(rows [][]string) {
 	if len(rows) == 0 {

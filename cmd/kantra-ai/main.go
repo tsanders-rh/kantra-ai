@@ -43,6 +43,7 @@ var (
 	planOutputPath      string
 	planMaxPhases       int
 	planRiskTolerance   string
+	planInteractive     bool
 )
 
 func main() {
@@ -102,6 +103,7 @@ phases that can be reviewed, edited, and executed incrementally.`,
 	planCmd.Flags().StringVar(&categories, "categories", "", "Comma-separated categories: mandatory, optional, potential")
 	planCmd.Flags().IntVar(&maxEffort, "max-effort", 0, "Maximum effort level (0 = no limit)")
 	planCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
+	planCmd.Flags().BoolVar(&planInteractive, "interactive", false, "Enable interactive phase approval")
 
 	_ = planCmd.MarkFlagRequired("analysis")
 	_ = planCmd.MarkFlagRequired("input")
@@ -573,6 +575,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		Categories:    categoryList,
 		ViolationIDs:  violationIDList,
 		MaxEffort:     maxEffort,
+		Interactive:   planInteractive,
 	}
 
 	p := planner.New(plannerConfig)
