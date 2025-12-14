@@ -451,7 +451,9 @@ kantra-ai/
 
 ## Batch Processing Performance
 
-kantra-ai uses intelligent batch processing to dramatically reduce costs and execution time for large migrations:
+kantra-ai uses intelligent batch processing to dramatically reduce costs and execution time for large migrations.
+
+**Supported Providers:** Claude, OpenAI, Groq, Together AI, Ollama, and all OpenAI-compatible providers.
 
 **How It Works:**
 - Groups similar violations together (same violation ID)
@@ -489,7 +491,7 @@ Or via CLI flags:
   --batch-parallelism=4
 ```
 
-**Note:** Batch processing is currently available for Claude provider only. OpenAI support coming soon.
+**Note:** Batch processing is available for both Claude and OpenAI-compatible providers (OpenAI, Groq, Together AI, Ollama, etc.).
 
 ## Supported AI Providers
 
@@ -512,7 +514,7 @@ export OPENAI_API_KEY=sk-...
 ./kantra-ai remediate --provider=openai --model=gpt-4
 ```
 - High quality fixes
-- Batch processing coming soon
+- Batch processing support (50-80% cost savings)
 
 ### OpenAI-Compatible Providers (Built-in Presets)
 
@@ -646,7 +648,7 @@ Contributions welcome! Please read [DESIGN.md](./docs/design/DESIGN.md) for arch
 - [x] Resume capability with state tracking
 - [x] Batch processing optimizations (50-80% cost reduction, 70-90% faster)
 - [x] 50+ AI providers (Groq, Ollama, Together AI, Anyscale, Perplexity, OpenRouter, etc.)
-- [ ] Batch processing for OpenAI-compatible providers
+- [x] Batch processing for OpenAI-compatible providers
 - [ ] Native Gemini provider support
 - [ ] Integration with Konveyor CLI
 
