@@ -4,8 +4,9 @@
 
 # AI Provider Configuration
 provider:
-  name: claude  # or "openai"
-  model: ""     # Optional: claude-sonnet-4-20250514, gpt-4, etc. (uses provider default if empty)
+  name: claude       # claude, openai, groq, ollama, together, anyscale, perplexity, openrouter, lmstudio
+  model: ""          # Optional: claude-sonnet-4-20250514, gpt-4, llama-3.1-70b-versatile, codellama, etc.
+  base-url: ""       # Optional: Custom base URL for OpenAI-compatible APIs (auto-set for presets)
 
 # Input/Output Paths
 paths:
@@ -84,3 +85,44 @@ dry-run: false  # Preview changes without applying them
 #   commit-strategy: at-end
 #   create-pr: true
 #   branch-prefix: feature/konveyor-migration  # Single PR with custom branch name
+
+# Using Groq (fast, affordable inference):
+# provider:
+#   name: groq
+#   model: llama-3.1-70b-versatile
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+
+# Using Ollama (local, free, private):
+# provider:
+#   name: ollama
+#   model: codellama  # or llama3, deepseek-coder, etc.
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+
+# Using Together AI (open source models):
+# provider:
+#   name: together
+#   model: meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+
+# Using OpenRouter (100+ models):
+# provider:
+#   name: openrouter
+#   model: meta-llama/llama-3.1-70b-instruct
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+
+# Using custom OpenAI-compatible API:
+# provider:
+#   name: openai
+#   base-url: https://your-api.com/v1
+#   model: your-model
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
