@@ -7,12 +7,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/schollz/progressbar/v3"
 	"github.com/spf13/cobra"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
+	"github.com/tsanders/kantra-ai/pkg/ux"
 	"github.com/tsanders/kantra-ai/pkg/verifier"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
@@ -81,17 +83,20 @@ Konveyor violations at reasonable cost and quality.`,
 }
 
 func runRemediate(cmd *cobra.Command, args []string) error {
-	fmt.Println("kantra-ai remediate")
-	fmt.Println("===================")
-	fmt.Println()
+	ux.PrintHeader("kantra-ai remediate")
 
 	// Load violations
-	fmt.Printf("Loading analysis from %s...\n", analysisPath)
+	spinner := ux.NewSpinner(fmt.Sprintf("Loading analysis from %s...", analysisPath))
+	spinner.Start()
+
 	analysis, err := violation.LoadAnalysis(analysisPath)
 	if err != nil {
+		spinner.StopWithError(fmt.Sprintf("Failed to load analysis: %v", err))
 		return fmt.Errorf("failed to load analysis: %w", err)
 	}
-	fmt.Printf("✓ Loaded %d violations\n\n", len(analysis.Violations))
+
+	spinner.StopWithSuccess(fmt.Sprintf("Loaded %d violations", len(analysis.Violations)))
+	fmt.Println()
 
 	// Initialize git tracker if requested
 	var commitTracker *gitutil.CommitTracker
@@ -136,11 +141,13 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 				return fmt.Errorf("failed to initialize verification: %w", err)
 			}
 			commitTracker = verifiedTracker.GetCommitTracker()
-			fmt.Printf("✓ Git commits enabled (%s strategy)\n", gitCommitStrategy)
-			fmt.Printf("✓ Verification enabled (%s, %s strategy)\n\n", verify, verifyStrategy)
+			ux.PrintSuccess("Git commits enabled (%s strategy)", gitCommitStrategy)
+			ux.PrintSuccess("Verification enabled (%s, %s strategy)", verify, verifyStrategy)
+			fmt.Println()
 		} else {
 			commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
-			fmt.Printf("✓ Git commits enabled (%s strategy)\n\n", gitCommitStrategy)
+			ux.PrintSuccess("Git commits enabled (%s strategy)", gitCommitStrategy)
+			fmt.Println()
 		}
 	}
 
@@ -187,7 +194,8 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 			return fmt.Errorf("failed to initialize PR tracker: %w", err)
 		}
 
-		fmt.Printf("✓ PR creation enabled (%s strategy)\n\n", gitCommitStrategy)
+		ux.PrintSuccess("PR creation enabled (%s strategy)", gitCommitStrategy)
+		fmt.Println()
 	}
 
 	// Parse filters
@@ -211,12 +219,17 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Initialize provider
-	fmt.Printf("Initializing %s provider...\n", providerName)
+	provSpinner := ux.NewSpinner(fmt.Sprintf("Initializing %s provider...", providerName))
+	provSpinner.Start()
+
 	prov, err := createProvider(providerName, model)
 	if err != nil {
+		provSpinner.StopWithError(fmt.Sprintf("Failed to initialize provider: %v", err))
 		return fmt.Errorf("failed to create provider: %w", err)
 	}
-	fmt.Printf("✓ Provider ready\n\n")
+
+	provSpinner.StopWithSuccess(fmt.Sprintf("%s provider ready", providerName))
+	fmt.Println()
 
 	// Estimate cost
 	if !dryRun {
@@ -242,8 +255,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	fix := fixer.New(prov, inputPath, dryRun)
 
 	// Fix violations
-	fmt.Println("Fixing violations...")
-	fmt.Println()
+	ux.PrintSection("Fixing violations")
 
 	ctx := context.Background()
 	totalCost := 0.0
@@ -252,18 +264,37 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	failCount := 0
 	startTime := time.Now()
 
+	// Count total incidents for progress bar
+	totalIncidents := 0
+	for _, v := range filtered {
+		totalIncidents += len(v.Incidents)
+	}
+
+	// Create progress bar
+	var bar *progressbar.ProgressBar
+	if ux.IsTerminal() && !dryRun {
+		bar = ux.NewProgressBar(totalIncidents, "Progress")
+	}
+
 	for i, v := range filtered {
-		fmt.Printf("[%d/%d] Violation: %s (%s)\n", i+1, len(filtered), v.ID, v.Category)
-		fmt.Printf("  Description: %s\n", v.Description)
-		fmt.Printf("  Incidents: %d\n", len(v.Incidents))
+		fmt.Printf("\n%s [%d/%d] Violation: %s (%s)\n",
+			ux.Bold("→"), i+1, len(filtered), ux.Info(v.ID), ux.Dim(v.Category))
+		fmt.Printf("  %s %s\n", ux.Dim("Description:"), v.Description)
+		fmt.Printf("  %s %d\n", ux.Dim("Incidents:"), len(v.Incidents))
 
 		// Fix each incident
 		for j, incident := range v.Incidents {
-			fmt.Printf("  [%d/%d] %s:%d\n", j+1, len(v.Incidents), incident.GetFilePath(), incident.LineNumber)
+			filePath := incident.GetFilePath()
+			fmt.Printf("  %s [%d/%d] %s:%d\n",
+				ux.Dim("•"), j+1, len(v.Incidents), filePath, incident.LineNumber)
 
 			result, err := fix.FixIncident(ctx, v, incident)
+			if bar != nil {
+				bar.Add(1)
+			}
+
 			if err != nil {
-				fmt.Printf("    ✗ Failed: %v\n", err)
+				ux.PrintError("    Failed: %v", err)
 				failCount++
 				continue
 			}
@@ -278,11 +309,11 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 					// Use verified tracker if verification is enabled
 					if verifiedTracker != nil {
 						if err := verifiedTracker.TrackFix(v, incident, result); err != nil {
-							fmt.Printf("    ⚠ Git commit/verification failed: %v\n", err)
+							ux.PrintWarning("    Git commit/verification failed: %v", err)
 						}
 					} else {
 						if err := commitTracker.TrackFix(v, incident, result); err != nil {
-							fmt.Printf("    ⚠ Git commit failed: %v\n", err)
+							ux.PrintWarning("    Git commit failed: %v", err)
 						}
 					}
 				}
@@ -290,20 +321,25 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 				// Track for PR if enabled
 				if prTracker != nil && !dryRun {
 					if err := prTracker.TrackForPR(v, incident, result); err != nil {
-						fmt.Printf("    ⚠ PR tracking failed: %v\n", err)
+						ux.PrintWarning("    PR tracking failed: %v", err)
 					}
 				}
 
 				// Check if we've exceeded max cost
 				if maxCost > 0 && totalCost >= maxCost {
-					fmt.Printf("\n⚠ Max cost ($%.2f) reached. Stopping.\n", maxCost)
+					ux.PrintWarning("\nMax cost ($%.2f) reached. Stopping.", maxCost)
 					goto summary
 				}
 			} else {
 				failCount++
-				fmt.Printf("    ✗ Failed: %v\n", result.Error)
+				ux.PrintError("    Failed: %v", result.Error)
 			}
 		}
+	}
+
+	// Finish progress bar
+	if bar != nil {
+		bar.Finish()
 		fmt.Println()
 	}
 
@@ -313,60 +349,67 @@ summary:
 		// Use verified tracker if verification is enabled
 		if verifiedTracker != nil {
 			if err := verifiedTracker.Finalize(); err != nil {
-				fmt.Printf("\n⚠ Final git commit/verification failed: %v\n", err)
+				ux.PrintWarning("\nFinal git commit/verification failed: %v", err)
 			}
 			// Print verification stats
 			stats := verifiedTracker.GetStats()
 			if stats.TotalVerifications > 0 {
-				fmt.Printf("\nVerification Summary:\n")
-				fmt.Printf("  Total verifications: %d\n", stats.TotalVerifications)
-				fmt.Printf("  ✓ Passed: %d\n", stats.PassedVerifications)
+				ux.PrintSection("Verification Summary")
+				fmt.Printf("  Total verifications: %s\n", ux.Bold(fmt.Sprintf("%d", stats.TotalVerifications)))
+				fmt.Printf("  %s Passed: %s\n", ux.Success("✓"), ux.Success(fmt.Sprintf("%d", stats.PassedVerifications)))
 				if stats.FailedVerifications > 0 {
-					fmt.Printf("  ✗ Failed: %d\n", stats.FailedVerifications)
-					fmt.Printf("  ⚠ Fixes skipped due to failures: %d\n", stats.SkippedFixes)
+					fmt.Printf("  %s Failed: %s\n", ux.Error("✗"), ux.Error(fmt.Sprintf("%d", stats.FailedVerifications)))
+					fmt.Printf("  %s Fixes skipped due to failures: %s\n",
+						ux.Warning("⚠"), ux.Warning(fmt.Sprintf("%d", stats.SkippedFixes)))
 				}
 				fmt.Println()
 			}
 		} else {
 			if err := commitTracker.Finalize(); err != nil {
-				fmt.Printf("\n⚠ Final git commit failed: %v\n", err)
+				ux.PrintWarning("\nFinal git commit failed: %v", err)
 			}
 		}
 	}
 
 	// Create pull requests if enabled
 	if prTracker != nil && !dryRun {
-		fmt.Println("\nCreating pull request(s)...")
+		prSpinner := ux.NewSpinner("Creating pull request(s)...")
+		prSpinner.Start()
+
 		if err := prTracker.Finalize(); err != nil {
+			prSpinner.Stop()
 			// Format error message based on error type
 			ghErr, ok := err.(*gitutil.GitHubError)
 			if ok {
 				switch ghErr.StatusCode {
 				case 401:
-					fmt.Printf("\n⚠ PR creation failed: Invalid GITHUB_TOKEN\n")
+					ux.PrintWarning("\nPR creation failed: Invalid GITHUB_TOKEN")
 					fmt.Println("  Verify your token at: https://github.com/settings/tokens")
 					fmt.Println("  Make sure it hasn't expired")
 				case 403:
-					fmt.Printf("\n⚠ PR creation failed: Insufficient permissions\n")
+					ux.PrintWarning("\nPR creation failed: Insufficient permissions")
 					fmt.Println("  Your token needs 'repo' scope")
 					fmt.Println("  Regenerate at: https://github.com/settings/tokens")
 				default:
 					// Default case - most errors now have helpful messages from pr_tracker
-					fmt.Printf("\n⚠ PR creation failed: %v\n", err)
+					ux.PrintWarning("\nPR creation failed: %v", err)
 				}
 			} else {
 				// Non-GitHub API errors (git operations, etc.) - pass through as-is
-				fmt.Printf("\n⚠ PR creation failed: %v\n", err)
+				ux.PrintWarning("\nPR creation failed: %v", err)
 			}
 		} else {
+			prSpinner.Stop()
 			// Print created PRs
 			prs := prTracker.GetCreatedPRs()
-			fmt.Printf("\n✓ Created %d pull request(s):\n", len(prs))
+			ux.PrintSuccess("\nCreated %d pull request(s):", len(prs))
 			for _, pr := range prs {
 				if pr.ViolationID != "" {
-					fmt.Printf("  - PR #%d (%s): %s\n", pr.Number, pr.ViolationID, pr.URL)
+					fmt.Printf("  %s PR #%d (%s): %s\n",
+						ux.Success("→"), pr.Number, ux.Info(pr.ViolationID), ux.Dim(pr.URL))
 				} else {
-					fmt.Printf("  - PR #%d: %s\n", pr.Number, pr.URL)
+					fmt.Printf("  %s PR #%d: %s\n",
+						ux.Success("→"), pr.Number, ux.Dim(pr.URL))
 				}
 			}
 		}
@@ -374,22 +417,31 @@ summary:
 
 	duration := time.Since(startTime)
 
-	fmt.Println("Summary")
-	fmt.Println("=======")
-	fmt.Printf("✓ Successful fixes: %d\n", successCount)
-	fmt.Printf("✗ Failed fixes: %d\n", failCount)
-	fmt.Printf("💰 Total cost: $%.4f\n", totalCost)
-	fmt.Printf("🎫 Total tokens: %d\n", totalTokens)
-	fmt.Printf("⏱  Duration: %s\n", duration.Round(time.Second))
+	ux.PrintHeader("Summary")
+
+	// Print summary as a table
+	rows := [][]string{
+		{ux.Success("✓") + " Successful fixes:", ux.Success(fmt.Sprintf("%d", successCount))},
+		{ux.Error("✗") + " Failed fixes:", ux.Error(fmt.Sprintf("%d", failCount))},
+		{"💰 Total cost:", ux.FormatCost(totalCost)},
+		{"🎫 Total tokens:", ux.FormatTokens(totalTokens)},
+		{"⏱  Duration:", ux.FormatDuration(duration)},
+	}
 
 	if successCount > 0 {
 		avgCost := totalCost / float64(successCount)
 		avgTokens := totalTokens / successCount
-		fmt.Printf("📊 Average per fix: $%.4f (%d tokens)\n", avgCost, avgTokens)
+		rows = append(rows, []string{
+			"📊 Average per fix:",
+			fmt.Sprintf("%s (%s tokens)", ux.FormatCost(avgCost), ux.FormatTokens(avgTokens)),
+		})
 	}
 
+	ux.PrintSummaryTable(rows)
+
 	if dryRun {
-		fmt.Println("\n⚠ DRY-RUN mode - no changes were made")
+		fmt.Println()
+		ux.PrintWarning("DRY-RUN mode - no changes were made")
 	}
 
 	return nil
