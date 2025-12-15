@@ -11,6 +11,7 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 - **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
 - **Interactive HTML Reports**: Beautiful, visual reports with diff-style highlighting and line-specific code annotations
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
+- **Customizable AI Prompts**: Per-language prompt templates for technology-specific migrations (Java, Python, Go, etc.)
 - **Confidence Threshold Filtering**: Automatically skip low-confidence fixes based on migration complexity for maximum safety
 - **Batch Processing**: Group similar violations together for 50-80% cost reduction and 70-90% faster execution
 - **50+ AI Providers**: Support for Claude, OpenAI, Groq, Ollama (local), Together AI, Anyscale, Perplexity, OpenRouter, and any OpenAI-compatible API
@@ -271,6 +272,122 @@ verification:
 4. Built-in defaults
 
 See [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) for a complete configuration example with all available options.
+
+## Customizable AI Prompts
+
+kantra-ai supports **customizable prompt templates** that allow you to tailor AI prompts for your specific migration scenarios. This is especially powerful for optimizing prompts per programming language or technology stack.
+
+### Features
+
+- **Base Templates**: Define custom prompts for all migrations
+- **Language-Specific Templates**: Override prompts per language (Java, Python, Go, etc.)
+- **Template Variables**: Rich variable substitution using Go's `text/template` syntax
+- **Automatic Fallback**: Language-specific templates fall back to base templates
+
+### Configuration
+
+Add custom prompts to `.kantra-ai.yaml`:
+
+```yaml
+prompts:
+  # Base templates (used as fallback)
+  single-fix-template: ./prompts/base-fix.txt
+  batch-fix-template: ./prompts/base-batch.txt
+
+  # Language-specific overrides (optional)
+  language-templates:
+    java:
+      single-fix: ./prompts/java-fix.txt      # Optimized for javax→jakarta
+      batch-fix: ./prompts/java-batch.txt
+    python:
+      single-fix: ./prompts/python-fix.txt    # Optimized for Python 2→3
+      batch-fix: ./prompts/python-batch.txt
+```
+
+### Template Variables
+
+**Single-fix templates** have access to:
+- `{{.Category}}` - Violation category (mandatory, optional, potential)
+- `{{.Description}}` - Violation description
+- `{{.RuleID}}` - Rule identifier
+- `{{.RuleMessage}}` - Rule message
+- `{{.File}}` - File path
+- `{{.Line}}` - Line number
+- `{{.CodeSnippet}}` - Code snippet at violation
+- `{{.FileContent}}` - Full file content
+- `{{.Language}}` - Programming language (java, python, go, etc.)
+- `{{.IncidentMessage}}` - Specific incident message
+
+**Batch-fix templates** have access to:
+- `{{.ViolationID}}` - Violation identifier
+- `{{.Description}}` - Violation description
+- `{{.IncidentCount}}` - Number of incidents in batch
+- `{{.Language}}` - Programming language
+- `{{.Incidents}}` - Array of incidents with:
+  - `{{.Index}}` - 1-based index
+  - `{{.File}}` - File path
+  - `{{.Line}}` - Line number
+  - `{{.Message}}` - Incident message
+  - `{{.CodeContext}}` - Code context around incident
+
+### Example Template
+
+Create `./prompts/java-fix.txt`:
+
+```
+You are a Java migration expert specializing in javax → jakarta migrations.
+
+VIOLATION: {{.RuleID}}
+{{.Description}}
+
+FILE: {{.File}}:{{.Line}}
+
+CODE SNIPPET:
+{{.CodeSnippet}}
+
+MIGRATION GUIDELINES:
+1. Replace javax.* imports with jakarta.* equivalents
+2. Update package references in annotations
+3. Verify compatibility with Jakarta EE 9+
+4. Preserve all formatting and comments
+
+FULL FILE:
+{{.FileContent}}
+
+Return JSON: {"fixed_content": "...", "confidence": 0.0-1.0, "explanation": "..."}
+```
+
+### Use Cases
+
+**Technology-Specific Migrations:**
+- Java: javax → jakarta, JUnit 4 → 5
+- Python: Python 2 → 3, Django upgrades
+- JavaScript: ES5 → ES6, framework migrations
+
+**Domain-Specific Guidance:**
+- Emphasize security best practices
+- Enforce coding standards
+- Include company-specific patterns
+
+**Cost Optimization:**
+- Shorter prompts for simple migrations
+- More detailed prompts for complex changes
+
+### How Template Selection Works
+
+1. Check if a language-specific template exists for the file's language
+2. If yes, use the language-specific template
+3. If no, fall back to the base template
+4. If no base template, use built-in defaults
+
+Example for a Java file:
+```
+java-fix.txt exists → Use java-fix.txt
+java-fix.txt missing → Use base-fix.txt
+base-fix.txt missing → Use built-in default
+```
+
+For complete examples and template syntax, see [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) and the [Prompt Customization Guide](./docs/guides/PROMPT_CUSTOMIZATION.md).
 
 ## Usage Examples
 
