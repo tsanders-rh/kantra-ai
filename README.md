@@ -169,6 +169,7 @@ vim .kantra-ai-plan.yaml
 
 ```bash
 ./kantra-ai execute \
+  --plan=.kantra-ai-plan.yaml \
   --input=./your-app \
   --provider=claude
 
@@ -180,6 +181,7 @@ vim .kantra-ai-plan.yaml
 ```bash
 # If execution fails mid-way, resume from the failure point
 ./kantra-ai execute \
+  --plan=.kantra-ai-plan.yaml \
   --input=./your-app \
   --provider=claude \
   --resume
@@ -511,6 +513,8 @@ batch:
 Or via CLI flags:
 ```bash
 ./kantra-ai execute \
+  --plan=.kantra-ai-plan.yaml \
+  --input=./your-app \
   --batch-size=10 \
   --batch-parallelism=4
 ```
