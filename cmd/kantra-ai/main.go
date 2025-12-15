@@ -19,6 +19,7 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
+	"github.com/tsanders/kantra-ai/pkg/report"
 	"github.com/tsanders/kantra-ai/pkg/ux"
 	"github.com/tsanders/kantra-ai/pkg/verifier"
 	"github.com/tsanders/kantra-ai/pkg/violation"
@@ -681,6 +682,12 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	duration := time.Since(startTime)
 
+	// Generate HTML report
+	htmlPath, err := report.GenerateHTML(result.Plan, result.PlanPath)
+	if err != nil {
+		ux.PrintWarning("Failed to generate HTML report: %v", err)
+	}
+
 	// Print success message
 	ux.PrintHeader("Plan Generated Successfully")
 
@@ -693,11 +700,18 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		{"⏱  Duration:", ux.FormatDuration(duration)},
 	}
 
+	if htmlPath != "" {
+		rows = append(rows, []string{"📄 HTML report:", ux.Success(htmlPath)})
+	}
+
 	ux.PrintSummaryTable(rows)
 
 	fmt.Println()
 	fmt.Println("Next steps:")
 	fmt.Printf("  • Review plan:    cat %s\n", result.PlanPath)
+	if htmlPath != "" {
+		fmt.Printf("  • View report:    open %s\n", htmlPath)
+	}
 	fmt.Printf("  • Edit if needed: vim %s\n", result.PlanPath)
 	fmt.Println("  • Execute:        kantra-ai execute")
 
