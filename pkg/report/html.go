@@ -197,8 +197,8 @@ func highlightLineInCode(codeSnip string, targetLine int) string {
 		// Trim leading spaces and try to parse the line number
 		trimmed := strings.TrimLeft(line, " ")
 		if trimmed != "" {
-			// Try to scan the first integer
-			fmt.Sscanf(trimmed, "%d", &lineNum)
+			// Try to scan the first integer (ignore error - line may not have a number)
+			_, _ = fmt.Sscanf(trimmed, "%d", &lineNum)
 		}
 
 		// Highlight if this is the target line
