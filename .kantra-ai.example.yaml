@@ -52,6 +52,14 @@ confidence:
     # high: 0.90      # 30-50% AI success - architectural changes
     # expert: 0.95    # <30% AI success - domain expertise required
 
+# Custom Prompt Templates
+# Override the default AI prompts with your own templates
+prompts:
+  single-fix-template: ""   # Path to custom single-fix prompt template (optional)
+  batch-fix-template: ""    # Path to custom batch-fix prompt template (optional)
+  # Templates use Go's text/template syntax with variables like {{.Category}}, {{.Description}}, etc.
+  # Leave empty to use built-in defaults
+
 # General Settings
 dry-run: false  # Preview changes without applying them
 
@@ -172,3 +180,19 @@ dry-run: false  # Preview changes without applying them
 #   complexity-thresholds:
 #     high: 0.95    # Require very high confidence for complex changes
 #     expert: 0.98  # Require near-perfect confidence for expert-level changes
+
+# Custom AI prompts - use your own templates:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# prompts:
+#   single-fix-template: ./prompts/my-fix-template.txt
+#   batch-fix-template: ./prompts/my-batch-template.txt
+# # Templates use Go's text/template syntax
+# # Available variables for single-fix:
+# #   {{.Category}}, {{.Description}}, {{.RuleID}}, {{.RuleMessage}}
+# #   {{.File}}, {{.Line}}, {{.CodeSnippet}}, {{.FileContent}}, {{.Language}}
+# # Available variables for batch-fix:
+# #   {{.ViolationID}}, {{.Description}}, {{.IncidentCount}}, {{.Incidents}}, {{.Language}}
