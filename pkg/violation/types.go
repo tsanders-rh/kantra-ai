@@ -8,6 +8,25 @@ type Analysis struct {
 	Violations []Violation `yaml:"violations"`
 }
 
+// NativeKantraRuleset represents the native format output by 'kantra analyze'.
+// The native format is an array of rulesets, each containing a map of violations.
+type NativeKantraRuleset struct {
+	Name        string                           `yaml:"name"`
+	Description string                           `yaml:"description"`
+	Violations  map[string]NativeKantraViolation `yaml:"violations"`
+	Skipped     []string                         `yaml:"skipped,omitempty"`
+}
+
+// NativeKantraViolation represents a violation in the native Kantra format.
+// In native format, violations are stored as a map (keyed by violation ID).
+type NativeKantraViolation struct {
+	Description string           `yaml:"description"`
+	Category    string           `yaml:"category"`
+	Effort      int              `yaml:"effort"`
+	Labels      []string         `yaml:"labels,omitempty"`
+	Incidents   []Incident       `yaml:"incidents"`
+}
+
 // Violation represents a specific rule that was violated in the analyzed codebase.
 // Each violation can have multiple incidents (specific occurrences across different files/lines).
 // Violations are categorized by severity (mandatory/optional/potential) and assigned
