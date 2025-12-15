@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/anthropics/anthropic-sdk-go"
-	"github.com/tsanders/kantra-ai/pkg/prompt"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
@@ -21,7 +20,7 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 	}
 
 	// Build batch prompt from template
-	data := prompt.BuildBatchFixData(req)
+	data := provider.BuildBatchFixData(req)
 	promptText, err := p.templates.BatchFix.RenderBatchFix(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render batch prompt template: %w", err)

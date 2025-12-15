@@ -92,7 +92,7 @@ func (p *Provider) Name() string {
 // FixViolation sends the violation to OpenAI and gets a fix
 func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*provider.FixResponse, error) {
 	// Build prompt from template
-	data := prompt.BuildSingleFixData(req)
+	data := provider.BuildSingleFixData(req)
 	promptText, err := p.templates.SingleFix.RenderSingleFix(data)
 	if err != nil {
 		return &provider.FixResponse{
