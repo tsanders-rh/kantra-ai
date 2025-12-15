@@ -21,7 +21,9 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 
 	// Build batch prompt from template
 	data := provider.BuildBatchFixData(req)
-	promptText, err := p.templates.BatchFix.RenderBatchFix(data)
+	// Select language-specific template or fall back to base template
+	tmpl := p.templates.GetBatchFixTemplate(data.Language)
+	promptText, err := tmpl.RenderBatchFix(data)
 	if err != nil {
 		return nil, fmt.Errorf("failed to render batch prompt template: %w", err)
 	}

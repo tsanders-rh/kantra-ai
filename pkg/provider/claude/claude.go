@@ -88,7 +88,9 @@ func (p *Provider) Name() string {
 func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*provider.FixResponse, error) {
 	// Build prompt from template
 	data := provider.BuildSingleFixData(req)
-	promptText, err := p.templates.SingleFix.RenderSingleFix(data)
+	// Select language-specific template or fall back to base template
+	tmpl := p.templates.GetSingleFixTemplate(data.Language)
+	promptText, err := tmpl.RenderSingleFix(data)
 	if err != nil {
 		return &provider.FixResponse{
 			Success: false,

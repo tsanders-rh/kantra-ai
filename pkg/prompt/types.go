@@ -27,6 +27,14 @@ type Template struct {
 
 // Templates holds all prompt templates for a provider
 type Templates struct {
+	SingleFix *Template // Base single-fix template (fallback)
+	BatchFix  *Template // Base batch-fix template (fallback)
+	// Language-specific template overrides
+	languageTemplates map[string]*LanguageTemplates
+}
+
+// LanguageTemplates holds templates for a specific language
+type LanguageTemplates struct {
 	SingleFix *Template
 	BatchFix  *Template
 }
@@ -35,7 +43,15 @@ type Templates struct {
 type Config struct {
 	// Provider name (used for loading provider-specific defaults)
 	Provider string
-	// Custom template paths (optional)
+	// Custom base template paths (optional, used as fallback)
+	SingleFixPath string
+	BatchFixPath  string
+	// Language-specific template overrides (optional)
+	LanguageTemplates map[string]LanguagePaths
+}
+
+// LanguagePaths holds template paths for a specific language
+type LanguagePaths struct {
 	SingleFixPath string
 	BatchFixPath  string
 }
@@ -74,9 +90,11 @@ type BatchIncident struct {
 
 // Load loads templates based on the configuration
 func Load(cfg Config) (*Templates, error) {
-	templates := &Templates{}
+	templates := &Templates{
+		languageTemplates: make(map[string]*LanguageTemplates),
+	}
 
-	// Load single fix template
+	// Load base single fix template (fallback)
 	if cfg.SingleFixPath != "" {
 		tmpl, err := loadFromFile(cfg.SingleFixPath, "single-fix")
 		if err != nil {
@@ -87,7 +105,7 @@ func Load(cfg Config) (*Templates, error) {
 		templates.SingleFix = getDefaultSingleFixTemplate(cfg.Provider)
 	}
 
-	// Load batch fix template
+	// Load base batch fix template (fallback)
 	if cfg.BatchFixPath != "" {
 		tmpl, err := loadFromFile(cfg.BatchFixPath, "batch-fix")
 		if err != nil {
@@ -98,12 +116,46 @@ func Load(cfg Config) (*Templates, error) {
 		templates.BatchFix = getDefaultBatchFixTemplate(cfg.Provider)
 	}
 
-	// Compile templates
+	// Compile base templates
 	if err := templates.SingleFix.compile(); err != nil {
 		return nil, fmt.Errorf("failed to compile single-fix template: %w", err)
 	}
 	if err := templates.BatchFix.compile(); err != nil {
 		return nil, fmt.Errorf("failed to compile batch-fix template: %w", err)
+	}
+
+	// Load language-specific templates
+	for lang, paths := range cfg.LanguageTemplates {
+		langTemplates := &LanguageTemplates{}
+
+		// Load language-specific single-fix template
+		if paths.SingleFixPath != "" {
+			tmpl, err := loadFromFile(paths.SingleFixPath, fmt.Sprintf("single-fix-%s", lang))
+			if err != nil {
+				return nil, fmt.Errorf("failed to load %s single-fix template: %w", lang, err)
+			}
+			if err := tmpl.compile(); err != nil {
+				return nil, fmt.Errorf("failed to compile %s single-fix template: %w", lang, err)
+			}
+			langTemplates.SingleFix = tmpl
+		}
+
+		// Load language-specific batch-fix template
+		if paths.BatchFixPath != "" {
+			tmpl, err := loadFromFile(paths.BatchFixPath, fmt.Sprintf("batch-fix-%s", lang))
+			if err != nil {
+				return nil, fmt.Errorf("failed to load %s batch-fix template: %w", lang, err)
+			}
+			if err := tmpl.compile(); err != nil {
+				return nil, fmt.Errorf("failed to compile %s batch-fix template: %w", lang, err)
+			}
+			langTemplates.BatchFix = tmpl
+		}
+
+		// Only store if at least one template was loaded
+		if langTemplates.SingleFix != nil || langTemplates.BatchFix != nil {
+			templates.languageTemplates[lang] = langTemplates
+		}
 	}
 
 	return templates, nil
@@ -158,4 +210,30 @@ func (t *Template) RenderBatchFix(data BatchFixData) (string, error) {
 	}
 
 	return buf.String(), nil
+}
+
+// GetSingleFixTemplate returns the appropriate single-fix template for the given language
+// Falls back to the base template if no language-specific template exists
+func (t *Templates) GetSingleFixTemplate(language string) *Template {
+	// Check for language-specific template
+	if langTemplates, ok := t.languageTemplates[language]; ok {
+		if langTemplates.SingleFix != nil {
+			return langTemplates.SingleFix
+		}
+	}
+	// Fall back to base template
+	return t.SingleFix
+}
+
+// GetBatchFixTemplate returns the appropriate batch-fix template for the given language
+// Falls back to the base template if no language-specific template exists
+func (t *Templates) GetBatchFixTemplate(language string) *Template {
+	// Check for language-specific template
+	if langTemplates, ok := t.languageTemplates[language]; ok {
+		if langTemplates.BatchFix != nil {
+			return langTemplates.BatchFix
+		}
+	}
+	// Fall back to base template
+	return t.BatchFix
 }

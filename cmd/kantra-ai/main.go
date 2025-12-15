@@ -16,6 +16,7 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/planner"
+	"github.com/tsanders/kantra-ai/pkg/prompt"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/claude"
 	"github.com/tsanders/kantra-ai/pkg/provider/openai"
@@ -364,7 +365,7 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	provSpinner := ux.NewSpinner(fmt.Sprintf("Initializing %s provider...", providerName))
 	provSpinner.Start()
 
-	prov, err := createProvider(providerName, model)
+	prov, err := createProvider(providerName, model, cfg)
 	if err != nil {
 		provSpinner.StopWithError(fmt.Sprintf("Failed to initialize provider: %v", err))
 		return fmt.Errorf("failed to create provider: %w", err)
@@ -631,8 +632,11 @@ func runPlan(cmd *cobra.Command, args []string) error {
 
 	ux.PrintHeader("Generating Migration Plan")
 
+	// Load configuration from file (if exists)
+	cfg := config.LoadOrDefault()
+
 	// Create provider
-	prov, err := createProvider(providerName, model)
+	prov, err := createProvider(providerName, model, cfg)
 	if err != nil {
 		return err
 	}
@@ -727,7 +731,7 @@ func runExecute(cmd *cobra.Command, args []string) error {
 	cfg := config.LoadOrDefault()
 
 	// Create provider
-	prov, err := createProvider(providerName, model)
+	prov, err := createProvider(providerName, model, cfg)
 	if err != nil {
 		return err
 	}
@@ -823,34 +827,69 @@ func printExecutionSummary(result *executor.Result, duration time.Duration) {
 	fmt.Printf("📊 State saved to: %s\n", result.StatePath)
 }
 
-func createProvider(name string, model string) (provider.Provider, error) {
-	config := provider.Config{
+func createProvider(name string, model string, cfg *config.Config) (provider.Provider, error) {
+	providerConfig := provider.Config{
 		Name:        name,
 		Model:       model,
 		Temperature: 0.2,
 	}
 
+	// Load prompt templates if configured
+	if cfg.Prompts.SingleFixTemplate != "" || cfg.Prompts.BatchFixTemplate != "" || len(cfg.Prompts.LanguageTemplates) > 0 {
+		promptConfig := buildPromptConfig(name, cfg.Prompts)
+		templates, err := loadPromptTemplates(promptConfig)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load prompt templates: %w", err)
+		}
+		providerConfig.Templates = templates
+	}
+
 	// Check if this is a provider preset (groq, ollama, etc.)
 	if preset, ok := provider.ProviderPresets[name]; ok {
 		// Use OpenAI provider with custom base URL
-		config.BaseURL = preset.BaseURL
+		providerConfig.BaseURL = preset.BaseURL
 
 		// Use preset's default model if no model specified
-		if config.Model == "" {
-			config.Model = preset.DefaultModel
+		if providerConfig.Model == "" {
+			providerConfig.Model = preset.DefaultModel
 		}
 
-		return openai.New(config)
+		return openai.New(providerConfig)
 	}
 
 	switch name {
 	case "claude":
-		return claude.New(config)
+		return claude.New(providerConfig)
 	case "openai":
-		return openai.New(config)
+		return openai.New(providerConfig)
 	default:
 		return nil, fmt.Errorf("unknown provider: %s (available: claude, openai, groq, together, anyscale, perplexity, ollama, lmstudio, openrouter)", name)
 	}
+}
+
+// buildPromptConfig converts config.PromptsConfig to prompt.Config
+func buildPromptConfig(providerName string, prompts config.PromptsConfig) prompt.Config {
+	cfg := prompt.Config{
+		Provider:          providerName,
+		SingleFixPath:     prompts.SingleFixTemplate,
+		BatchFixPath:      prompts.BatchFixTemplate,
+		LanguageTemplates: make(map[string]prompt.LanguagePaths),
+	}
+
+	// Convert language templates
+	for lang, langConfig := range prompts.LanguageTemplates {
+		cfg.LanguageTemplates[lang] = prompt.LanguagePaths{
+			SingleFixPath: langConfig.SingleFix,
+			BatchFixPath:  langConfig.BatchFix,
+		}
+	}
+
+	return cfg
+}
+
+// loadPromptTemplates loads prompt templates using the given config
+func loadPromptTemplates(cfg prompt.Config) (*prompt.Templates, error) {
+	return prompt.Load(cfg)
 }
 
 // buildConfidenceConfig creates a confidence.Config from config file and CLI flags

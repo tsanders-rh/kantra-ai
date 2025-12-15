@@ -89,8 +89,15 @@ type ConfidenceConfig struct {
 
 // PromptsConfig holds custom prompt template paths
 type PromptsConfig struct {
-	SingleFixTemplate string `yaml:"single-fix-template"` // Path to custom single-fix prompt template
-	BatchFixTemplate  string `yaml:"batch-fix-template"`  // Path to custom batch-fix prompt template
+	SingleFixTemplate string `yaml:"single-fix-template"` // Path to custom single-fix prompt template (base/fallback)
+	BatchFixTemplate  string `yaml:"batch-fix-template"`  // Path to custom batch-fix prompt template (base/fallback)
+	LanguageTemplates map[string]LanguageTemplateConfig `yaml:"language-templates,omitempty"` // Language-specific template overrides
+}
+
+// LanguageTemplateConfig holds template paths for a specific language
+type LanguageTemplateConfig struct {
+	SingleFix string `yaml:"single-fix"` // Path to language-specific single-fix template
+	BatchFix  string `yaml:"batch-fix"`  // Path to language-specific batch-fix template
 }
 
 // DefaultConfig returns a config with sensible defaults
