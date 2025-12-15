@@ -262,3 +262,286 @@ func TestFileExists(t *testing.T) {
 		assert.True(t, fileExists(tmpDir))
 	})
 }
+
+func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
+	t.Run("default configuration", func(t *testing.T) {
+		config := ConfidenceConfig{}
+
+		result := config.ToConfidenceConfig()
+
+		assert.False(t, result.Enabled) // Default is disabled
+		assert.NotEmpty(t, result.Thresholds)
+		// Should have default action (skip)
+		assert.Equal(t, "skip", string(result.OnLowConfidence))
+	})
+
+	t.Run("enabled configuration", func(t *testing.T) {
+		config := ConfidenceConfig{
+			Enabled: true,
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.True(t, result.Enabled)
+	})
+
+	t.Run("global min-confidence overrides all thresholds", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: 0.85,
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// All complexity thresholds should be set to 0.85
+		assert.Equal(t, 0.85, result.Thresholds["trivial"])
+		assert.Equal(t, 0.85, result.Thresholds["low"])
+		assert.Equal(t, 0.85, result.Thresholds["medium"])
+		assert.Equal(t, 0.85, result.Thresholds["high"])
+		assert.Equal(t, 0.85, result.Thresholds["expert"])
+		assert.Equal(t, 0.85, result.Default)
+	})
+
+	t.Run("min-confidence 0.0 is valid (accept all)", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: 0.0,
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// All thresholds should be 0.0
+		for _, threshold := range result.Thresholds {
+			assert.Equal(t, 0.0, threshold)
+		}
+		assert.Equal(t, 0.0, result.Default)
+	})
+
+	t.Run("min-confidence 1.0 is valid (maximum)", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: 1.0,
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// All thresholds should be 1.0
+		for _, threshold := range result.Thresholds {
+			assert.Equal(t, 1.0, threshold)
+		}
+	})
+
+	t.Run("negative min-confidence is ignored", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: -0.5,
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Should use default thresholds, not -0.5
+		assert.NotEqual(t, -0.5, result.Thresholds["trivial"])
+		// Check that it's using defaults (not all zeros)
+		assert.Greater(t, result.Thresholds["trivial"], 0.0)
+	})
+
+	t.Run("specific complexity thresholds override defaults", func(t *testing.T) {
+		config := ConfidenceConfig{
+			ComplexityThresholds: map[string]float64{
+				"high":   0.95,
+				"expert": 0.98,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Custom thresholds should be applied
+		assert.Equal(t, 0.95, result.Thresholds["high"])
+		assert.Equal(t, 0.98, result.Thresholds["expert"])
+		// Other thresholds should be defaults
+		assert.NotEqual(t, 0.95, result.Thresholds["trivial"])
+		assert.NotEqual(t, 0.95, result.Thresholds["low"])
+	})
+
+	t.Run("complexity thresholds override global min-confidence", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: 0.80,
+			ComplexityThresholds: map[string]float64{
+				"high":   0.95,
+				"expert": 0.98,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Specific overrides should win
+		assert.Equal(t, 0.95, result.Thresholds["high"])
+		assert.Equal(t, 0.98, result.Thresholds["expert"])
+		// Others should be global min
+		assert.Equal(t, 0.80, result.Thresholds["trivial"])
+		assert.Equal(t, 0.80, result.Thresholds["low"])
+		assert.Equal(t, 0.80, result.Thresholds["medium"])
+	})
+
+	t.Run("invalid complexity level is ignored", func(t *testing.T) {
+		config := ConfidenceConfig{
+			ComplexityThresholds: map[string]float64{
+				"invalid":  0.90,
+				"high":     0.95,
+				"nonsense": 0.99,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Valid threshold should be applied
+		assert.Equal(t, 0.95, result.Thresholds["high"])
+		// Invalid levels should not be in map
+		_, exists := result.Thresholds["invalid"]
+		assert.False(t, exists)
+		_, exists = result.Thresholds["nonsense"]
+		assert.False(t, exists)
+	})
+
+	t.Run("threshold < 0.0 is ignored", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: -1.0, // Invalid - should be ignored, keeping defaults
+			ComplexityThresholds: map[string]float64{
+				"high":   -0.5,
+				"medium": 0.80,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Valid threshold should be applied
+		assert.Equal(t, 0.80, result.Thresholds["medium"])
+		// Invalid threshold should not override default (high defaults to 0.90)
+		assert.NotEqual(t, -0.5, result.Thresholds["high"])
+		assert.Equal(t, 0.90, result.Thresholds["high"]) // Should be default value
+	})
+
+	t.Run("threshold > 1.0 is ignored", func(t *testing.T) {
+		config := ConfidenceConfig{
+			MinConfidence: -1.0, // Invalid - should be ignored, keeping defaults
+			ComplexityThresholds: map[string]float64{
+				"high":   1.5,
+				"medium": 0.80,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Valid threshold should be applied
+		assert.Equal(t, 0.80, result.Thresholds["medium"])
+		// Invalid threshold should not override default (high defaults to 0.90)
+		assert.NotEqual(t, 1.5, result.Thresholds["high"])
+		assert.Equal(t, 0.90, result.Thresholds["high"]) // Should be default value
+	})
+
+	t.Run("OnLowConfidence skip action", func(t *testing.T) {
+		config := ConfidenceConfig{
+			OnLowConfidence: "skip",
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.Equal(t, "skip", string(result.OnLowConfidence))
+	})
+
+	t.Run("OnLowConfidence warn-and-apply action", func(t *testing.T) {
+		config := ConfidenceConfig{
+			OnLowConfidence: "warn-and-apply",
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.Equal(t, "warn-and-apply", string(result.OnLowConfidence))
+	})
+
+	t.Run("OnLowConfidence manual-review-file action", func(t *testing.T) {
+		config := ConfidenceConfig{
+			OnLowConfidence: "manual-review-file",
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.Equal(t, "manual-review-file", string(result.OnLowConfidence))
+	})
+
+	t.Run("OnLowConfidence default to skip for invalid value", func(t *testing.T) {
+		config := ConfidenceConfig{
+			OnLowConfidence: "invalid-action",
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Should default to skip
+		assert.Equal(t, "skip", string(result.OnLowConfidence))
+	})
+
+	t.Run("OnLowConfidence default to skip for empty value", func(t *testing.T) {
+		config := ConfidenceConfig{
+			OnLowConfidence: "",
+		}
+
+		result := config.ToConfidenceConfig()
+
+		// Should default to skip
+		assert.Equal(t, "skip", string(result.OnLowConfidence))
+	})
+
+	t.Run("complex real-world configuration", func(t *testing.T) {
+		config := ConfidenceConfig{
+			Enabled:         true,
+			MinConfidence:   0.75,
+			OnLowConfidence: "warn-and-apply",
+			ComplexityThresholds: map[string]float64{
+				"high":   0.90,
+				"expert": 0.95,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.True(t, result.Enabled)
+		assert.Equal(t, "warn-and-apply", string(result.OnLowConfidence))
+		// Global min applies to unspecified levels
+		assert.Equal(t, 0.75, result.Thresholds["trivial"])
+		assert.Equal(t, 0.75, result.Thresholds["low"])
+		assert.Equal(t, 0.75, result.Thresholds["medium"])
+		// Specific overrides
+		assert.Equal(t, 0.90, result.Thresholds["high"])
+		assert.Equal(t, 0.95, result.Thresholds["expert"])
+	})
+
+	t.Run("all complexity levels can be customized", func(t *testing.T) {
+		config := ConfidenceConfig{
+			ComplexityThresholds: map[string]float64{
+				"trivial": 0.70,
+				"low":     0.75,
+				"medium":  0.80,
+				"high":    0.90,
+				"expert":  0.95,
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.Equal(t, 0.70, result.Thresholds["trivial"])
+		assert.Equal(t, 0.75, result.Thresholds["low"])
+		assert.Equal(t, 0.80, result.Thresholds["medium"])
+		assert.Equal(t, 0.90, result.Thresholds["high"])
+		assert.Equal(t, 0.95, result.Thresholds["expert"])
+	})
+
+	t.Run("boundary values for thresholds", func(t *testing.T) {
+		config := ConfidenceConfig{
+			ComplexityThresholds: map[string]float64{
+				"trivial": 0.0,  // Minimum valid
+				"expert":  1.0,  // Maximum valid
+			},
+		}
+
+		result := config.ToConfidenceConfig()
+
+		assert.Equal(t, 0.0, result.Thresholds["trivial"])
+		assert.Equal(t, 1.0, result.Thresholds["expert"])
+	})
+}
