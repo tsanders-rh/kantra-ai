@@ -6,6 +6,7 @@
 package planner
 
 import (
+	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 )
 
@@ -25,9 +26,10 @@ type Config struct {
 
 // Result contains the result of plan generation with cost and phase metrics.
 type Result struct {
-	PlanPath     string  // Path where plan was saved
-	TotalPhases  int     // Number of phases generated
-	TotalCost    float64 // Estimated total cost
-	TokensUsed   int     // Tokens consumed for plan generation
-	GenerateCost float64 // Cost to generate the plan
+	Plan         *planfile.Plan // The generated plan
+	PlanPath     string         // Path where plan was saved
+	TotalPhases  int            // Number of phases generated
+	TotalCost    float64        // Estimated total cost
+	TokensUsed   int            // Tokens consumed for plan generation
+	GenerateCost float64        // Cost to generate the plan
 }

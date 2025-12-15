@@ -81,6 +81,7 @@ func (p *Planner) Generate(ctx context.Context) (*Result, error) {
 	}
 
 	return &Result{
+		Plan:         plan,
 		PlanPath:     p.config.OutputPath,
 		TotalPhases:  len(plan.Phases),
 		TotalCost:    plan.GetTotalCost(),
