@@ -108,6 +108,11 @@ const htmlTemplate = `<!DOCTYPE html>
             overflow: hidden;
         }
 
+        .phase.deferred {
+            opacity: 0.6;
+            border-color: #c7c7c7;
+        }
+
         .phase-header {
             padding: 20px;
             background: #f8f9fa;
@@ -118,8 +123,16 @@ const htmlTemplate = `<!DOCTYPE html>
             transition: background 0.2s;
         }
 
+        .phase.deferred .phase-header {
+            background: #e9ecef;
+        }
+
         .phase-header:hover {
             background: #e9ecef;
+        }
+
+        .phase.deferred .phase-header:hover {
+            background: #dee2e6;
         }
 
         .phase-header h3 {
@@ -179,6 +192,12 @@ const htmlTemplate = `<!DOCTYPE html>
         .badge-category-potential {
             background: #e3f2fd;
             color: #1565c0;
+        }
+
+        .badge-deferred {
+            background: #f5f5f5;
+            color: #6a6e73;
+            border: 1px solid #c7c7c7;
         }
 
         .phase-meta {
@@ -454,13 +473,16 @@ const htmlTemplate = `<!DOCTYPE html>
                 <h2 class="section-title">Migration Phases</h2>
 
                 {{range $index, $phase := .Plan.Phases}}
-                <div class="phase" id="phase-{{$phase.ID}}">
+                <div class="phase{{if $phase.Deferred}} deferred{{end}}" id="phase-{{$phase.ID}}">
                     <div class="phase-header" onclick="togglePhase('{{$phase.ID}}')">
                         <h3>
                             <span class="phase-order">{{$phase.Order}}</span>
                             {{$phase.Name}}
                         </h3>
                         <div class="phase-meta">
+                            {{if $phase.Deferred}}
+                            <span class="badge badge-deferred">⊘ DEFERRED - Will be skipped</span>
+                            {{end}}
                             <span class="badge badge-risk-{{$phase.Risk}}">{{$phase.Risk}} risk</span>
                             <span class="badge badge-category-{{$phase.Category}}">{{$phase.Category}}</span>
                             <span class="arrow">▶</span>
@@ -583,9 +605,9 @@ const htmlTemplate = `<!DOCTYPE html>
             }
         }
 
-        // Expand first phase by default
+        // Expand first non-deferred phase by default
         document.addEventListener('DOMContentLoaded', function() {
-            const firstPhase = document.querySelector('.phase');
+            const firstPhase = document.querySelector('.phase:not(.deferred)');
             if (firstPhase) {
                 firstPhase.classList.add('expanded');
             }
