@@ -9,6 +9,7 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
+	"github.com/tsanders/kantra-ai/pkg/prompt"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/provider/common"
 	"github.com/tsanders/kantra-ai/pkg/violation"
@@ -26,6 +27,7 @@ type Provider struct {
 	client      *anthropic.Client
 	model       string
 	temperature float64
+	templates   *prompt.Templates
 }
 
 // New creates a new Claude provider
@@ -57,10 +59,23 @@ func New(config provider.Config) (*Provider, error) {
 
 	client := anthropic.NewClient(option.WithAPIKey(apiKey))
 
+	// Load templates (use defaults if not provided)
+	templates := config.Templates
+	if templates == nil {
+		var err error
+		templates, err = prompt.Load(prompt.Config{
+			Provider: "claude",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to load default templates: %w", err)
+		}
+	}
+
 	return &Provider{
 		client:      client,
 		model:       model,
 		temperature: temperature,
+		templates:   templates,
 	}, nil
 }
 
@@ -71,14 +86,24 @@ func (p *Provider) Name() string {
 
 // FixViolation sends the violation to Claude and gets a fix
 func (p *Provider) FixViolation(ctx context.Context, req provider.FixRequest) (*provider.FixResponse, error) {
-	prompt := buildPrompt(req)
+	// Build prompt from template
+	data := provider.BuildSingleFixData(req)
+	// Select language-specific template or fall back to base template
+	tmpl := p.templates.GetSingleFixTemplate(data.Language)
+	promptText, err := tmpl.RenderSingleFix(data)
+	if err != nil {
+		return &provider.FixResponse{
+			Success: false,
+			Error:   fmt.Errorf("failed to render prompt template: %w", err),
+		}, nil
+	}
 
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
 		Model:       anthropic.F(p.model),
 		MaxTokens:   anthropic.F(int64(DefaultMaxTokens)),
 		Temperature: anthropic.F(p.temperature),
 		Messages: anthropic.F([]anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
+			anthropic.NewUserMessage(anthropic.NewTextBlock(promptText)),
 		}),
 	})
 
@@ -153,65 +178,6 @@ func (p *Provider) EstimateCost(req provider.FixRequest) (float64, error) {
 	outputCost := estimatedOutputTokens * 15.0 / 1000000.0
 
 	return inputCost + outputCost, nil
-}
-
-// buildPrompt constructs the prompt for Claude
-func buildPrompt(req provider.FixRequest) string {
-	return fmt.Sprintf(`You are a code migration assistant helping fix violations found by Konveyor static analysis.
-
-VIOLATION DETAILS:
-Category: %s
-Description: %s
-Rule: %s
-Rule Message: %s
-
-FILE LOCATION:
-File: %s
-Line: %d
-
-CURRENT CODE SNIPPET:
-%s
-
-FULL FILE CONTENT:
-%s
-
-TASK:
-Fix this violation by modifying the code. Return a JSON object with the following fields:
-- "fixed_content": The complete fixed file content (entire file, not just changed lines)
-- "confidence": A confidence score between 0.0 and 1.0 indicating how certain you are the fix is correct
-- "explanation": A brief explanation of what was changed
-
-Your response must be ONLY the JSON object, with no markdown code blocks or extra text.
-
-Example response format:
-{
-  "fixed_content": "<complete file content here>",
-  "confidence": 0.95,
-  "explanation": "Replaced deprecated API call with modern equivalent"
-}
-
-CONFIDENCE SCORING GUIDELINES:
-- 0.95-1.0: Simple mechanical changes (package renames, obvious API equivalents)
-- 0.85-0.94: Straightforward changes with clear replacements
-- 0.75-0.84: Changes requiring some context understanding
-- 0.60-0.74: Complex changes with multiple valid approaches
-- Below 0.60: Uncertain or requires significant domain knowledge
-
-IMPORTANT:
-- Return valid %s code in the fixed_content field
-- Ensure the fix is syntactically correct
-- Preserve all other code unchanged
-- Be honest about your confidence level`,
-		req.Violation.Category,
-		req.Violation.Description,
-		req.Violation.Rule.ID,
-		req.Violation.Rule.Message,
-		req.Incident.GetFilePath(),
-		req.Incident.LineNumber,
-		req.Incident.CodeSnip,
-		req.FileContent,
-		req.Language,
-	)
 }
 
 // enhanceAPIError adds helpful context to Claude API errors using the common error handler.

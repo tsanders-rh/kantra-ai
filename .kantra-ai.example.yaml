@@ -52,6 +52,27 @@ confidence:
     # high: 0.90      # 30-50% AI success - architectural changes
     # expert: 0.95    # <30% AI success - domain expertise required
 
+# Custom Prompt Templates
+# Override the default AI prompts with your own templates
+prompts:
+  single-fix-template: ""   # Path to custom single-fix prompt template (base/fallback, optional)
+  batch-fix-template: ""    # Path to custom batch-fix prompt template (base/fallback, optional)
+  # Templates use Go's text/template syntax with variables like {{.Category}}, {{.Description}}, etc.
+  # Leave empty to use built-in defaults
+
+  # Language-specific template overrides (optional)
+  # These override the base templates for specific programming languages
+  language-templates:
+    # java:
+    #   single-fix: ./prompts/java-fix.txt
+    #   batch-fix: ./prompts/java-batch.txt
+    # python:
+    #   single-fix: ./prompts/python-fix.txt
+    #   batch-fix: ./prompts/python-batch.txt
+    # go:
+    #   single-fix: ./prompts/go-fix.txt
+    #   batch-fix: ./prompts/go-batch.txt
+
 # General Settings
 dry-run: false  # Preview changes without applying them
 
@@ -172,3 +193,40 @@ dry-run: false  # Preview changes without applying them
 #   complexity-thresholds:
 #     high: 0.95    # Require very high confidence for complex changes
 #     expert: 0.98  # Require near-perfect confidence for expert-level changes
+
+# Custom AI prompts - use your own templates:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# prompts:
+#   single-fix-template: ./prompts/my-fix-template.txt
+#   batch-fix-template: ./prompts/my-batch-template.txt
+# # Templates use Go's text/template syntax
+# # Available variables for single-fix:
+# #   {{.Category}}, {{.Description}}, {{.RuleID}}, {{.RuleMessage}}
+# #   {{.File}}, {{.Line}}, {{.CodeSnippet}}, {{.FileContent}}, {{.Language}}
+# # Available variables for batch-fix:
+# #   {{.ViolationID}}, {{.Description}}, {{.IncidentCount}}, {{.Incidents}}, {{.Language}}
+
+# Language-specific prompts - customize prompts per language/technology:
+# provider:
+#   name: claude
+# paths:
+#   analysis: ./analysis/output.yaml
+#   input: ./src
+# prompts:
+#   # Base templates for all languages (fallback)
+#   single-fix-template: ./prompts/base-fix.txt
+#   batch-fix-template: ./prompts/base-batch.txt
+#   # Language-specific overrides (optional)
+#   language-templates:
+#     java:
+#       single-fix: ./prompts/java-fix.txt      # Optimized for javax->jakarta migrations
+#       batch-fix: ./prompts/java-batch.txt
+#     python:
+#       single-fix: ./prompts/python-fix.txt    # Optimized for Python 2->3 migrations
+#       batch-fix: ./prompts/python-batch.txt
+#     # If a language-specific template exists, it overrides the base template
+#     # Otherwise, the base template is used

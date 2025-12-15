@@ -32,6 +32,9 @@ type Config struct {
 	// Confidence threshold settings
 	Confidence ConfidenceConfig `yaml:"confidence"`
 
+	// Prompt template settings
+	Prompts PromptsConfig `yaml:"prompts"`
+
 	// General settings
 	DryRun bool `yaml:"dry-run"`
 }
@@ -82,6 +85,19 @@ type ConfidenceConfig struct {
 	MinConfidence     float64            `yaml:"min-confidence"`      // Global minimum confidence (overrides complexity thresholds)
 	OnLowConfidence   string             `yaml:"on-low-confidence"`   // skip, warn-and-apply, manual-review-file
 	ComplexityThresholds map[string]float64 `yaml:"complexity-thresholds,omitempty"` // Override specific complexity thresholds
+}
+
+// PromptsConfig holds custom prompt template paths
+type PromptsConfig struct {
+	SingleFixTemplate string `yaml:"single-fix-template"` // Path to custom single-fix prompt template (base/fallback)
+	BatchFixTemplate  string `yaml:"batch-fix-template"`  // Path to custom batch-fix prompt template (base/fallback)
+	LanguageTemplates map[string]LanguageTemplateConfig `yaml:"language-templates,omitempty"` // Language-specific template overrides
+}
+
+// LanguageTemplateConfig holds template paths for a specific language
+type LanguageTemplateConfig struct {
+	SingleFix string `yaml:"single-fix"` // Path to language-specific single-fix template
+	BatchFix  string `yaml:"batch-fix"`  // Path to language-specific batch-fix template
 }
 
 // DefaultConfig returns a config with sensible defaults

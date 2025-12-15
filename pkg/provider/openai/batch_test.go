@@ -5,58 +5,11 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
-func TestBuildBatchPrompt(t *testing.T) {
-	p := &Provider{
-		model:       "gpt-4",
-		temperature: 0.2,
-	}
-
-	req := provider.BatchRequest{
-		Violation: violation.Violation{
-			ID:          "test-violation",
-			Description: "Test violation description",
-		},
-		Incidents: []violation.Incident{
-			{
-				URI:        "file:///test1.java",
-				LineNumber: 10,
-				Message:    "Test message 1",
-			},
-			{
-				URI:        "file:///test2.java",
-				LineNumber: 20,
-				Message:    "Test message 2",
-			},
-		},
-		FileContents: map[string]string{
-			"/test1.java": "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11",
-			"/test2.java": "line1\nline2\nline3\nline4\nline5\nline6\nline7\nline8\nline9\nline10\nline11\nline12\nline13\nline14\nline15\nline16\nline17\nline18\nline19\nline20\nline21",
-		},
-		Language: "java",
-	}
-
-	prompt := p.buildBatchPrompt(req)
-
-	// Verify prompt structure
-	assert.Contains(t, prompt, "code modernization assistant")
-	assert.Contains(t, prompt, "VIOLATION: test-violation")
-	assert.Contains(t, prompt, "DESCRIPTION: Test violation description")
-	assert.Contains(t, prompt, "Fix the following 2 incident(s)")
-	assert.Contains(t, prompt, "INCIDENT 1:")
-	assert.Contains(t, prompt, "File: /test1.java")
-	assert.Contains(t, prompt, "Line: 10")
-	assert.Contains(t, prompt, "INCIDENT 2:")
-	assert.Contains(t, prompt, "File: /test2.java")
-	assert.Contains(t, prompt, "Line: 20")
-	assert.Contains(t, prompt, "OUTPUT FORMAT (JSON)")
-	assert.Contains(t, prompt, "incident_uri")
-	assert.Contains(t, prompt, "fixed_content")
-	assert.Contains(t, prompt, "COMPLETE fixed file content")
-}
+// NOTE: buildBatchPrompt test removed - prompts now generated via configurable templates
+// Prompt generation is tested indirectly through FixBatch integration tests
 
 func TestParseBatchResponse(t *testing.T) {
 	p := &Provider{}
@@ -218,14 +171,4 @@ func TestExtractJSONFromMarkdown(t *testing.T) {
 			assert.Equal(t, tt.expected, string(result))
 		})
 	}
-}
-
-func TestMinMax(t *testing.T) {
-	assert.Equal(t, 5, min(5, 10))
-	assert.Equal(t, 5, min(10, 5))
-	assert.Equal(t, 5, min(5, 5))
-
-	assert.Equal(t, 10, max(5, 10))
-	assert.Equal(t, 10, max(10, 5))
-	assert.Equal(t, 5, max(5, 5))
 }

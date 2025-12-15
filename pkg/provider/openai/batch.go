@@ -19,8 +19,14 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 		return nil, fmt.Errorf("batch request must contain at least one incident")
 	}
 
-	// Build the batch prompt
-	prompt := p.buildBatchPrompt(req)
+	// Build batch prompt from template
+	data := provider.BuildBatchFixData(req)
+	// Select language-specific template or fall back to base template
+	tmpl := p.templates.GetBatchFixTemplate(data.Language)
+	promptText, err := tmpl.RenderBatchFix(data)
+	if err != nil {
+		return nil, fmt.Errorf("failed to render batch prompt template: %w", err)
+	}
 
 	// Call OpenAI API
 	resp, err := p.client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
@@ -30,7 +36,7 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 		Messages: []openai.ChatCompletionMessage{
 			{
 				Role:    openai.ChatMessageRoleUser,
-				Content: prompt,
+				Content: promptText,
 			},
 		},
 	})
@@ -73,71 +79,6 @@ func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*pr
 		TokensUsed: resp.Usage.TotalTokens,
 		Cost:       cost,
 	}, nil
-}
-
-// buildBatchPrompt constructs a prompt for fixing multiple incidents together
-func (p *Provider) buildBatchPrompt(req provider.BatchRequest) string {
-	var prompt strings.Builder
-
-	prompt.WriteString("You are an expert code modernization assistant. Fix multiple occurrences of the same violation in a codebase.\n\n")
-
-	// Violation context
-	prompt.WriteString(fmt.Sprintf("VIOLATION: %s\n", req.Violation.ID))
-	prompt.WriteString(fmt.Sprintf("DESCRIPTION: %s\n\n", req.Violation.Description))
-
-	// Add each incident
-	prompt.WriteString(fmt.Sprintf("Fix the following %d incident(s):\n\n", len(req.Incidents)))
-
-	for i, incident := range req.Incidents {
-		filePath := incident.GetFilePath()
-
-		prompt.WriteString(fmt.Sprintf("INCIDENT %d:\n", i+1))
-		prompt.WriteString(fmt.Sprintf("File: %s\n", filePath))
-		prompt.WriteString(fmt.Sprintf("Line: %d\n", incident.LineNumber))
-		prompt.WriteString(fmt.Sprintf("Issue: %s\n", incident.Message))
-
-		// Add file content if available
-		if content, ok := req.FileContents[filePath]; ok {
-			// Show context around the line
-			lines := strings.Split(content, "\n")
-			start := max(0, incident.LineNumber-5)
-			end := min(len(lines), incident.LineNumber+5)
-
-			prompt.WriteString("Code context:\n```")
-			prompt.WriteString(req.Language)
-			prompt.WriteString("\n")
-			for j := start; j < end; j++ {
-				prefix := "  "
-				if j == incident.LineNumber-1 {
-					prefix = "→ " // Mark the problematic line
-				}
-				prompt.WriteString(fmt.Sprintf("%s%s\n", prefix, lines[j]))
-			}
-			prompt.WriteString("```\n\n")
-		}
-	}
-
-	// Output format instructions
-	prompt.WriteString("\nFor each incident, provide the complete fixed file content and a brief explanation.\n\n")
-	prompt.WriteString("OUTPUT FORMAT (JSON):\n")
-	prompt.WriteString("```json\n")
-	prompt.WriteString("[\n")
-	prompt.WriteString("  {\n")
-	prompt.WriteString("    \"incident_uri\": \"file:///path/to/file.java:line\",\n")
-	prompt.WriteString("    \"success\": true,\n")
-	prompt.WriteString("    \"fixed_content\": \"<complete fixed file content>\",\n")
-	prompt.WriteString("    \"explanation\": \"<what was changed>\",\n")
-	prompt.WriteString("    \"confidence\": 0.95\n")
-	prompt.WriteString("  }\n")
-	prompt.WriteString("]\n")
-	prompt.WriteString("```\n\n")
-	prompt.WriteString("IMPORTANT:\n")
-	prompt.WriteString("- Return the COMPLETE fixed file content for each file, not just the changed lines\n")
-	prompt.WriteString("- Maintain all existing code that doesn't need changes\n")
-	prompt.WriteString("- Preserve formatting and indentation\n")
-	prompt.WriteString("- If you cannot fix an incident, set success=false and explain why in explanation\n")
-
-	return prompt.String()
 }
 
 // parseBatchResponse parses the JSON response into IncidentFix structs
@@ -200,18 +141,4 @@ func extractJSONFromMarkdown(text string) []byte {
 
 	// Return the whole text as last resort
 	return []byte(text)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
