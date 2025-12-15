@@ -310,6 +310,16 @@ const htmlTemplate = `<!DOCTYPE html>
             line-height: 1.5;
         }
 
+        .highlighted-line {
+            background: #3d2a1f;
+            border-left: 3px solid #f0ab00;
+            display: block;
+            margin-left: -16px;
+            padding-left: 13px;
+            margin-right: -16px;
+            padding-right: 16px;
+        }
+
         .diff-container {
             font-family: 'Courier New', Courier, monospace;
             font-size: 0.85em;
@@ -523,7 +533,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                                     {{formatDiff $incident.Message}}
                                                     {{end}}
                                                     {{if $incident.CodeSnip}}
-                                                    <pre class="code-snippet">{{$incident.CodeSnip}}</pre>
+                                                    {{highlightLine $incident.CodeSnip $incident.LineNumber}}
                                                     {{end}}
                                                 </div>
                                                 {{end}}

@@ -111,6 +111,9 @@ func templateFuncs() template.FuncMap {
 		"formatDiff": func(message string) template.HTML {
 			return template.HTML(formatMessageAsDiff(message))
 		},
+		"highlightLine": func(codeSnip string, lineNumber int) template.HTML {
+			return template.HTML(highlightLineInCode(codeSnip, lineNumber))
+		},
 	}
 }
 
@@ -172,5 +175,40 @@ func formatMessageAsDiff(message string) string {
 
 	html.WriteString("</div>")
 
+	return html.String()
+}
+
+// highlightLineInCode highlights the specific line number in a code snippet
+func highlightLineInCode(codeSnip string, targetLine int) string {
+	if codeSnip == "" {
+		return ""
+	}
+
+	lines := strings.Split(codeSnip, "\n")
+	var html strings.Builder
+
+	html.WriteString("<pre class='code-snippet'><code>")
+
+	for _, line := range lines {
+		// Parse line number from the format " 123    content"
+		// Line numbers are at the start, followed by spaces
+		var lineNum int
+
+		// Trim leading spaces and try to parse the line number
+		trimmed := strings.TrimLeft(line, " ")
+		if trimmed != "" {
+			// Try to scan the first integer
+			fmt.Sscanf(trimmed, "%d", &lineNum)
+		}
+
+		// Highlight if this is the target line
+		if lineNum == targetLine && lineNum > 0 {
+			html.WriteString(fmt.Sprintf("<span class='highlighted-line'>%s</span>\n", template.HTMLEscapeString(line)))
+		} else {
+			html.WriteString(fmt.Sprintf("%s\n", template.HTMLEscapeString(line)))
+		}
+	}
+
+	html.WriteString("</code></pre>")
 	return html.String()
 }

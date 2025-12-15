@@ -9,6 +9,7 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 ## Features
 
 - **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
+- **Interactive HTML Reports**: Beautiful, visual reports with diff-style highlighting and line-specific code annotations
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
 - **Confidence Threshold Filtering**: Automatically skip low-confidence fixes based on migration complexity for maximum safety
 - **Batch Processing**: Group similar violations together for 50-80% cost reduction and 70-90% faster execution
@@ -127,15 +128,23 @@ For larger migrations with 20+ violations, use the `plan` → `execute` workflow
 
 # Output:
 # Plan saved to: .kantra-ai-plan.yaml
+# HTML report:   .kantra-ai-plan.html
 #   Total phases: 3
 #   Total violations: 45
 #   Estimated cost: $4.30
 ```
 
+The plan command generates two files:
+- **YAML file** (.kantra-ai-plan.yaml) - Machine-readable plan for execution
+- **HTML report** (.kantra-ai-plan.html) - Interactive visual report for review
+
 **Step 2: Review and edit the plan** (optional):
 
 ```bash
-# Review the generated plan
+# View interactive HTML report in browser
+open .kantra-ai-plan.html
+
+# Or review YAML plan
 cat .kantra-ai-plan.yaml
 
 # Edit if needed (mark phases as deferred, adjust order, etc.)
