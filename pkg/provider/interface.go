@@ -3,6 +3,7 @@ package provider
 import (
 	"context"
 
+	"github.com/tsanders/kantra-ai/pkg/prompt"
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
@@ -45,11 +46,12 @@ type FixResponse struct {
 
 // Config holds provider configuration
 type Config struct {
-	Name        string  // Provider name: claude, openai, or preset (groq, ollama, etc.)
-	APIKey      string  // API key
-	Model       string  // Model to use
-	Temperature float64 // Temperature (0.0-1.0)
-	BaseURL     string  // Custom base URL for OpenAI-compatible APIs
+	Name        string            // Provider name: claude, openai, or preset (groq, ollama, etc.)
+	APIKey      string            // API key
+	Model       string            // Model to use
+	Temperature float64           // Temperature (0.0-1.0)
+	BaseURL     string            // Custom base URL for OpenAI-compatible APIs
+	Templates   *prompt.Templates // Prompt templates (optional, uses defaults if nil)
 }
 
 // PlanRequest contains the context needed to generate a migration plan
