@@ -142,17 +142,3 @@ func extractJSONFromMarkdown(text string) []byte {
 	// Return the whole text as last resort
 	return []byte(text)
 }
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

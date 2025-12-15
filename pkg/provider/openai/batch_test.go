@@ -172,13 +172,3 @@ func TestExtractJSONFromMarkdown(t *testing.T) {
 		})
 	}
 }
-
-func TestMinMax(t *testing.T) {
-	assert.Equal(t, 5, min(5, 10))
-	assert.Equal(t, 5, min(10, 5))
-	assert.Equal(t, 5, min(5, 5))
-
-	assert.Equal(t, 10, max(5, 10))
-	assert.Equal(t, 10, max(10, 5))
-	assert.Equal(t, 5, max(5, 5))
-}
