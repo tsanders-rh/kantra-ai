@@ -2,7 +2,6 @@ package claude
 
 import (
 	"os"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -88,110 +87,5 @@ func TestProvider_EstimateCost(t *testing.T) {
 	assert.Greater(t, cost, 0.0)
 }
 
-func TestBuildPrompt(t *testing.T) {
-	req := provider.FixRequest{
-		Violation: violation.Violation{
-			ID:          "violation-001",
-			Description: "Replace javax with jakarta",
-			Category:    "mandatory",
-			Rule: violation.Rule{
-				ID:      "javax-to-jakarta",
-				Message: "Migrate to jakarta namespace",
-			},
-		},
-		Incident: violation.Incident{
-			URI:        "file:///src/Test.java",
-			LineNumber: 10,
-			CodeSnip:   "import javax.servlet.*;",
-		},
-		FileContent: "package test;\nimport javax.servlet.*;\npublic class Test {}",
-		Language:    "java",
-	}
-
-	prompt := buildPrompt(req)
-
-	// Verify prompt contains all key information
-	assert.Contains(t, prompt, "VIOLATION DETAILS")
-	assert.Contains(t, prompt, "Category: mandatory")
-	assert.Contains(t, prompt, "Description: Replace javax with jakarta")
-	assert.Contains(t, prompt, "Rule: javax-to-jakarta")
-	assert.Contains(t, prompt, "Rule Message: Migrate to jakarta namespace")
-
-	assert.Contains(t, prompt, "FILE LOCATION")
-	assert.Contains(t, prompt, "File: /src/Test.java")
-	assert.Contains(t, prompt, "Line: 10")
-
-	assert.Contains(t, prompt, "CURRENT CODE SNIPPET")
-	assert.Contains(t, prompt, "import javax.servlet.*;")
-
-	assert.Contains(t, prompt, "FULL FILE CONTENT")
-	assert.Contains(t, prompt, "package test;")
-
-	assert.Contains(t, prompt, "TASK")
-	assert.Contains(t, prompt, "valid java code")
-
-	// Verify JSON response format instructions
-	assert.Contains(t, prompt, "Return a JSON object")
-	assert.Contains(t, prompt, "fixed_content")
-	assert.Contains(t, prompt, "confidence")
-	assert.Contains(t, prompt, "explanation")
-	assert.Contains(t, prompt, "CONFIDENCE SCORING GUIDELINES")
-}
-
-func TestBuildPrompt_DifferentLanguages(t *testing.T) {
-	languages := []string{"java", "python", "go", "javascript"}
-
-	for _, lang := range languages {
-		t.Run(lang, func(t *testing.T) {
-			req := provider.FixRequest{
-				Violation: violation.Violation{
-					ID:   "test",
-					Rule: violation.Rule{},
-				},
-				Incident:    violation.Incident{},
-				FileContent: "test content",
-				Language:    lang,
-			}
-
-			prompt := buildPrompt(req)
-			assert.Contains(t, prompt, "valid "+lang+" code")
-		})
-	}
-}
-
-func TestBuildPrompt_Structure(t *testing.T) {
-	req := provider.FixRequest{
-		Violation: violation.Violation{
-			ID:          "test",
-			Description: "Test description",
-			Category:    "mandatory",
-			Rule: violation.Rule{
-				ID:      "rule-id",
-				Message: "Rule message",
-			},
-		},
-		Incident: violation.Incident{
-			URI:        "file:///test.java",
-			LineNumber: 5,
-			CodeSnip:   "code snippet",
-		},
-		FileContent: "full file",
-		Language:    "java",
-	}
-
-	prompt := buildPrompt(req)
-
-	// Verify sections appear in order
-	violationIdx := strings.Index(prompt, "VIOLATION DETAILS")
-	locationIdx := strings.Index(prompt, "FILE LOCATION")
-	snippetIdx := strings.Index(prompt, "CURRENT CODE SNIPPET")
-	contentIdx := strings.Index(prompt, "FULL FILE CONTENT")
-	taskIdx := strings.Index(prompt, "TASK")
-	importantIdx := strings.Index(prompt, "IMPORTANT")
-
-	assert.Less(t, violationIdx, locationIdx)
-	assert.Less(t, locationIdx, snippetIdx)
-	assert.Less(t, snippetIdx, contentIdx)
-	assert.Less(t, contentIdx, taskIdx)
-	assert.Less(t, taskIdx, importantIdx)
-}
+// NOTE: buildPrompt tests removed - prompts now generated via configurable templates
+// Prompt generation is tested indirectly through FixViolation integration tests
