@@ -158,6 +158,138 @@ flowchart LR
 - **Git Integration**: Auto-commit fixes (`--git-commit=per-violation`)
 - **PR Creation**: Create GitHub pull requests (`--create-pr`)
 
+## Tool Ecosystem: kantra-ai vs kai + Editor Extension
+
+The Konveyor ecosystem offers **two complementary approaches** for AI-assisted migration:
+
+### Approach 1: Batch Automation (kantra-ai)
+
+```mermaid
+flowchart LR
+    Analysis[Konveyor Analysis] --> Batch[kantra-ai<br/>Batch Processing]
+    Batch --> Auto[Automated Fixes<br/>Applied to Files]
+    Auto --> Review[Developer Reviews<br/>PR/Commits]
+
+    style Analysis fill:#e1f5ff,stroke:#0077b6,stroke-width:2px,color:#000
+    style Batch fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Auto fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+```
+
+**Best for**:
+- Trivial/Low/Medium complexity violations
+- Large-scale migrations (100+ violations)
+- Automated CI/CD pipelines
+- Cost-effective batch processing
+
+**How it works**:
+1. Run `kantra-ai remediate` or `kantra-ai execute`
+2. AI processes violations in batches
+3. Fixes applied automatically to source files
+4. Developer reviews changes in PR
+
+### Approach 2: Interactive Assistance (kai + Editor Extension)
+
+```mermaid
+flowchart LR
+    Analysis[Konveyor Analysis] --> Editor[VS Code Extension<br/>kai Integration]
+    Editor --> Inline[Inline AI Suggestions<br/>While Coding]
+    Inline --> Dev[Developer Accepts/Edits<br/>Suggestions]
+
+    style Analysis fill:#e1f5ff,stroke:#0077b6,stroke-width:2px,color:#000
+    style Editor fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Inline fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Dev fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+```
+
+**Best for**:
+- High/Expert complexity violations
+- Manual development work
+- Learning migration patterns
+- Fine-grained control over changes
+
+**How it works**:
+1. Open your code in VS Code with kai extension
+2. Extension shows violations inline
+3. Request AI fix suggestion with keyboard shortcut
+4. Review, edit, and apply suggestion immediately
+
+### Hybrid Workflow: Best of Both Worlds
+
+```mermaid
+flowchart TB
+    Analysis[Konveyor Analysis<br/>output.yaml] --> Route{Complexity?}
+
+    Route -->|Trivial/Low/Medium| KantraAI[kantra-ai<br/>Batch Automation]
+    Route -->|High/Expert| Manual[Manual Development<br/>with kai Extension]
+
+    KantraAI --> AutoFixed[Automated Fixes<br/>60-95% of violations]
+    Manual --> DevFixed[Developer Fixes<br/>5-40% of violations]
+
+    AutoFixed --> Merge[Merge All Changes]
+    DevFixed --> Merge
+
+    Merge --> Complete[Migration Complete]
+
+    style Analysis fill:#e1f5ff,stroke:#0077b6,stroke-width:2px,color:#000
+    style Route fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style KantraAI fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Manual fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style AutoFixed fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style DevFixed fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Merge fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
+    style Complete fill:#d1ecf1,stroke:#0c5460,stroke-width:2px,color:#000
+```
+
+**Recommended Workflow**:
+
+1. **Run Konveyor analysis** to identify all violations
+2. **Use kantra-ai** for automated batch fixes:
+   ```bash
+   kantra-ai remediate --categories=mandatory --max-effort=6
+   ```
+   This handles trivial/low/medium complexity violations automatically.
+
+3. **Use kai + VS Code extension** for remaining complex violations:
+   - Open files flagged as high/expert complexity
+   - Get inline AI suggestions for each violation
+   - Manually review and apply changes with full control
+
+4. **Verify and integrate** all changes together
+
+### Comparison Table
+
+| Feature | kantra-ai (Batch) | kai + Extension (Interactive) |
+|---------|------------------|------------------------------|
+| **Interaction** | CLI, automated | VS Code, manual |
+| **Speed** | Very fast (batch processing) | Slower (one-at-a-time) |
+| **Cost** | 50-80% cheaper (batching) | Higher (individual API calls) |
+| **Control** | Less (automated) | More (developer reviews each) |
+| **Best for** | Simple violations | Complex violations |
+| **Violations** | 100s or 1000s | 10s or 100s |
+| **Learning** | Limited | High (see reasoning) |
+
+### When to Use Each Tool
+
+**Use kantra-ai when**:
+- You have many similar violations (e.g., 200 `javax.*` imports)
+- Violations are low complexity (mechanical changes)
+- You want to minimize cost and time
+- You're comfortable with automated batch changes
+- You want CI/CD integration
+
+**Use kai + extension when**:
+- You have complex violations requiring judgment
+- You want to learn migration patterns
+- You need fine-grained control over each change
+- You're actively developing and want inline help
+- You want to understand AI reasoning
+
+**Use both when** (recommended):
+- Large migrations with mixed complexity
+- You want to automate simple fixes and manually handle complex ones
+- You want the best ROI on your time and AI costs
+
 ## Workflow Details
 
 ### Phase 1: Konveyor Analysis
