@@ -697,38 +697,137 @@ class PlanApp {
             case 'progress':
                 this.updateExecutionProgress(update.data);
                 break;
-            case 'incident':
-                this.addIncidentUpdate(update.data);
+            case 'phase_start':
+                this.handlePhaseStart(update.data);
+                break;
+            case 'phase_end':
+                this.handlePhaseEnd(update.data);
+                break;
+            case 'info':
+                this.addActivityMessage(update.data.message, 'info');
+                break;
+            case 'error':
+                this.addActivityMessage(update.data.message, 'error');
                 break;
             case 'complete':
                 this.showExecutionSummary(update.data);
-                break;
-            case 'error':
-                this.showExecutionError(update.data);
                 break;
             default:
                 console.log('Unknown update type:', update.type);
         }
     }
 
-    updateExecutionProgress(data) {
-        // TODO: Update progress in execution view
-        console.log('Progress update:', data);
+    handlePhaseStart(data) {
+        this.addActivityMessage(`Starting phase: ${data.phase_name}`, 'phase');
+        const percentage = data.total > 0 ? (data.phase_index / data.total) * 100 : 0;
+        this.updateExecutionProgress({
+            phase: data.phase_index,
+            total: data.total,
+            percentage: percentage,
+            message: `Processing phase ${data.phase_index} of ${data.total}: ${data.phase_name}`
+        });
     }
 
-    addIncidentUpdate(data) {
-        // TODO: Add incident to activity stream
-        console.log('Incident update:', data);
+    handlePhaseEnd(data) {
+        this.addActivityMessage(`Completed phase: ${data.phase_name}`, 'success');
+    }
+
+    updateExecutionProgress(data) {
+        const progressBar = document.getElementById('execution-progress-bar');
+        const progressText = document.getElementById('execution-progress-text');
+        const currentPhase = document.getElementById('execution-current-phase');
+
+        if (progressBar) {
+            progressBar.style.width = `${data.percentage}%`;
+        }
+
+        if (progressText) {
+            progressText.textContent = `${Math.round(data.percentage)}% (${data.phase || 0} of ${data.total || 0} phases)`;
+        }
+
+        if (currentPhase && data.message) {
+            currentPhase.textContent = data.message;
+        }
+    }
+
+    addActivityMessage(message, type = 'info') {
+        const activityFeed = document.getElementById('execution-activity');
+        if (!activityFeed) return;
+
+        const timestamp = new Date().toLocaleTimeString();
+        const icon = {
+            'info': '•',
+            'success': '✓',
+            'error': '✗',
+            'phase': '▶'
+        }[type] || '•';
+
+        const className = {
+            'info': 'activity-info',
+            'success': 'activity-success',
+            'error': 'activity-error',
+            'phase': 'activity-phase'
+        }[type] || 'activity-info';
+
+        const entry = document.createElement('div');
+        entry.className = `activity-entry ${className}`;
+        entry.innerHTML = `
+            <span class="activity-time">${timestamp}</span>
+            <span class="activity-icon">${icon}</span>
+            <span class="activity-message">${this.escapeHtml(message)}</span>
+        `;
+
+        activityFeed.insertBefore(entry, activityFeed.firstChild);
+
+        // Limit to last 100 entries
+        while (activityFeed.children.length > 100) {
+            activityFeed.removeChild(activityFeed.lastChild);
+        }
     }
 
     showExecutionSummary(data) {
-        // TODO: Show completion summary
-        console.log('Execution complete:', data);
+        const summaryEl = document.getElementById('execution-summary');
+        if (!summaryEl) return;
+
+        summaryEl.classList.remove('hidden');
+        summaryEl.innerHTML = `
+            <div class="execution-complete">
+                <h3>✓ Execution Complete</h3>
+                <div class="summary-stats">
+                    <div class="stat-card">
+                        <div class="stat-value">${data.completed_phases || 0}</div>
+                        <div class="stat-label">Phases Completed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value success">${data.successful_fixes || 0}</div>
+                        <div class="stat-label">Successful Fixes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value ${data.failed_fixes > 0 ? 'error' : ''}">${data.failed_fixes || 0}</div>
+                        <div class="stat-label">Failed Fixes</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value">$${(data.total_cost || 0).toFixed(4)}</div>
+                        <div class="stat-label">Total Cost</div>
+                    </div>
+                </div>
+                <div class="summary-actions">
+                    <button class="btn btn-primary" onclick="app.closeExecution()">
+                        <i class="fas fa-check"></i> Done
+                    </button>
+                </div>
+            </div>
+        `;
+
+        this.addActivityMessage('Execution completed successfully', 'success');
     }
 
-    showExecutionError(data) {
-        // TODO: Show error in execution view
-        console.error('Execution error:', data);
+    closeExecution() {
+        document.getElementById('execution-view').classList.add('hidden');
+        document.getElementById('phases-container').classList.remove('hidden');
+
+        // Reload plan to get updated state
+        this.loadPlan().then(() => this.render());
     }
 
     updateProgress() {
@@ -819,7 +918,6 @@ class PlanApp {
 
                     this.render();
                     this.initializeSortable(); // Reinitialize after render
-                    this.showInfo('Phase order updated. Remember to save your changes.');
                 }
             }
         });

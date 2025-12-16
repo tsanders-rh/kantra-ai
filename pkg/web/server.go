@@ -15,7 +15,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/tsanders/kantra-ai/pkg/executor"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
+	"github.com/tsanders/kantra-ai/pkg/provider"
 )
 
 //go:embed static/*
@@ -29,21 +31,29 @@ var upgrader = websocket.Upgrader{
 
 // PlanServer serves the web-based interactive plan approval UI.
 type PlanServer struct {
-	plan         *planfile.Plan
-	planPath     string
-	addr         string
-	clients      map[*websocket.Conn]bool
-	clientsMutex sync.RWMutex
-	server       *http.Server
+	plan           *planfile.Plan
+	planPath       string
+	inputPath      string
+	provider       provider.Provider
+	addr           string
+	clients        map[*websocket.Conn]bool
+	clientsMutex   sync.RWMutex
+	server         *http.Server
+	executing      bool
+	executionMutex sync.Mutex
+	executionCtx   context.Context
+	executionCancel context.CancelFunc
 }
 
 // NewPlanServer creates a new web server for interactive plan approval.
-func NewPlanServer(plan *planfile.Plan, planPath string) *PlanServer {
+func NewPlanServer(plan *planfile.Plan, planPath string, inputPath string, prov provider.Provider) *PlanServer {
 	return &PlanServer{
-		plan:     plan,
-		planPath: planPath,
-		addr:     "localhost:8080",
-		clients:  make(map[*websocket.Conn]bool),
+		plan:      plan,
+		planPath:  planPath,
+		inputPath: inputPath,
+		provider:  prov,
+		addr:      "localhost:8080",
+		clients:   make(map[*websocket.Conn]bool),
 	}
 }
 
@@ -270,19 +280,30 @@ func (s *PlanServer) handleSavePlan(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// handleExecuteStart starts plan execution (placeholder for MVP).
+// handleExecuteStart starts plan execution.
 func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// TODO: Implement execution with live updates
-	// For MVP, just return success
+	// Check if already executing
+	s.executionMutex.Lock()
+	if s.executing {
+		s.executionMutex.Unlock()
+		http.Error(w, "Execution already in progress", http.StatusConflict)
+		return
+	}
+	s.executing = true
+	s.executionMutex.Unlock()
+
+	// Start execution in background
+	go s.executePhases()
+
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "started",
-		"message": "Execution feature coming soon - use CLI for now",
+		"message": "Execution started",
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
 	}
@@ -356,4 +377,130 @@ func (s *PlanServer) BroadcastUpdate(msg interface{}) {
 type ExecutionUpdate struct {
 	Type string      `json:"type"` // "progress", "incident", "complete", "error"
 	Data interface{} `json:"data"`
+}
+
+// executePhases runs the plan execution in the background.
+func (s *PlanServer) executePhases() {
+	defer func() {
+		s.executionMutex.Lock()
+		s.executing = false
+		s.executionMutex.Unlock()
+	}()
+
+	// Create execution context
+	s.executionCtx, s.executionCancel = context.WithCancel(context.Background())
+	defer s.executionCancel()
+
+	// Create progress writer that broadcasts to WebSocket clients
+	progress := &WebSocketProgressWriter{server: s}
+
+	// Create executor config
+	execConfig := executor.Config{
+		PlanPath:  s.planPath,
+		InputPath: s.inputPath,
+		Provider:  s.provider,
+		Progress:  progress,
+		DryRun:    false,
+	}
+
+	exec, err := executor.New(execConfig)
+	if err != nil {
+		s.BroadcastUpdate(ExecutionUpdate{
+			Type: "error",
+			Data: map[string]string{
+				"message": fmt.Sprintf("Failed to create executor: %v", err),
+			},
+		})
+		return
+	}
+
+	// Send initial progress update
+	s.BroadcastUpdate(ExecutionUpdate{
+		Type: "progress",
+		Data: map[string]interface{}{
+			"phase":      0,
+			"total":      len(s.plan.Phases),
+			"percentage": 0,
+			"message":    "Starting execution...",
+		},
+	})
+
+	// Execute plan
+	result, err := exec.Execute(s.executionCtx)
+	if err != nil {
+		s.BroadcastUpdate(ExecutionUpdate{
+			Type: "error",
+			Data: map[string]interface{}{
+				"message": fmt.Sprintf("Execution failed: %v", err),
+				"result":  result,
+			},
+		})
+		return
+	}
+
+	// Send completion message
+	s.BroadcastUpdate(ExecutionUpdate{
+		Type: "complete",
+		Data: map[string]interface{}{
+			"total_phases":     result.TotalPhases,
+			"executed_phases":  result.ExecutedPhases,
+			"completed_phases": result.CompletedPhases,
+			"failed_phases":    result.FailedPhases,
+			"successful_fixes": result.SuccessfulFixes,
+			"failed_fixes":     result.FailedFixes,
+			"total_cost":       result.TotalCost,
+			"total_tokens":     result.TotalTokens,
+		},
+	})
+}
+
+// WebSocketProgressWriter implements ux.ProgressWriter and broadcasts to WebSocket clients.
+type WebSocketProgressWriter struct {
+	server       *PlanServer
+	currentPhase string
+	phaseIndex   int
+}
+
+func (w *WebSocketProgressWriter) Info(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	w.server.BroadcastUpdate(ExecutionUpdate{
+		Type: "info",
+		Data: map[string]string{
+			"message": message,
+		},
+	})
+}
+
+func (w *WebSocketProgressWriter) Error(format string, args ...interface{}) {
+	message := fmt.Sprintf(format, args...)
+	w.server.BroadcastUpdate(ExecutionUpdate{
+		Type: "error",
+		Data: map[string]string{
+			"message": message,
+		},
+	})
+}
+
+func (w *WebSocketProgressWriter) StartPhase(phaseName string) {
+	w.currentPhase = phaseName
+	w.phaseIndex++
+
+	w.server.BroadcastUpdate(ExecutionUpdate{
+		Type: "phase_start",
+		Data: map[string]interface{}{
+			"phase_name":  phaseName,
+			"phase_index": w.phaseIndex,
+			"total":       len(w.server.plan.Phases),
+		},
+	})
+}
+
+func (w *WebSocketProgressWriter) EndPhase() {
+	w.server.BroadcastUpdate(ExecutionUpdate{
+		Type: "phase_end",
+		Data: map[string]interface{}{
+			"phase_name":  w.currentPhase,
+			"phase_index": w.phaseIndex,
+		},
+	})
 }

@@ -89,9 +89,25 @@
         <div id="execution-view" class="hidden">
             <h2>Execution in Progress</h2>
             <div class="execution-content">
-                <div class="execution-message">
-                    Execution feature coming soon. For now, save your plan and use the CLI to execute:
-                    <pre>kantra-ai execute --plan .kantra-ai-plan.yaml</pre>
+                <div class="execution-progress">
+                    <div class="progress-header">
+                        <span id="execution-current-phase">Initializing...</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="execution-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <div class="progress-stats" id="execution-progress-text">0% (0 of 0 phases)</div>
+                </div>
+
+                <div class="execution-activity-container">
+                    <h3>Activity Log</h3>
+                    <div class="execution-activity" id="execution-activity">
+                        <!-- Activity messages will be inserted here -->
+                    </div>
+                </div>
+
+                <div id="execution-summary" class="hidden">
+                    <!-- Summary will be inserted here by JavaScript -->
                 </div>
             </div>
         </div>

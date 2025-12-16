@@ -704,7 +704,7 @@ func runPlan(cmd *cobra.Command, args []string) error {
 		fmt.Println()
 
 		// Create web server
-		server := web.NewPlanServer(result.Plan, result.PlanPath)
+		server := web.NewPlanServer(result.Plan, result.PlanPath, inputPath, prov)
 
 		// Start server (blocks until interrupted)
 		if err := server.Start(ctx, true); err != nil {
