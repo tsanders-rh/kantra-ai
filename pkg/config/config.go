@@ -195,64 +195,78 @@ func fileExists(path string) bool {
 	return err == nil
 }
 
+// Validate validates the confidence configuration and returns an error if invalid
+func (c *ConfidenceConfig) Validate() error {
+	// Validate min-confidence range
+	if c.MinConfidence < 0.0 {
+		return fmt.Errorf("min-confidence must be >= 0.0, got %.2f", c.MinConfidence)
+	}
+	if c.MinConfidence > 1.0 {
+		return fmt.Errorf("min-confidence must be <= 1.0, got %.2f", c.MinConfidence)
+	}
+
+	// Validate complexity thresholds
+	for level, threshold := range c.ComplexityThresholds {
+		if !confidence.IsValidComplexity(level) {
+			return fmt.Errorf("invalid complexity level '%s', valid levels: %v",
+				level, confidence.ValidComplexityLevels())
+		}
+		if threshold < 0.0 || threshold > 1.0 {
+			return fmt.Errorf("threshold for %s must be between 0.0 and 1.0, got %.2f",
+				level, threshold)
+		}
+	}
+
+	// Validate action
+	switch c.OnLowConfidence {
+	case "", "skip", "warn-and-apply", "manual-review-file":
+		// Valid
+	default:
+		return fmt.Errorf("invalid on-low-confidence action '%s', valid: skip, warn-and-apply, manual-review-file",
+			c.OnLowConfidence)
+	}
+
+	return nil
+}
+
 // ToConfidenceConfig converts ConfidenceConfig to confidence.Config
-func (c *ConfidenceConfig) ToConfidenceConfig() confidence.Config {
+// It validates the configuration and returns an error if invalid
+func (c *ConfidenceConfig) ToConfidenceConfig() (confidence.Config, error) {
 	conf := confidence.DefaultConfig()
+
+	// Validate configuration first
+	if err := c.Validate(); err != nil {
+		return conf, err
+	}
 
 	// Apply user configuration
 	conf.Enabled = c.Enabled
 
-	// If global min-confidence is set, validate and apply it to all complexity levels
-	// Note: We check >= 0.0 to allow explicitly setting 0.0 (accept all fixes)
-	// Negative values are invalid and ignored
+	// If global min-confidence is set, apply it to all complexity levels
 	if c.MinConfidence >= 0.0 && c.MinConfidence <= 1.0 {
-		// Validate upper bound
-		if c.MinConfidence > 1.0 {
-			fmt.Fprintf(os.Stderr, "Warning: min-confidence %.2f > 1.0, clamping to 1.0\n", c.MinConfidence)
-			c.MinConfidence = 1.0
-		}
-
 		// Apply to all thresholds (0.0 means accept all)
 		for level := range conf.Thresholds {
 			conf.Thresholds[level] = c.MinConfidence
 		}
 		conf.Default = c.MinConfidence
-	} else if c.MinConfidence < 0.0 {
-		fmt.Fprintf(os.Stderr, "Warning: min-confidence %.2f < 0.0, ignoring (use 0.0-1.0)\n", c.MinConfidence)
 	}
 
 	// Override specific complexity thresholds if provided
 	if len(c.ComplexityThresholds) > 0 {
 		for level, threshold := range c.ComplexityThresholds {
-			// Validate complexity level
-			if !confidence.IsValidComplexity(level) {
-				fmt.Fprintf(os.Stderr, "Warning: invalid complexity level '%s', skipping. Valid levels: %v\n",
-					level, confidence.ValidComplexityLevels())
-				continue
-			}
-
-			// Validate threshold range
-			if threshold < 0.0 || threshold > 1.0 {
-				fmt.Fprintf(os.Stderr, "Warning: threshold %.2f for %s out of range [0.0, 1.0], skipping\n",
-					threshold, level)
-				continue
-			}
-
 			conf.Thresholds[level] = threshold
 		}
 	}
 
 	// Set action
 	switch c.OnLowConfidence {
-	case "skip":
+	case "skip", "":
 		conf.OnLowConfidence = confidence.ActionSkip
 	case "warn-and-apply":
 		conf.OnLowConfidence = confidence.ActionWarnAndApply
 	case "manual-review-file":
 		conf.OnLowConfidence = confidence.ActionManualReviewFile
-	default:
-		conf.OnLowConfidence = confidence.ActionSkip
 	}
 
-	return conf
+	return conf, nil
 }

@@ -12,6 +12,12 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/violation"
 )
 
+var (
+	// Compiled regexes for batch JSON extraction (compiled once at package init time)
+	batchJSONCodeBlockRegex = regexp.MustCompile("```(?:json)?\\s*\\n([\\s\\S]*?)\\n```")
+	batchJSONArrayRegex     = regexp.MustCompile(`(?s)(\[.*\])`)
+)
+
 // FixBatch processes multiple incidents of the same violation in one API call.
 // This reduces costs and execution time by batching similar fixes together.
 func (p *Provider) FixBatch(ctx context.Context, req provider.BatchRequest) (*provider.BatchResponse, error) {
@@ -124,16 +130,14 @@ func (p *Provider) parseBatchResponse(responseText string, incidents []violation
 
 // extractJSONFromMarkdown extracts JSON content from markdown code blocks
 func extractJSONFromMarkdown(text string) []byte {
-	// Try to find JSON in code blocks first
-	re := regexp.MustCompile("```(?:json)?\\s*\\n([\\s\\S]*?)\\n```")
-	matches := re.FindStringSubmatch(text)
+	// Try to find JSON in code blocks first using pre-compiled regex
+	matches := batchJSONCodeBlockRegex.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return []byte(strings.TrimSpace(matches[1]))
 	}
 
-	// Try to find raw JSON array
-	re = regexp.MustCompile(`(?s)(\[.*\])`)
-	matches = re.FindStringSubmatch(text)
+	// Try to find raw JSON array using pre-compiled regex
+	matches = batchJSONArrayRegex.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return []byte(strings.TrimSpace(matches[1]))
 	}

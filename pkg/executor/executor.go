@@ -113,14 +113,26 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 			result.ConfidenceStats.AppliedFixes += phaseResult.ConfidenceStats.AppliedFixes
 			result.ConfidenceStats.SkippedFixes += phaseResult.ConfidenceStats.SkippedFixes
 
-			// Merge complexity-level stats
-			for complexity, phaseComplexityStats := range phaseResult.ConfidenceStats.ByComplexity {
-				if _, ok := result.ConfidenceStats.ByComplexity[complexity]; !ok {
-					result.ConfidenceStats.ByComplexity[complexity] = &confidence.ComplexityStats{}
+			// Ensure the ByComplexity map is initialized
+			if result.ConfidenceStats.ByComplexity == nil {
+				result.ConfidenceStats.ByComplexity = make(map[string]*confidence.ComplexityStats)
+			}
+
+			// Merge complexity-level stats with nil checks
+			if phaseResult.ConfidenceStats.ByComplexity != nil {
+				for complexity, phaseComplexityStats := range phaseResult.ConfidenceStats.ByComplexity {
+					// Skip nil entries
+					if phaseComplexityStats == nil {
+						continue
+					}
+
+					if _, ok := result.ConfidenceStats.ByComplexity[complexity]; !ok {
+						result.ConfidenceStats.ByComplexity[complexity] = &confidence.ComplexityStats{}
+					}
+					result.ConfidenceStats.ByComplexity[complexity].Total += phaseComplexityStats.Total
+					result.ConfidenceStats.ByComplexity[complexity].Applied += phaseComplexityStats.Applied
+					result.ConfidenceStats.ByComplexity[complexity].Skipped += phaseComplexityStats.Skipped
 				}
-				result.ConfidenceStats.ByComplexity[complexity].Total += phaseComplexityStats.Total
-				result.ConfidenceStats.ByComplexity[complexity].Applied += phaseComplexityStats.Applied
-				result.ConfidenceStats.ByComplexity[complexity].Skipped += phaseComplexityStats.Skipped
 			}
 		}
 

@@ -69,51 +69,21 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 		IncidentURI: incident.URI,
 	}
 
-	// Get the file path
+	// Get the file path and validate it
 	filePath := incident.GetFilePath()
 
-	// Clean the path to normalize it and remove any ".." components
-	cleanPath := filepath.Clean(filePath)
-
-	// Make it relative to input directory if it's absolute
-	if filepath.IsAbs(cleanPath) {
-		// Try to make it relative to inputDir
-		absInputDir, _ := filepath.Abs(f.inputDir)
-		if strings.HasPrefix(cleanPath, absInputDir) {
-			cleanPath = strings.TrimPrefix(cleanPath, absInputDir)
-			cleanPath = strings.TrimPrefix(cleanPath, string(filepath.Separator))
-		} else {
-			// Path looks absolute but doesn't match input dir
-			// This happens with URIs like file:///src/file.java
-			// Strip leading slash(es) to make it relative
-			cleanPath = strings.TrimLeft(cleanPath, string(filepath.Separator))
-		}
-	}
-
-	// Build the full path and validate it's within inputDir (prevent path traversal)
-	fullPath := filepath.Join(f.inputDir, cleanPath)
-	absFullPath, err := filepath.Abs(fullPath)
+	// Resolve and validate the file path (prevents path traversal)
+	cleanPath, err := resolveAndValidateFilePath(filePath, f.inputDir)
 	if err != nil {
-		result.Error = fmt.Errorf("failed to resolve file path: %w", err)
-		return result, result.Error
-	}
-
-	absInputDir, err := filepath.Abs(f.inputDir)
-	if err != nil {
-		result.Error = fmt.Errorf("failed to resolve input directory: %w", err)
-		return result, result.Error
-	}
-
-	// Security check: ensure the resolved path is within the input directory
-	if !strings.HasPrefix(absFullPath, absInputDir+string(filepath.Separator)) &&
-		absFullPath != absInputDir {
-		result.Error = fmt.Errorf("security: file path '%s' resolves outside input directory '%s'",
-			cleanPath, f.inputDir)
-		return result, result.Error
+		result.Error = err
+		return result, err
 	}
 
 	// Store the relative file path for git tracking
 	result.FilePath = cleanPath
+
+	// Build full path for file operations
+	fullPath := filepath.Join(f.inputDir, cleanPath)
 
 	// Read the current file content
 	fileContent, err := os.ReadFile(fullPath)

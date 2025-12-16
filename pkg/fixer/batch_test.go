@@ -387,10 +387,8 @@ func TestBatchFixer_ResolveFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			config := DefaultBatchConfig()
-			bf := NewBatchFixer(nil, tt.inputDir, false, config)
-
-			result := bf.resolveFilePath(tt.filePath)
+			result, err := resolveAndValidateFilePath(tt.filePath, tt.inputDir)
+			require.NoError(t, err)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

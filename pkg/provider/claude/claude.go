@@ -22,6 +22,12 @@ const (
 	PlanningMaxTokens = 8192
 )
 
+var (
+	// Compiled regexes for JSON extraction (compiled once at package init time)
+	jsonCodeBlockRegex = regexp.MustCompile(`(?s)` + "```" + `(?:json)?\s*([\[{].*?[\]}])\s*` + "```")
+	jsonArrayRegex     = regexp.MustCompile(`(?s)(\[.*\])`)
+)
+
 // Provider implements the Claude AI provider
 type Provider struct {
 	client      *anthropic.Client
@@ -349,16 +355,14 @@ func parsePlanResponse(responseText string, violations []violation.Violation) ([
 
 // extractJSON extracts JSON from a response that might contain markdown code blocks
 func extractJSON(text string) string {
-	// Try to extract JSON from markdown code blocks
-	re := regexp.MustCompile(`(?s)` + "```" + `(?:json)?\s*([\[{].*?[\]}])\s*` + "```")
-	matches := re.FindStringSubmatch(text)
+	// Try to extract JSON from markdown code blocks using pre-compiled regex
+	matches := jsonCodeBlockRegex.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return matches[1]
 	}
 
-	// If no code blocks, try to find JSON array or object directly
-	re = regexp.MustCompile(`(?s)(\[.*\])`)
-	matches = re.FindStringSubmatch(text)
+	// If no code blocks, try to find JSON array or object directly using pre-compiled regex
+	matches = jsonArrayRegex.FindStringSubmatch(text)
 	if len(matches) > 1 {
 		return matches[1]
 	}

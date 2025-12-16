@@ -267,7 +267,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 	t.Run("default configuration", func(t *testing.T) {
 		config := ConfidenceConfig{}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.False(t, result.Enabled) // Default is disabled
 		assert.NotEmpty(t, result.Thresholds)
@@ -280,7 +281,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			Enabled: true,
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.True(t, result.Enabled)
 	})
@@ -290,7 +292,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			MinConfidence: 0.85,
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// All complexity thresholds should be set to 0.85
 		assert.Equal(t, 0.85, result.Thresholds["trivial"])
@@ -306,7 +309,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			MinConfidence: 0.0,
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// All thresholds should be 0.0
 		for _, threshold := range result.Thresholds {
@@ -320,7 +324,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			MinConfidence: 1.0,
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// All thresholds should be 1.0
 		for _, threshold := range result.Thresholds {
@@ -328,17 +333,14 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 		}
 	})
 
-	t.Run("negative min-confidence is ignored", func(t *testing.T) {
+	t.Run("negative min-confidence returns error", func(t *testing.T) {
 		config := ConfidenceConfig{
 			MinConfidence: -0.5,
 		}
 
-		result := config.ToConfidenceConfig()
-
-		// Should use default thresholds, not -0.5
-		assert.NotEqual(t, -0.5, result.Thresholds["trivial"])
-		// Check that it's using defaults (not all zeros)
-		assert.Greater(t, result.Thresholds["trivial"], 0.0)
+		_, err := config.ToConfidenceConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "min-confidence must be >= 0.0")
 	})
 
 	t.Run("specific complexity thresholds override defaults", func(t *testing.T) {
@@ -349,7 +351,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// Custom thresholds should be applied
 		assert.Equal(t, 0.95, result.Thresholds["high"])
@@ -368,7 +371,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// Specific overrides should win
 		assert.Equal(t, 0.95, result.Thresholds["high"])
@@ -379,7 +383,7 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 		assert.Equal(t, 0.80, result.Thresholds["medium"])
 	})
 
-	t.Run("invalid complexity level is ignored", func(t *testing.T) {
+	t.Run("invalid complexity level returns error", func(t *testing.T) {
 		config := ConfidenceConfig{
 			ComplexityThresholds: map[string]float64{
 				"invalid":  0.90,
@@ -388,51 +392,35 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
-
-		// Valid threshold should be applied
-		assert.Equal(t, 0.95, result.Thresholds["high"])
-		// Invalid levels should not be in map
-		_, exists := result.Thresholds["invalid"]
-		assert.False(t, exists)
-		_, exists = result.Thresholds["nonsense"]
-		assert.False(t, exists)
+		_, err := config.ToConfidenceConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid complexity level")
 	})
 
-	t.Run("threshold < 0.0 is ignored", func(t *testing.T) {
+	t.Run("threshold < 0.0 returns error", func(t *testing.T) {
 		config := ConfidenceConfig{
-			MinConfidence: -1.0, // Invalid - should be ignored, keeping defaults
 			ComplexityThresholds: map[string]float64{
 				"high":   -0.5,
 				"medium": 0.80,
 			},
 		}
 
-		result := config.ToConfidenceConfig()
-
-		// Valid threshold should be applied
-		assert.Equal(t, 0.80, result.Thresholds["medium"])
-		// Invalid threshold should not override default (high defaults to 0.90)
-		assert.NotEqual(t, -0.5, result.Thresholds["high"])
-		assert.Equal(t, 0.90, result.Thresholds["high"]) // Should be default value
+		_, err := config.ToConfidenceConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be between 0.0 and 1.0")
 	})
 
-	t.Run("threshold > 1.0 is ignored", func(t *testing.T) {
+	t.Run("threshold > 1.0 returns error", func(t *testing.T) {
 		config := ConfidenceConfig{
-			MinConfidence: -1.0, // Invalid - should be ignored, keeping defaults
 			ComplexityThresholds: map[string]float64{
 				"high":   1.5,
 				"medium": 0.80,
 			},
 		}
 
-		result := config.ToConfidenceConfig()
-
-		// Valid threshold should be applied
-		assert.Equal(t, 0.80, result.Thresholds["medium"])
-		// Invalid threshold should not override default (high defaults to 0.90)
-		assert.NotEqual(t, 1.5, result.Thresholds["high"])
-		assert.Equal(t, 0.90, result.Thresholds["high"]) // Should be default value
+		_, err := config.ToConfidenceConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "must be between 0.0 and 1.0")
 	})
 
 	t.Run("OnLowConfidence skip action", func(t *testing.T) {
@@ -440,7 +428,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			OnLowConfidence: "skip",
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.Equal(t, "skip", string(result.OnLowConfidence))
 	})
@@ -450,7 +439,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			OnLowConfidence: "warn-and-apply",
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.Equal(t, "warn-and-apply", string(result.OnLowConfidence))
 	})
@@ -460,20 +450,20 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			OnLowConfidence: "manual-review-file",
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.Equal(t, "manual-review-file", string(result.OnLowConfidence))
 	})
 
-	t.Run("OnLowConfidence default to skip for invalid value", func(t *testing.T) {
+	t.Run("OnLowConfidence returns error for invalid value", func(t *testing.T) {
 		config := ConfidenceConfig{
 			OnLowConfidence: "invalid-action",
 		}
 
-		result := config.ToConfidenceConfig()
-
-		// Should default to skip
-		assert.Equal(t, "skip", string(result.OnLowConfidence))
+		_, err := config.ToConfidenceConfig()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "invalid on-low-confidence action")
 	})
 
 	t.Run("OnLowConfidence default to skip for empty value", func(t *testing.T) {
@@ -481,7 +471,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			OnLowConfidence: "",
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		// Should default to skip
 		assert.Equal(t, "skip", string(result.OnLowConfidence))
@@ -498,7 +489,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.True(t, result.Enabled)
 		assert.Equal(t, "warn-and-apply", string(result.OnLowConfidence))
@@ -522,7 +514,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.Equal(t, 0.70, result.Thresholds["trivial"])
 		assert.Equal(t, 0.75, result.Thresholds["low"])
@@ -539,7 +532,8 @@ func TestConfidenceConfig_ToConfidenceConfig(t *testing.T) {
 			},
 		}
 
-		result := config.ToConfidenceConfig()
+		result, err := config.ToConfidenceConfig()
+		require.NoError(t, err)
 
 		assert.Equal(t, 0.0, result.Thresholds["trivial"])
 		assert.Equal(t, 1.0, result.Thresholds["expert"])

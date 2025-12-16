@@ -157,7 +157,15 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 			if fix.Success {
 				// Check confidence threshold before applying
 				shouldApply, reason := bf.confidenceConf.ShouldApplyFix(fix.Confidence, v.MigrationComplexity, v.Effort)
-				filePath := bf.resolveFilePath(getFilePathFromURI(fix.IncidentURI))
+
+				// Resolve and validate file path
+				filePath, err := resolveAndValidateFilePath(getFilePathFromURI(fix.IncidentURI), bf.inputDir)
+				if err != nil {
+					fixResult.Error = fmt.Errorf("invalid file path: %w", err)
+					fixResult.Success = false
+					allResults = append(allResults, fixResult)
+					continue
+				}
 				fullPath := filepath.Join(bf.inputDir, filePath)
 
 				if !shouldApply {
@@ -270,7 +278,19 @@ func (bf *BatchFixer) processBatch(ctx context.Context, job batchJob) ([]provide
 	// Load file contents for all incidents
 	fileContents := make(map[string]string)
 	for _, incident := range job.incidents {
-		filePath := bf.resolveFilePath(incident.GetFilePath())
+		// Check for context cancellation before expensive I/O
+		select {
+		case <-ctx.Done():
+			return nil, 0, 0, ctx.Err()
+		default:
+		}
+
+		// Resolve and validate file path (prevents path traversal)
+		filePath, err := resolveAndValidateFilePath(incident.GetFilePath(), bf.inputDir)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("invalid file path: %w", err)
+		}
+
 		fullPath := filepath.Join(bf.inputDir, filePath)
 
 		if _, exists := fileContents[fullPath]; !exists {
@@ -285,7 +305,10 @@ func (bf *BatchFixer) processBatch(ctx context.Context, job batchJob) ([]provide
 	// Detect language from first file
 	language := "unknown"
 	if len(job.incidents) > 0 {
-		filePath := bf.resolveFilePath(job.incidents[0].GetFilePath())
+		filePath, err := resolveAndValidateFilePath(job.incidents[0].GetFilePath(), bf.inputDir)
+		if err != nil {
+			return nil, 0, 0, fmt.Errorf("invalid file path: %w", err)
+		}
 		language = detectLanguage(filePath)
 	}
 
@@ -307,25 +330,6 @@ func (bf *BatchFixer) processBatch(ctx context.Context, job batchJob) ([]provide
 	// not that the batch processing itself failed. We return the fixes
 	// as-is and let the caller handle individual successes/failures.
 	return resp.Fixes, resp.Cost, resp.TokensUsed, nil
-}
-
-// resolveFilePath resolves a file path to be relative to inputDir
-func (bf *BatchFixer) resolveFilePath(filePath string) string {
-	// Make it relative to input directory if it's absolute
-	if filepath.IsAbs(filePath) {
-		// Try to make it relative to inputDir
-		absInputDir, _ := filepath.Abs(bf.inputDir)
-		if strings.HasPrefix(filePath, absInputDir) {
-			filePath = strings.TrimPrefix(filePath, absInputDir)
-			filePath = strings.TrimPrefix(filePath, string(filepath.Separator))
-		} else {
-			// Path looks absolute but doesn't match input dir
-			// This happens with URIs like file:///src/file.java
-			// Strip leading slash(es) to make it relative
-			filePath = strings.TrimLeft(filePath, string(filepath.Separator))
-		}
-	}
-	return filePath
 }
 
 // fixSequential falls back to sequential processing when batching is disabled
