@@ -14,6 +14,10 @@ import (
 const (
 	// GitHubAPITimeout is the timeout for GitHub API requests
 	GitHubAPITimeout = 30 * time.Second
+
+	// maxResponseSize is the maximum size of GitHub API responses to prevent memory exhaustion
+	// GitHub API responses are typically small, 10MB is generous
+	maxResponseSize = 10 * 1024 * 1024 // 10MB
 )
 
 // GitHubClient handles GitHub API interactions
@@ -162,8 +166,6 @@ func (c *GitHubClient) CreatePullRequest(req PullRequestRequest) (*PullRequestRe
 	defer resp.Body.Close()
 
 	// Read response body with size limit to prevent memory exhaustion
-	// GitHub API responses are typically small, 10MB is generous
-	const maxResponseSize = 10 * 1024 * 1024 // 10MB
 	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
 	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
@@ -211,8 +213,9 @@ func (c *GitHubClient) GetDefaultBranch() (string, error) {
 	}
 	defer resp.Body.Close()
 
-	// Read response
-	respBody, err := io.ReadAll(resp.Body)
+	// Read response with size limit to prevent memory exhaustion
+	limitedReader := io.LimitReader(resp.Body, maxResponseSize)
+	respBody, err := io.ReadAll(limitedReader)
 	if err != nil {
 		return "", fmt.Errorf("failed to read response: %w", err)
 	}

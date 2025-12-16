@@ -16,7 +16,7 @@ import (
 
 const (
 	// ReviewFileName is the name of the manual review file for low-confidence fixes
-	ReviewFileName = "ReviewFileName"
+	ReviewFileName = ".kantra-ai-review.yaml"
 )
 
 // Fixer applies AI-generated fixes to files
@@ -72,25 +72,48 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 	// Get the file path
 	filePath := incident.GetFilePath()
 
+	// Clean the path to normalize it and remove any ".." components
+	cleanPath := filepath.Clean(filePath)
+
 	// Make it relative to input directory if it's absolute
-	if filepath.IsAbs(filePath) {
+	if filepath.IsAbs(cleanPath) {
 		// Try to make it relative to inputDir
 		absInputDir, _ := filepath.Abs(f.inputDir)
-		if strings.HasPrefix(filePath, absInputDir) {
-			filePath = strings.TrimPrefix(filePath, absInputDir)
-			filePath = strings.TrimPrefix(filePath, string(filepath.Separator))
+		if strings.HasPrefix(cleanPath, absInputDir) {
+			cleanPath = strings.TrimPrefix(cleanPath, absInputDir)
+			cleanPath = strings.TrimPrefix(cleanPath, string(filepath.Separator))
 		} else {
 			// Path looks absolute but doesn't match input dir
 			// This happens with URIs like file:///src/file.java
 			// Strip leading slash(es) to make it relative
-			filePath = strings.TrimLeft(filePath, string(filepath.Separator))
+			cleanPath = strings.TrimLeft(cleanPath, string(filepath.Separator))
 		}
 	}
 
-	// Store the relative file path for git tracking
-	result.FilePath = filePath
+	// Build the full path and validate it's within inputDir (prevent path traversal)
+	fullPath := filepath.Join(f.inputDir, cleanPath)
+	absFullPath, err := filepath.Abs(fullPath)
+	if err != nil {
+		result.Error = fmt.Errorf("failed to resolve file path: %w", err)
+		return result, result.Error
+	}
 
-	fullPath := filepath.Join(f.inputDir, filePath)
+	absInputDir, err := filepath.Abs(f.inputDir)
+	if err != nil {
+		result.Error = fmt.Errorf("failed to resolve input directory: %w", err)
+		return result, result.Error
+	}
+
+	// Security check: ensure the resolved path is within the input directory
+	if !strings.HasPrefix(absFullPath, absInputDir+string(filepath.Separator)) &&
+		absFullPath != absInputDir {
+		result.Error = fmt.Errorf("security: file path '%s' resolves outside input directory '%s'",
+			cleanPath, f.inputDir)
+		return result, result.Error
+	}
+
+	// Store the relative file path for git tracking
+	result.FilePath = cleanPath
 
 	// Read the current file content
 	fileContent, err := os.ReadFile(fullPath)
@@ -168,7 +191,7 @@ func (f *Fixer) FixIncident(ctx context.Context, v violation.Violation, incident
 			} else {
 				fmt.Printf("  ⚠ Low confidence: %s\n", fullPath)
 				fmt.Printf("    Reason: %s\n", reason)
-				fmt.Printf("    Added to ReviewFileName for manual review\n")
+				fmt.Printf("    Added to %s for manual review\n", ReviewFileName)
 			}
 			return result, nil
 		}
@@ -271,7 +294,7 @@ func (f *Fixer) writeToReviewFile(v violation.Violation, incident violation.Inci
 	reviewFileMutex.Lock()
 	defer reviewFileMutex.Unlock()
 
-	reviewPath := filepath.Join(f.inputDir, "ReviewFileName")
+	reviewPath := filepath.Join(f.inputDir, ReviewFileName)
 
 	// Load existing reviews if file exists
 	var reviews []ReviewItem

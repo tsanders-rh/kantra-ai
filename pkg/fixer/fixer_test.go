@@ -360,7 +360,7 @@ func TestWriteToReviewFile(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify review file was created
-		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		reviewPath := filepath.Join(tmpDir, ReviewFileName)
 		data, err := os.ReadFile(reviewPath)
 		require.NoError(t, err)
 
@@ -404,7 +404,7 @@ func TestWriteToReviewFile(t *testing.T) {
 		require.NoError(t, err)
 
 		// Verify both reviews are in file
-		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		reviewPath := filepath.Join(tmpDir, ReviewFileName)
 		data, err := os.ReadFile(reviewPath)
 		require.NoError(t, err)
 
@@ -424,7 +424,7 @@ func TestWriteToReviewFile(t *testing.T) {
 		fixer := New(mockProvider, tmpDir, false)
 
 		// Write corrupt YAML to review file
-		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		reviewPath := filepath.Join(tmpDir, ReviewFileName)
 		err := os.WriteFile(reviewPath, []byte("invalid yaml: [[[ :::"), 0644)
 		require.NoError(t, err)
 
@@ -465,7 +465,7 @@ func TestWriteToReviewFile(t *testing.T) {
 		assert.True(t, os.IsNotExist(err), "Temporary file should be cleaned up")
 
 		// Verify final file exists
-		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		reviewPath := filepath.Join(tmpDir, ReviewFileName)
 		_, err = os.Stat(reviewPath)
 		assert.NoError(t, err, "Review file should exist")
 	})

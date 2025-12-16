@@ -5,8 +5,74 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 )
+
+var (
+	// validBranchNameRegex matches valid git branch names
+	// Allows alphanumeric, dashes, underscores, slashes, and dots
+	// but prevents starting with dot, dash, or having consecutive dots
+	validBranchNameRegex = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9._/-]*$`)
+)
+
+// validateBranchName checks if a branch name is safe to use in git commands
+func validateBranchName(branchName string) error {
+	if branchName == "" {
+		return fmt.Errorf("branch name cannot be empty")
+	}
+	if len(branchName) > 255 {
+		return fmt.Errorf("branch name too long (max 255 characters)")
+	}
+	if strings.Contains(branchName, "..") {
+		return fmt.Errorf("branch name cannot contain '..'")
+	}
+	if strings.HasPrefix(branchName, ".") {
+		return fmt.Errorf("branch name cannot start with '.'")
+	}
+	if strings.HasPrefix(branchName, "-") {
+		return fmt.Errorf("branch name cannot start with '-'")
+	}
+	if !validBranchNameRegex.MatchString(branchName) {
+		return fmt.Errorf("branch name contains invalid characters")
+	}
+	return nil
+}
+
+// validateFilePath checks if a file path is safe to use in git commands
+// It prevents path traversal and ensures the path is within the working directory
+func validateFilePath(workingDir, filePath string) (string, error) {
+	// Clean the path to normalize it
+	cleanPath := filepath.Clean(filePath)
+
+	// Resolve to absolute path
+	var absPath string
+	if filepath.IsAbs(cleanPath) {
+		absPath = cleanPath
+	} else {
+		absPath = filepath.Join(workingDir, cleanPath)
+	}
+
+	// Get absolute working directory
+	absWorkingDir, err := filepath.Abs(workingDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to resolve working directory: %w", err)
+	}
+
+	// Ensure the file is within the working directory
+	if !strings.HasPrefix(absPath, absWorkingDir+string(filepath.Separator)) &&
+		absPath != absWorkingDir {
+		return "", fmt.Errorf("file path '%s' is outside working directory", filePath)
+	}
+
+	// Return the clean relative path
+	relPath, err := filepath.Rel(absWorkingDir, absPath)
+	if err != nil {
+		return "", fmt.Errorf("failed to make path relative: %w", err)
+	}
+
+	return relPath, nil
+}
 
 // IsGitRepository checks if the given directory is a git repository
 func IsGitRepository(dir string) bool {
@@ -31,10 +97,16 @@ func HasUncommittedChanges(dir string) (bool, error) {
 
 // StageFile stages a specific file for commit
 func StageFile(workingDir string, filePath string) error {
-	cmd := exec.Command("git", "add", filePath)
+	// Validate and sanitize the file path to prevent command injection
+	cleanPath, err := validateFilePath(workingDir, filePath)
+	if err != nil {
+		return fmt.Errorf("invalid file path: %w", err)
+	}
+
+	cmd := exec.Command("git", "add", cleanPath)
 	cmd.Dir = workingDir
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to stage file %s: %w\nOutput: %s", filePath, err, string(output))
+		return fmt.Errorf("failed to stage file %s: %w\nOutput: %s", cleanPath, err, string(output))
 	}
 	return nil
 }
@@ -78,6 +150,11 @@ func GetCurrentBranch(workingDir string) (string, error) {
 
 // CreateBranch creates and checks out a new branch
 func CreateBranch(workingDir string, branchName string) error {
+	// Validate branch name to prevent command injection
+	if err := validateBranchName(branchName); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.Command("git", "checkout", "-b", branchName)
 	cmd.Dir = workingDir
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -88,6 +165,11 @@ func CreateBranch(workingDir string, branchName string) error {
 
 // CheckoutBranch checks out an existing branch
 func CheckoutBranch(workingDir string, branchName string) error {
+	// Validate branch name to prevent command injection
+	if err := validateBranchName(branchName); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.Command("git", "checkout", branchName)
 	cmd.Dir = workingDir
 	if output, err := cmd.CombinedOutput(); err != nil {
@@ -98,6 +180,11 @@ func CheckoutBranch(workingDir string, branchName string) error {
 
 // PushBranch pushes a branch to remote origin
 func PushBranch(workingDir string, branchName string) error {
+	// Validate branch name to prevent command injection
+	if err := validateBranchName(branchName); err != nil {
+		return fmt.Errorf("invalid branch name: %w", err)
+	}
+
 	cmd := exec.Command("git", "push", "-u", "origin", branchName)
 	cmd.Dir = workingDir
 	if output, err := cmd.CombinedOutput(); err != nil {
