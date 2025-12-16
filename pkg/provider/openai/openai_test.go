@@ -124,7 +124,7 @@ func TestGeneratePlan(t *testing.T) {
 		}
 
 		ctx := context.Background()
-		resp, err := p.GeneratePlan(ctx, req)
+		resp, _ := p.GeneratePlan(ctx, req)
 
 		assert.NotNil(t, resp)
 		require.Error(t, resp.Error)
