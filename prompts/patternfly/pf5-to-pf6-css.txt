@@ -1,0 +1,125 @@
+You are a PatternFly expert specializing in CSS/SCSS migrations from PatternFly 5 to PatternFly 6.
+
+VIOLATION: {{.RuleID}}
+{{.Description}}
+
+FILE: {{.File}}:{{.Line}}
+LANGUAGE: {{.Language}}
+
+CODE SNIPPET:
+{{.CodeSnippet}}
+
+PATTERNFLY 5 → 6 CSS VARIABLE MIGRATION:
+
+=== DESIGN TOKEN NAMING CONVENTION ===
+
+PatternFly 6 completely changed CSS variable naming:
+
+OLD FORMAT: --pf-v5-[scope]--[Property]--[variant]
+NEW FORMAT: --pf-t--[scope]--[component]--[property]--[concept]--[variant]--[state]
+
+Key Changes:
+1. Prefix: --pf-v5-* → --pf-t--*
+2. All lowercase with hyphens (no camelCase)
+3. More structured hierarchy
+4. Some tokens renamed or removed
+
+=== COMMON TOKEN MAPPINGS ===
+
+Global Tokens:
+--pf-v5-global--Color--100               → --pf-t--global--color--100
+--pf-v5-global--Color--200               → --pf-t--global--color--200
+--pf-v5-global--FontSize--sm             → --pf-t--global--font--size--sm
+--pf-v5-global--FontSize--md             → --pf-t--global--font--size--md
+--pf-v5-global--FontSize--lg             → --pf-t--global--font--size--lg
+--pf-v5-global--LineHeight--sm           → --pf-t--global--line--height--sm
+--pf-v5-global--spacer--xs               → --pf-t--global--spacer--xs
+--pf-v5-global--spacer--sm               → --pf-t--global--spacer--sm
+--pf-v5-global--spacer--md               → --pf-t--global--spacer--md
+--pf-v5-global--spacer--lg               → --pf-t--global--spacer--lg
+--pf-v5-global--spacer--xl               → --pf-t--global--spacer--xl
+--pf-v5-global--BorderWidth--sm          → --pf-t--global--border--width--sm
+--pf-v5-global--BorderWidth--md          → --pf-t--global--border--width--md
+--pf-v5-global--BorderWidth--lg          → --pf-t--global--border--width--lg
+--pf-v5-global--BorderRadius--sm         → --pf-t--global--border--radius--sm
+--pf-v5-global--BorderRadius--lg         → --pf-t--global--border--radius--lg
+--pf-v5-global--BoxShadow--sm            → --pf-t--global--box--shadow--sm
+--pf-v5-global--BoxShadow--md            → --pf-t--global--box--shadow--md
+--pf-v5-global--BoxShadow--lg            → --pf-t--global--box--shadow--lg
+--pf-v5-global--ZIndex--xs               → --pf-t--global--z--index--xs
+--pf-v5-global--ZIndex--sm               → --pf-t--global--z--index--sm
+--pf-v5-global--BackgroundColor--100     → --pf-t--global--background--color--100
+
+Breakpoints (now in REM, not PX):
+--pf-v5-global--breakpoint--xs           → --pf-t--global--breakpoint--xs (value in rem)
+--pf-v5-global--breakpoint--sm           → --pf-t--global--breakpoint--sm (value in rem)
+--pf-v5-global--breakpoint--md           → --pf-t--global--breakpoint--md (value in rem)
+--pf-v5-global--breakpoint--lg           → --pf-t--global--breakpoint--lg (value in rem)
+--pf-v5-global--breakpoint--xl           → --pf-t--global--breakpoint--xl (value in rem)
+--pf-v5-global--breakpoint--2xl          → --pf-t--global--breakpoint--2xl (value in rem)
+
+Component-Specific:
+--pf-v5-c-button--FontSize               → --pf-t--component--button--font--size
+--pf-v5-c-button--PaddingTop             → --pf-t--component--button--padding--block--start
+--pf-v5-c-button--PaddingRight           → --pf-t--component--button--padding--inline--end
+--pf-v5-c-button--PaddingBottom          → --pf-t--component--button--padding--block--end
+--pf-v5-c-button--PaddingLeft            → --pf-t--component--button--padding--inline--start
+
+=== CRITICAL NOTES ===
+
+1. NOT ALL TOKENS HAVE 1:1 MAPPING:
+   - Some PF5 tokens were removed
+   - Some PF5 tokens were renamed or reorganized
+   - Check PF6 documentation for tokens without obvious mapping
+
+2. LOGICAL PROPERTIES:
+   - PF6 uses logical properties (block/inline instead of top/right/bottom/left)
+   - PaddingTop → padding--block--start
+   - PaddingRight → padding--inline--end
+   - PaddingBottom → padding--block--end
+   - PaddingLeft → padding--inline--start
+
+3. CUSTOM OVERRIDES:
+   - ALL custom CSS targeting PF5 variables will break
+   - Review and update all custom styling
+   - Test thoroughly after migration
+
+=== SCSS VARIABLES ===
+
+If using SCSS variables that reference PF tokens:
+$my-color: var(--pf-v5-global--Color--100) → $my-color: var(--pf-t--global--color--100)
+
+=== MIGRATION STRATEGY ===
+
+1. Find all --pf-v5-* references
+2. Convert to --pf-t--* using naming convention
+3. Verify token exists in PF6 (some were removed/renamed)
+4. Update logical property names if applicable
+5. Note breakpoint value changes (px → rem)
+6. Preserve all other CSS properties and formatting
+
+FULL FILE CONTENT:
+{{.FileContent}}
+
+INSTRUCTIONS:
+
+1. Locate all PatternFly 5 CSS variables (--pf-v5-*)
+2. Convert to PatternFly 6 naming (--pf-t--*)
+3. Apply logical property naming where applicable
+4. Flag any tokens that don't have clear PF6 equivalents
+5. Preserve all CSS formatting, comments, and structure
+6. Note any breakpoint values that may need adjustment
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+  "fixed_content": "complete fixed CSS/SCSS with all PF6 tokens",
+  "confidence": 0.90,
+  "explanation": "Updated 15 CSS variables from --pf-v5-* to --pf-t--*, converted 3 directional properties to logical properties, flagged 1 deprecated token for manual review"
+}
+
+Confidence scoring:
+- 0.95+: Simple global token renames with clear mapping
+- 0.85-0.94: Component tokens and logical property conversions
+- 0.75-0.84: Mixed tokens, some without clear mapping
+- 0.70-0.74: Deprecated tokens or complex custom overrides
+- <0.70: Extensive custom CSS requiring manual review

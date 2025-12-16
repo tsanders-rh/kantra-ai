@@ -1,0 +1,159 @@
+# PatternFly 5 → 6 Migration Configuration Example
+# Copy this to your project root as .kantra-ai.yaml
+
+# AI Provider Configuration
+provider:
+  name: claude  # or 'openai', 'groq', 'ollama', etc.
+  model: claude-sonnet-4-20250514  # Latest Claude Sonnet
+  # For OpenAI: model: gpt-4-turbo
+  # For Groq: model: llama-3.1-70b-versatile
+
+# Project Paths
+paths:
+  analysis: ./analysis/output.yaml  # Konveyor analysis output
+  input: ./src  # Your source code directory
+
+# PatternFly-Specific Prompts
+prompts:
+  # Base templates
+  single-fix-template: ./prompts/patternfly/pf5-to-pf6-typescript.txt
+  batch-fix-template: ./prompts/patternfly/pf5-to-pf6-batch.txt
+
+  # Language-specific overrides
+  language-templates:
+    # TypeScript/JavaScript React components
+    typescript:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-typescript.txt
+      batch-fix: ./prompts/patternfly/pf5-to-pf6-batch.txt
+
+    tsx:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-typescript.txt
+      batch-fix: ./prompts/patternfly/pf5-to-pf6-batch.txt
+
+    javascript:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-typescript.txt
+      batch-fix: ./prompts/patternfly/pf5-to-pf6-batch.txt
+
+    jsx:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-typescript.txt
+      batch-fix: ./prompts/patternfly/pf5-to-pf6-batch.txt
+
+    # CSS/SCSS files
+    css:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-css.txt
+
+    scss:
+      single-fix: ./prompts/patternfly/pf5-to-pf6-css.txt
+
+# Confidence Filtering (Recommended for PatternFly)
+confidence:
+  enabled: true
+
+  # Action when AI confidence is below threshold
+  on-low-confidence: manual-review-file  # Options: skip, warn-and-apply, manual-review-file
+
+  # Review file for low-confidence fixes
+  review-file: ./pf-migration-review.yaml
+
+  # Higher thresholds for PatternFly due to breaking changes
+  complexity-thresholds:
+    trivial: 0.85   # Design token renames
+    low: 0.85       # Simple component updates
+    medium: 0.90    # Component migrations (Modal, Table, etc.)
+    high: 0.95      # Complex custom components
+    expert: 0.98    # Extensive customization requiring manual work
+
+# Batch Processing (Highly Recommended)
+batch:
+  enabled: true
+  max-batch-size: 10  # Process up to 10 similar violations together
+  parallelism: 4      # Run 4 batches concurrently
+
+# Cost Controls
+limits:
+  max-cost: 20.00    # Stop if cost exceeds $20
+  # max-effort: 7    # Optional: only fix violations with effort <= 7
+
+# Filters
+filters:
+  # Focus on mandatory violations first
+  categories:
+    - mandatory
+    # - optional  # Uncomment for optional fixes too
+
+  # Optional: Specific violation IDs
+  # violation-ids:
+  #   - pf-design-token-update
+  #   - pf-component-migration
+
+# Verification (Recommended)
+verification:
+  enabled: true
+  type: build        # Options: build, test
+  strategy: at-end   # Options: per-fix, per-violation, at-end
+  command: npm run build  # Custom build command
+  fail-fast: false   # Continue even if verification fails
+
+# Git Integration
+git:
+  commit-strategy: per-violation  # Options: per-violation, per-incident, at-end
+  create-pr: false   # Set to true to auto-create GitHub PR
+  # branch: feature/pf6-migration  # Optional: custom branch name
+
+# Dry Run Mode (Recommended for First Run)
+# Uncomment to preview changes without applying them
+# dry-run: true
+
+# ============================================================
+# USAGE EXAMPLES
+# ============================================================
+
+# 1. DRY RUN - Preview changes without applying
+#    kantra-ai remediate --dry-run
+
+# 2. BASIC RUN - Apply fixes with default settings
+#    kantra-ai remediate
+
+# 3. PHASED MIGRATION - For large projects
+#    Step 1: kantra-ai plan
+#    Step 2: Review .kantra-ai-plan.html
+#    Step 3: kantra-ai execute
+
+# 4. START WITH EASY WINS - Design tokens only
+#    kantra-ai remediate --max-effort=3
+
+# 5. FULL MIGRATION - All violations with verification
+#    kantra-ai remediate --verify=build --git-commit=per-violation
+
+# ============================================================
+# EXPECTED RESULTS
+# ============================================================
+
+# For a typical React app with PatternFly:
+# - 500-1000 design token updates (high success rate)
+# - 50-200 component import changes (high success rate)
+# - 20-100 component prop updates (medium success rate)
+# - 100-500 CSS override updates (medium success rate)
+#
+# Estimated cost: $3.50-$9.50
+# Estimated time: 20-40 minutes
+# Expected success rate: 80-95% for trivial/low complexity
+
+# ============================================================
+# TROUBLESHOOTING
+# ============================================================
+
+# Low confidence scores?
+# - Check that prompt files exist at specified paths
+# - Verify language detection is working correctly
+# - Review complex custom code in manual-review-file
+
+# Incorrect fixes?
+# - Use --dry-run to preview before applying
+# - Refine prompts based on your codebase patterns
+# - Check for custom PatternFly wrappers
+
+# Missing fixes?
+# - Check filters (categories, effort, violation-ids)
+# - Review Konveyor analysis for violation details
+# - Look for errors in execution logs

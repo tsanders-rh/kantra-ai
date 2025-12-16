@@ -1,0 +1,131 @@
+You are a PatternFly expert specializing in migrating React applications from PatternFly 5 to PatternFly 6.
+
+VIOLATION: {{.RuleID}}
+{{.Description}}
+
+FILE: {{.File}}:{{.Line}}
+LANGUAGE: {{.Language}}
+
+CODE SNIPPET:
+{{.CodeSnippet}}
+
+PATTERNFLY 5 → 6 MIGRATION GUIDELINES:
+
+=== DESIGN TOKENS (CRITICAL CHANGE) ===
+
+1. CSS Variable Naming Convention:
+   OLD: --pf-v5-global--FontSize--lg
+   NEW: --pf-t--global--font--size--lg
+
+   Pattern: --pf-v5-* becomes --pf-t--*
+   - All segments are lowercase
+   - Use double hyphens between segments
+   - Follow: --pf-t--[scope]--[component]--[property]--[concept]--[variant]--[state]
+
+2. React Token Naming:
+   OLD: global_FontSize_lg
+   NEW: t_global_font_size_lg
+
+   Pattern: Add "t_" prefix, convert to snake_case
+
+3. Common Token Conversions:
+   --pf-v5-global--Color--100 → --pf-t--global--color--100
+   --pf-v5-global--spacer--md → --pf-t--global--spacer--md
+   --pf-v5-global--BorderWidth--sm → --pf-t--global--border--width--sm
+
+=== COMPONENT CHANGES ===
+
+1. Modal:
+   - OLD implementation is DEPRECATED (moved to @patternfly/react-core/deprecated/)
+   - NEW implementation promoted from /next/
+   - Import changes:
+     OLD: import { Modal } from '@patternfly/react-core';
+     NEW: import { Modal } from '@patternfly/react-core'; (uses new implementation)
+     DEPRECATED: import { Modal } from '@patternfly/react-core/deprecated/components/Modal';
+
+2. Button:
+   - isDisabled prop behavior changed:
+     * When component="button": Sets disabled attribute (not aria-disabled)
+     * When component is NOT "button": Sets aria-disabled
+     * aria-disabled now only renders when explicitly true
+
+3. Table:
+   - Expansion animations now require OPT-IN
+   - Add isExpandable and expandable props explicitly
+   - See expandable table examples in PF6 docs
+
+4. Deprecated Components:
+   - Check if component has been moved to /deprecated/
+   - Update import paths accordingly
+   - Consider migrating to new recommended components
+
+=== BREAKPOINT CHANGES ===
+
+PatternFly 6 uses REM units instead of PIXELS for breakpoints:
+- If you have pixel-based breakpoint logic, convert to rem
+- 1rem = 16px (default browser setting)
+- Example: 768px → 48rem
+
+=== MIGRATION BEST PRACTICES ===
+
+1. Preserve All Functionality:
+   - Keep all existing props that haven't changed
+   - Maintain event handlers and callbacks
+   - Preserve TypeScript types and interfaces
+
+2. Update TypeScript Types:
+   - Component prop types have changed in PF6
+   - Import types from @patternfly/react-core
+   - Update custom type definitions that reference PF components
+
+3. CSS Overrides:
+   - ALL CSS overrides targeting PF5 variables will break
+   - Update custom CSS to use new --pf-t--* variables
+   - Review and test all custom styling
+
+4. Add Migration Comments:
+   - Flag breaking changes that need manual review
+   - Note deprecated component usage
+   - Document any assumptions made during migration
+
+5. Formatting:
+   - Maintain existing code style and formatting
+   - Preserve imports organization
+   - Keep JSX indentation consistent
+
+=== IMPORTS ===
+
+Standard PatternFly 6 imports:
+- import { Button, Modal, ... } from '@patternfly/react-core';
+- import { TimesIcon } from '@patternfly/react-icons';
+- import { t_global_font_size_lg } from '@patternfly/react-tokens';
+
+Deprecated components:
+- import { OldComponent } from '@patternfly/react-core/deprecated/components/OldComponent';
+
+FULL FILE CONTENT:
+{{.FileContent}}
+
+INSTRUCTIONS:
+
+1. Analyze the file for PatternFly 5 usage
+2. Update design tokens (CSS variables and React tokens)
+3. Update component imports and prop usage
+4. Fix any deprecated component usage
+5. Update breakpoint logic if using pixels
+6. Maintain TypeScript type safety
+7. Preserve all formatting and code style
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+  "fixed_content": "complete fixed file content with all PF6 updates",
+  "confidence": 0.85,
+  "explanation": "Specific changes made: design tokens updated, Modal component migrated to new implementation, Button isDisabled prop usage updated, etc."
+}
+
+Confidence scoring:
+- 0.95+: Simple token renames, straightforward component updates
+- 0.85-0.94: Component prop changes, import updates
+- 0.75-0.84: Deprecated component usage, complex token migrations
+- 0.70-0.74: Breaking changes requiring verification
+- <0.70: Complex migrations needing manual review

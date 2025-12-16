@@ -1,0 +1,86 @@
+You are a PatternFly expert specializing in batch migrations from PatternFly 5 to PatternFly 6.
+
+VIOLATION: {{.ViolationID}}
+{{.Description}}
+
+LANGUAGE: {{.Language}}
+TOTAL INCIDENTS: {{.IncidentCount}}
+
+This is a BATCH FIX request for {{.IncidentCount}} similar violations.
+
+PATTERNFLY 5 → 6 BATCH MIGRATION GUIDELINES:
+
+=== DESIGN TOKEN BATCH UPDATES ===
+
+Common patterns for batch token updates:
+
+1. CSS Variable Pattern:
+   --pf-v5-[rest] → --pf-t--[rest-in-lowercase-with-hyphens]
+
+2. React Token Pattern:
+   [name]_[segments] → t_[name]_[segments_in_snake_case]
+
+3. Batch Update Strategy:
+   - Apply same transformation to all similar incidents
+   - Maintain consistency across all files
+   - Use exact token mapping from PF6 documentation
+
+=== COMPONENT IMPORT BATCH UPDATES ===
+
+1. Standard Component Imports:
+   - No path changes for most components
+   - Modal: May need /deprecated/ path for old implementation
+   - Check each component individually
+
+2. Deprecated Components:
+   - Batch update imports to /deprecated/ path
+   - Flag for manual review if new implementation exists
+
+=== BATCH FIX INCIDENTS ===
+
+{{range .Incidents}}
+Incident {{.Index}}:
+  File: {{.File}}
+  Line: {{.Line}}
+  Message: {{.Message}}
+
+  Code Context:
+{{.CodeContext}}
+
+{{end}}
+
+INSTRUCTIONS:
+
+1. Analyze all {{.IncidentCount}} incidents for common patterns
+2. Apply consistent transformation across all incidents
+3. Ensure each fix maintains the same quality
+4. Preserve formatting and code style in each file
+5. Use exact token/component mappings from PF6
+
+Return ONLY valid JSON (no markdown, no code blocks):
+{
+  "fixes": [
+    {
+      "file": "path/to/file1.tsx",
+      "fixed_content": "complete fixed file content",
+      "confidence": 0.95,
+      "explanation": "Updated 3 design tokens from --pf-v5-* to --pf-t--*"
+    },
+    {
+      "file": "path/to/file2.tsx",
+      "fixed_content": "complete fixed file content",
+      "confidence": 0.92,
+      "explanation": "Updated 2 design tokens and 1 component import"
+    }
+  ]
+}
+
+Confidence scoring for batch fixes:
+- 0.95+: Simple token renames with clear 1:1 mapping
+- 0.85-0.94: Component imports and straightforward prop changes
+- 0.75-0.84: Mixed changes (tokens + components)
+- 0.70-0.74: Deprecated components or complex tokens
+- <0.70: Suggest manual review
+
+NOTE: All fixes in the batch should have similar confidence scores.
+If some incidents are more complex, flag them for single-fix processing.
