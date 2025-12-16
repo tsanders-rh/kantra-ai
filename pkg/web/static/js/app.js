@@ -15,6 +15,7 @@ class PlanApp {
             await this.loadPlan();
             this.render();
             this.attachEventListeners();
+            this.initializeSortable();
             this.connectWebSocket();
         } catch (error) {
             console.error('Failed to initialize app:', error);
@@ -293,6 +294,7 @@ class PlanApp {
         const status = phase.Deferred ? 'deferred' : (this.isPhaseApproved(phase) ? 'approved' : 'pending');
         const statusText = status.charAt(0).toUpperCase() + status.slice(1);
         const riskIcon = this.getRiskIcon(phase.Risk);
+        const riskWarning = this.renderRiskWarning(phase);
 
         return `
             <div class="phase ${status}" data-phase-id="${phase.ID}">
@@ -301,6 +303,7 @@ class PlanApp {
                     <span class="status-badge ${status}">${statusText}</span>
                 </div>
                 <div class="phase-content">
+                    ${riskWarning}
                     <div class="phase-meta">
                         <span class="risk ${phase.Risk}">${riskIcon} ${phase.Risk.toUpperCase()} RISK</span>
                         <span>${this.escapeHtml(phase.Category)}</span>
@@ -325,8 +328,24 @@ class PlanApp {
                     <!-- Expandable details section -->
                     <div class="phase-details hidden" id="details-${phase.ID}">
                         <div class="details-content">
-                            <h4>Detailed Violations:</h4>
-                            ${phase.Violations.map(v => this.renderViolationDetails(v)).join('')}
+                            <div class="violation-filter-controls">
+                                <h4>Detailed Violations:</h4>
+                                <div class="filter-actions">
+                                    <button class="btn btn-info btn-sm" onclick="app.selectAllViolations('${phase.ID}')">
+                                        <i class="fas fa-check-square"></i> Select All
+                                    </button>
+                                    <button class="btn btn-info btn-sm" onclick="app.deselectAllViolations('${phase.ID}')">
+                                        <i class="fas fa-square"></i> Deselect All
+                                    </button>
+                                    <button class="btn btn-info btn-sm" onclick="app.filterByEffort('${phase.ID}', 5)">
+                                        Select Low/Medium Effort
+                                    </button>
+                                </div>
+                                <div class="selection-summary" id="selection-summary-${phase.ID}">
+                                    <span class="selected-count">All ${phase.Violations.length} violations selected</span>
+                                </div>
+                            </div>
+                            ${phase.Violations.map(v => this.renderViolationDetails(v, phase.ID)).join('')}
                         </div>
                     </div>
 
@@ -346,13 +365,20 @@ class PlanApp {
         `;
     }
 
-    renderViolationDetails(violation) {
+    renderViolationDetails(violation, phaseID) {
         const violationId = violation.ViolationID.replace(/[^a-zA-Z0-9]/g, '-');
 
         return `
             <div class="violation-detail" data-violation-id="${violationId}">
                 <div class="violation-header">
-                    <strong>${this.escapeHtml(violation.ViolationID)}</strong>
+                    <label class="violation-checkbox">
+                        <input type="checkbox"
+                               checked
+                               onchange="app.toggleViolation('${phaseID}', '${violationId}')"
+                               data-phase-id="${phaseID}"
+                               data-violation-id="${violationId}">
+                        <strong>${this.escapeHtml(violation.ViolationID)}</strong>
+                    </label>
                     <span class="violation-meta">
                         ${violation.IncidentCount} incident${violation.IncidentCount !== 1 ? 's' : ''} •
                         Effort: ${violation.Effort}
@@ -574,6 +600,68 @@ class PlanApp {
         }
     }
 
+    toggleViolation(phaseId, violationId) {
+        this.updateSelectionSummary(phaseId);
+    }
+
+    selectAllViolations(phaseId) {
+        const checkboxes = document.querySelectorAll(`input[data-phase-id="${phaseId}"]`);
+        checkboxes.forEach(cb => cb.checked = true);
+        this.updateSelectionSummary(phaseId);
+    }
+
+    deselectAllViolations(phaseId) {
+        const checkboxes = document.querySelectorAll(`input[data-phase-id="${phaseId}"]`);
+        checkboxes.forEach(cb => cb.checked = false);
+        this.updateSelectionSummary(phaseId);
+    }
+
+    filterByEffort(phaseId, maxEffort) {
+        const phase = this.plan.Phases.find(p => p.ID === phaseId);
+        if (!phase) return;
+
+        const checkboxes = document.querySelectorAll(`input[data-phase-id="${phaseId}"]`);
+        checkboxes.forEach(cb => {
+            const violationId = cb.dataset.violationId;
+            const originalViolationId = violationId.replace(/-/g, match => {
+                // Try to find the original violation to check its effort
+                const violation = phase.Violations.find(v =>
+                    v.ViolationID.replace(/[^a-zA-Z0-9]/g, '-') === violationId
+                );
+                return violation ? '' : match;
+            });
+
+            const violation = phase.Violations.find(v =>
+                v.ViolationID.replace(/[^a-zA-Z0-9]/g, '-') === violationId
+            );
+
+            if (violation) {
+                cb.checked = (violation.Effort || 0) <= maxEffort;
+            }
+        });
+        this.updateSelectionSummary(phaseId);
+    }
+
+    updateSelectionSummary(phaseId) {
+        const summaryEl = document.getElementById(`selection-summary-${phaseId}`);
+        if (!summaryEl) return;
+
+        const checkboxes = document.querySelectorAll(`input[data-phase-id="${phaseId}"]`);
+        const totalCount = checkboxes.length;
+        const selectedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+
+        if (selectedCount === totalCount) {
+            summaryEl.innerHTML = `<span class="selected-count">All ${totalCount} violations selected</span>`;
+        } else if (selectedCount === 0) {
+            summaryEl.innerHTML = `<span class="selected-count warning">No violations selected</span>`;
+        } else {
+            summaryEl.innerHTML = `
+                <span class="selected-count">${selectedCount} of ${totalCount} violations selected</span>
+                <span class="excluded-count">${totalCount - selectedCount} excluded</span>
+            `;
+        }
+    }
+
     connectWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const wsUrl = `${protocol}//${window.location.host}/ws`;
@@ -665,6 +753,10 @@ class PlanApp {
     attachEventListeners() {
         const saveBtn = document.getElementById('save-btn');
         const executeBtn = document.getElementById('execute-btn');
+        const exportBtn = document.getElementById('export-btn');
+        const importBtn = document.getElementById('import-btn');
+        const settingsBtn = document.getElementById('settings-btn');
+        const importFileInput = document.getElementById('import-file-input');
 
         if (saveBtn) {
             saveBtn.addEventListener('click', () => this.savePlan());
@@ -672,6 +764,106 @@ class PlanApp {
 
         if (executeBtn) {
             executeBtn.addEventListener('click', () => this.executePhases());
+        }
+
+        if (exportBtn) {
+            exportBtn.addEventListener('click', () => this.exportPlan());
+        }
+
+        if (importBtn) {
+            importBtn.addEventListener('click', () => {
+                importFileInput.click();
+            });
+        }
+
+        if (settingsBtn) {
+            settingsBtn.addEventListener('click', () => this.openSettings());
+        }
+
+        if (importFileInput) {
+            importFileInput.addEventListener('change', (e) => this.importPlan(e));
+        }
+
+        // Settings slider update
+        const confidenceSlider = document.getElementById('setting-confidence-threshold');
+        if (confidenceSlider) {
+            confidenceSlider.addEventListener('input', (e) => {
+                document.getElementById('confidence-value').textContent = e.target.value + '%';
+            });
+        }
+    }
+
+    initializeSortable() {
+        const container = document.getElementById('phases-container');
+        if (!container || !window.Sortable) return;
+
+        Sortable.create(container, {
+            animation: 150,
+            handle: '.phase-header',
+            ghostClass: 'phase-ghost',
+            chosenClass: 'phase-chosen',
+            dragClass: 'phase-drag',
+            onEnd: (evt) => {
+                // Reorder phases in the plan
+                const oldIndex = evt.oldIndex;
+                const newIndex = evt.newIndex;
+
+                if (oldIndex !== newIndex) {
+                    const movedPhase = this.plan.Phases.splice(oldIndex, 1)[0];
+                    this.plan.Phases.splice(newIndex, 0, movedPhase);
+
+                    // Update order numbers
+                    this.plan.Phases.forEach((phase, index) => {
+                        phase.Order = index + 1;
+                    });
+
+                    this.render();
+                    this.initializeSortable(); // Reinitialize after render
+                    this.showInfo('Phase order updated. Remember to save your changes.');
+                }
+            }
+        });
+    }
+
+    exportPlan() {
+        const dataStr = JSON.stringify(this.plan, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'kantra-ai-plan-export.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
+        this.showSuccess('Plan exported successfully');
+    }
+
+    async importPlan(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        try {
+            const text = await file.text();
+            const importedPlan = JSON.parse(text);
+
+            // Validate basic structure
+            if (!importedPlan.Phases || !Array.isArray(importedPlan.Phases)) {
+                throw new Error('Invalid plan format: missing Phases array');
+            }
+
+            this.plan = importedPlan;
+            this.render();
+            this.showSuccess('Plan imported successfully');
+
+            // Clear the file input
+            event.target.value = '';
+        } catch (error) {
+            console.error('Import error:', error);
+            this.showError(`Failed to import plan: ${error.message}`);
+            event.target.value = '';
         }
     }
 
@@ -686,6 +878,73 @@ class PlanApp {
             'low': '🟢'
         };
         return icons[risk] || '⚪';
+    }
+
+    renderRiskWarning(phase) {
+        if (phase.Risk.toLowerCase() !== 'high') {
+            return '';
+        }
+
+        // Count high/expert effort violations
+        const highEffortViolations = phase.Violations.filter(v => (v.Effort || 0) >= 6);
+        const expertViolations = phase.Violations.filter(v => (v.Effort || 0) >= 8);
+
+        const recommendations = [];
+        if (highEffortViolations.length > 0) {
+            recommendations.push('Review code diffs carefully before approving');
+        }
+        if (phase.Category === 'mandatory') {
+            recommendations.push('These changes are required for migration to succeed');
+        }
+        if (phase.EstimatedDurationMinutes > 30) {
+            recommendations.push('Plan for extended execution time');
+        }
+        recommendations.push('Have a backup/branch before executing');
+        recommendations.push('Plan for additional testing time');
+
+        const riskFactors = [];
+        if (highEffortViolations.length > 0) {
+            riskFactors.push(`Contains ${highEffortViolations.length} high-effort violation${highEffortViolations.length !== 1 ? 's' : ''}`);
+        }
+        if (expertViolations.length > 0) {
+            riskFactors.push(`Contains ${expertViolations.length} expert-level violation${expertViolations.length !== 1 ? 's' : ''}`);
+        }
+        if (phase.Violations.length > 20) {
+            riskFactors.push(`Large number of violations (${phase.Violations.length} total)`);
+        }
+        if (phase.EstimatedCost > 1.0) {
+            riskFactors.push(`High estimated cost (${this.formatCost(phase.EstimatedCost)})`);
+        }
+
+        return `
+            <div class="risk-warning">
+                <div class="risk-warning-header">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>WARNING: HIGH RISK PHASE</strong>
+                </div>
+                <div class="risk-warning-content">
+                    <p>This phase includes complex changes that may require careful review or manual intervention.</p>
+
+                    ${recommendations.length > 0 ? `
+                        <div class="risk-section">
+                            <strong>Recommendations:</strong>
+                            <ul>
+                                ${recommendations.map(r => `<li>${r}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+
+                    ${riskFactors.length > 0 ? `
+                        <div class="risk-section">
+                            <strong>Risk Factors:</strong>
+                            <ul>
+                                ${riskFactors.map(f => `<li>${f}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+            </div>
+        `;
     }
 
     escapeHtml(text) {
@@ -776,6 +1035,74 @@ class PlanApp {
         }[type] || '';
 
         alert(`${emoji} ${message}`);
+    }
+
+    openSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            // Load current settings
+            this.loadSettings();
+            modal.classList.remove('hidden');
+        }
+    }
+
+    closeSettings() {
+        const modal = document.getElementById('settings-modal');
+        if (modal) {
+            modal.classList.add('hidden');
+        }
+    }
+
+    loadSettings() {
+        // Load from localStorage or use defaults
+        const settings = JSON.parse(localStorage.getItem('kantra-ai-settings') || '{}');
+
+        document.getElementById('setting-confidence-enabled').checked = settings.confidenceEnabled !== false;
+        document.getElementById('setting-confidence-threshold').value = settings.confidenceThreshold || 70;
+        document.getElementById('confidence-value').textContent = (settings.confidenceThreshold || 70) + '%';
+        document.getElementById('setting-low-confidence-action').value = settings.lowConfidenceAction || 'skip';
+
+        document.getElementById('setting-run-build').checked = settings.runBuild !== false;
+        document.getElementById('setting-build-strategy').value = settings.buildStrategy || 'at-end';
+        document.getElementById('setting-fail-fast').checked = settings.failFast !== false;
+
+        document.getElementById('setting-create-commits').checked = settings.createCommits || false;
+        document.getElementById('setting-commit-strategy').value = settings.commitStrategy || 'single';
+        document.getElementById('setting-create-pr').checked = settings.createPR || false;
+
+        document.getElementById('setting-batch-enabled').checked = settings.batchEnabled !== false;
+        document.getElementById('setting-batch-size').value = settings.batchSize || 10;
+        document.getElementById('setting-parallelism').value = settings.parallelism || 4;
+    }
+
+    saveSettings() {
+        const settings = {
+            confidenceEnabled: document.getElementById('setting-confidence-enabled').checked,
+            confidenceThreshold: parseInt(document.getElementById('setting-confidence-threshold').value),
+            lowConfidenceAction: document.getElementById('setting-low-confidence-action').value,
+
+            runBuild: document.getElementById('setting-run-build').checked,
+            buildStrategy: document.getElementById('setting-build-strategy').value,
+            failFast: document.getElementById('setting-fail-fast').checked,
+
+            createCommits: document.getElementById('setting-create-commits').checked,
+            commitStrategy: document.getElementById('setting-commit-strategy').value,
+            createPR: document.getElementById('setting-create-pr').checked,
+
+            batchEnabled: document.getElementById('setting-batch-enabled').checked,
+            batchSize: parseInt(document.getElementById('setting-batch-size').value),
+            parallelism: parseInt(document.getElementById('setting-parallelism').value),
+        };
+
+        localStorage.setItem('kantra-ai-settings', JSON.stringify(settings));
+        this.showSuccess('Settings saved successfully');
+        this.closeSettings();
+    }
+
+    resetSettings() {
+        localStorage.removeItem('kantra-ai-settings');
+        this.loadSettings();
+        this.showInfo('Settings reset to defaults');
     }
 }
 

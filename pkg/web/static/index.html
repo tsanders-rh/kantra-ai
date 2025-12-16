@@ -13,12 +13,22 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-jsx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-tsx.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.1/Sortable.min.js"></script>
 </head>
 <body>
     <div id="app">
         <header>
             <h1><i class="fas fa-robot"></i> kantra-ai Migration Plan</h1>
             <div class="actions">
+                <button id="settings-btn" class="btn btn-secondary">
+                    <i class="fas fa-cog"></i> Settings
+                </button>
+                <button id="export-btn" class="btn btn-secondary">
+                    <i class="fas fa-download"></i> Export
+                </button>
+                <button id="import-btn" class="btn btn-secondary">
+                    <i class="fas fa-upload"></i> Import
+                </button>
                 <button id="save-btn" class="btn btn-secondary">
                     <i class="fas fa-save"></i> Save
                 </button>
@@ -27,6 +37,9 @@
                 </button>
             </div>
         </header>
+
+        <!-- Hidden file input for import -->
+        <input type="file" id="import-file-input" accept=".json,.yaml" style="display: none;">
 
         <div class="dashboard">
             <div class="metric-card">
@@ -79,6 +92,104 @@
                 <div class="execution-message">
                     Execution feature coming soon. For now, save your plan and use the CLI to execute:
                     <pre>kantra-ai execute --plan .kantra-ai-plan.yaml</pre>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Modal -->
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cog"></i> Execution Settings</h2>
+                    <button class="modal-close" onclick="app.closeSettings()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="settings-section">
+                        <h3>Confidence Filtering</h3>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-confidence-enabled" checked>
+                            Enable confidence threshold filtering
+                        </label>
+                        <div class="settings-field">
+                            <label>Minimum confidence threshold:</label>
+                            <input type="range" id="setting-confidence-threshold" min="0" max="100" value="70">
+                            <span id="confidence-value">70%</span>
+                        </div>
+                        <div class="settings-field">
+                            <label>On low confidence:</label>
+                            <select id="setting-low-confidence-action">
+                                <option value="skip">Skip</option>
+                                <option value="prompt">Prompt for review</option>
+                                <option value="attempt">Attempt anyway</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Verification</h3>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-run-build" checked>
+                            Run build after fixes
+                        </label>
+                        <div class="settings-field">
+                            <label>Build strategy:</label>
+                            <select id="setting-build-strategy">
+                                <option value="at-end">At end of execution</option>
+                                <option value="per-phase">After each phase</option>
+                                <option value="per-violation">After each violation</option>
+                            </select>
+                        </div>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-fail-fast" checked>
+                            Fail fast on build errors
+                        </label>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Git Integration</h3>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-create-commits">
+                            Create commits
+                        </label>
+                        <div class="settings-field">
+                            <label>Commit strategy:</label>
+                            <select id="setting-commit-strategy">
+                                <option value="single">Single commit at end</option>
+                                <option value="per-phase">Per phase</option>
+                                <option value="per-violation">Per violation</option>
+                            </select>
+                        </div>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-create-pr">
+                            Create pull request after execution
+                        </label>
+                    </div>
+
+                    <div class="settings-section">
+                        <h3>Batch Processing</h3>
+                        <label class="settings-checkbox">
+                            <input type="checkbox" id="setting-batch-enabled" checked>
+                            Enable batch processing
+                        </label>
+                        <div class="settings-field">
+                            <label>Batch size:</label>
+                            <input type="number" id="setting-batch-size" min="1" max="50" value="10">
+                        </div>
+                        <div class="settings-field">
+                            <label>Parallelism:</label>
+                            <input type="number" id="setting-parallelism" min="1" max="10" value="4">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="app.resetSettings()">
+                        <i class="fas fa-undo"></i> Reset to Defaults
+                    </button>
+                    <button class="btn btn-primary" onclick="app.saveSettings()">
+                        <i class="fas fa-save"></i> Save
+                    </button>
                 </div>
             </div>
         </div>
