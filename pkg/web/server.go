@@ -265,7 +265,9 @@ func (s *PlanServer) handleSavePlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "saved", "path": s.planPath})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "saved", "path": s.planPath}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
 }
 
 // handleExecuteStart starts plan execution (placeholder for MVP).
@@ -278,10 +280,12 @@ func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) 
 	// TODO: Implement execution with live updates
 	// For MVP, just return success
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "started",
 		"message": "Execution feature coming soon - use CLI for now",
-	})
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
 }
 
 // handleExecuteStatus returns execution status (placeholder for MVP).
@@ -292,10 +296,12 @@ func (s *PlanServer) handleExecuteStatus(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"status":  "idle",
 		"message": "Execution feature coming soon",
-	})
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
 }
 
 // handleWebSocket handles WebSocket connections for live updates.
