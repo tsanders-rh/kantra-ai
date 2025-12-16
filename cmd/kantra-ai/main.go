@@ -896,7 +896,10 @@ func loadPromptTemplates(cfg prompt.Config) (*prompt.Templates, error) {
 // CLI flags override config file values
 func buildConfidenceConfig(cfg *config.Config) (confidence.Config, error) {
 	// Start with config file settings
-	confidenceConf := cfg.Confidence.ToConfidenceConfig()
+	confidenceConf, err := cfg.Confidence.ToConfidenceConfig()
+	if err != nil {
+		return confidence.Config{}, fmt.Errorf("invalid confidence configuration: %w", err)
+	}
 
 	// Get the current command to check which flags were set
 	cmd, _, err := rootCmd.Find(os.Args[1:])
