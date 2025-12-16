@@ -9,8 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/violation"
+	"gopkg.in/yaml.v3"
 )
 
 // MockProvider is a mock implementation of the Provider interface
@@ -278,4 +280,278 @@ func (m *MockProvider) FixBatch(ctx context.Context, req provider.BatchRequest) 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*provider.BatchResponse), args.Error(1)
+}
+
+func TestNewWithConfidence(t *testing.T) {
+	t.Run("creates fixer with custom confidence config", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		confidenceConf := confidence.Config{
+			Enabled: true,
+			Thresholds: map[string]float64{
+				"medium": 0.85,
+			},
+			OnLowConfidence: confidence.ActionSkip,
+		}
+
+		fixer := NewWithConfidence(mockProvider, tmpDir, false, confidenceConf)
+
+		assert.NotNil(t, fixer)
+		assert.Equal(t, mockProvider, fixer.provider)
+		assert.Equal(t, tmpDir, fixer.inputDir)
+		assert.False(t, fixer.dryRun)
+		assert.True(t, fixer.confidenceConf.Enabled)
+		assert.Equal(t, confidence.ActionSkip, fixer.confidenceConf.OnLowConfidence)
+	})
+
+	t.Run("creates fixer with warn-and-apply action", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		confidenceConf := confidence.Config{
+			Enabled:         true,
+			OnLowConfidence: confidence.ActionWarnAndApply,
+		}
+
+		fixer := NewWithConfidence(mockProvider, tmpDir, true, confidenceConf)
+
+		assert.True(t, fixer.dryRun)
+		assert.Equal(t, confidence.ActionWarnAndApply, fixer.confidenceConf.OnLowConfidence)
+	})
+
+	t.Run("creates fixer with manual-review-file action", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		confidenceConf := confidence.Config{
+			Enabled:         true,
+			OnLowConfidence: confidence.ActionManualReviewFile,
+		}
+
+		fixer := NewWithConfidence(mockProvider, tmpDir, false, confidenceConf)
+
+		assert.Equal(t, confidence.ActionManualReviewFile, fixer.confidenceConf.OnLowConfidence)
+	})
+}
+
+func TestWriteToReviewFile(t *testing.T) {
+	t.Run("creates review file with single item", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mockProvider := new(MockProvider)
+
+		fixer := New(mockProvider, tmpDir, false)
+
+		v := violation.Violation{
+			ID:                  "test-001",
+			Description:         "Test violation",
+			Category:            "mandatory",
+			Effort:              5,
+			MigrationComplexity: "medium",
+		}
+		incident := violation.Incident{
+			LineNumber: 42,
+		}
+		result := &FixResult{
+			FilePath: "src/test.java",
+		}
+
+		err := fixer.writeToReviewFile(v, incident, result, "Confidence too low", 0.65)
+		require.NoError(t, err)
+
+		// Verify review file was created
+		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		data, err := os.ReadFile(reviewPath)
+		require.NoError(t, err)
+
+		var reviews []ReviewItem
+		err = yaml.Unmarshal(data, &reviews)
+		require.NoError(t, err)
+		require.Len(t, reviews, 1)
+
+		// Verify review item
+		assert.Equal(t, "test-001", reviews[0].ViolationID)
+		assert.Equal(t, "src/test.java", reviews[0].FilePath)
+		assert.Equal(t, 42, reviews[0].LineNumber)
+		assert.Equal(t, "Test violation", reviews[0].Description)
+		assert.Equal(t, 0.65, reviews[0].Confidence)
+		assert.Equal(t, "Confidence too low", reviews[0].Reason)
+		assert.Equal(t, "mandatory", reviews[0].Category)
+		assert.Equal(t, 5, reviews[0].Effort)
+		assert.Equal(t, "medium", reviews[0].Complexity)
+	})
+
+	t.Run("appends to existing review file", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mockProvider := new(MockProvider)
+
+		fixer := New(mockProvider, tmpDir, false)
+
+		v1 := violation.Violation{ID: "test-001", Description: "First", Category: "mandatory"}
+		incident1 := violation.Incident{LineNumber: 10}
+		result1 := &FixResult{FilePath: "file1.java"}
+
+		// Add first review
+		err := fixer.writeToReviewFile(v1, incident1, result1, "Low confidence", 0.60)
+		require.NoError(t, err)
+
+		v2 := violation.Violation{ID: "test-002", Description: "Second", Category: "optional"}
+		incident2 := violation.Incident{LineNumber: 20}
+		result2 := &FixResult{FilePath: "file2.java"}
+
+		// Add second review
+		err = fixer.writeToReviewFile(v2, incident2, result2, "Very low confidence", 0.50)
+		require.NoError(t, err)
+
+		// Verify both reviews are in file
+		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		data, err := os.ReadFile(reviewPath)
+		require.NoError(t, err)
+
+		var reviews []ReviewItem
+		err = yaml.Unmarshal(data, &reviews)
+		require.NoError(t, err)
+		require.Len(t, reviews, 2)
+
+		assert.Equal(t, "test-001", reviews[0].ViolationID)
+		assert.Equal(t, "test-002", reviews[1].ViolationID)
+	})
+
+	t.Run("handles corrupt review file gracefully", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mockProvider := new(MockProvider)
+
+		fixer := New(mockProvider, tmpDir, false)
+
+		// Write corrupt YAML to review file
+		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		err := os.WriteFile(reviewPath, []byte("invalid yaml: [[[ :::"), 0644)
+		require.NoError(t, err)
+
+		v := violation.Violation{ID: "test-001", Description: "Test"}
+		incident := violation.Incident{LineNumber: 10}
+		result := &FixResult{FilePath: "test.java"}
+
+		// Should handle corrupt file and create new review
+		err = fixer.writeToReviewFile(v, incident, result, "Test reason", 0.70)
+		require.NoError(t, err)
+
+		// Verify file was rewritten with valid data
+		data, err := os.ReadFile(reviewPath)
+		require.NoError(t, err)
+
+		var reviews []ReviewItem
+		err = yaml.Unmarshal(data, &reviews)
+		require.NoError(t, err)
+		require.Len(t, reviews, 1)
+	})
+
+	t.Run("uses atomic write-rename pattern", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		mockProvider := new(MockProvider)
+
+		fixer := New(mockProvider, tmpDir, false)
+
+		v := violation.Violation{ID: "test-001"}
+		incident := violation.Incident{LineNumber: 10}
+		result := &FixResult{FilePath: "test.java"}
+
+		err := fixer.writeToReviewFile(v, incident, result, "Test", 0.70)
+		require.NoError(t, err)
+
+		// Verify temporary file was cleaned up
+		tmpPath := filepath.Join(tmpDir, "ReviewFileName.tmp")
+		_, err = os.Stat(tmpPath)
+		assert.True(t, os.IsNotExist(err), "Temporary file should be cleaned up")
+
+		// Verify final file exists
+		reviewPath := filepath.Join(tmpDir, "ReviewFileName")
+		_, err = os.Stat(reviewPath)
+		assert.NoError(t, err, "Review file should exist")
+	})
+}
+
+func TestNewBatchFixerWithConfidence(t *testing.T) {
+	t.Run("creates batch fixer with custom confidence config", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		batchConfig := DefaultBatchConfig()
+		confidenceConf := confidence.Config{
+			Enabled: true,
+			Thresholds: map[string]float64{
+				"high": 0.95,
+			},
+			OnLowConfidence: confidence.ActionSkip,
+		}
+
+		batchFixer := NewBatchFixerWithConfidence(mockProvider, tmpDir, false, batchConfig, confidenceConf)
+
+		assert.NotNil(t, batchFixer)
+		assert.Equal(t, mockProvider, batchFixer.provider)
+		assert.Equal(t, tmpDir, batchFixer.inputDir)
+		assert.False(t, batchFixer.dryRun)
+		assert.Equal(t, batchConfig, batchFixer.config)
+		assert.True(t, batchFixer.confidenceConf.Enabled)
+		assert.Equal(t, confidence.ActionSkip, batchFixer.confidenceConf.OnLowConfidence)
+	})
+
+	t.Run("creates batch fixer with warn-and-apply action", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		batchConfig := BatchConfig{
+			MaxBatchSize: 10,
+			Parallelism:  2,
+		}
+		confidenceConf := confidence.Config{
+			Enabled:         true,
+			OnLowConfidence: confidence.ActionWarnAndApply,
+		}
+
+		batchFixer := NewBatchFixerWithConfidence(mockProvider, tmpDir, true, batchConfig, confidenceConf)
+
+		assert.True(t, batchFixer.dryRun)
+		assert.Equal(t, 10, batchFixer.config.MaxBatchSize)
+		assert.Equal(t, confidence.ActionWarnAndApply, batchFixer.confidenceConf.OnLowConfidence)
+	})
+
+	t.Run("creates batch fixer with manual-review-file action", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		batchConfig := DefaultBatchConfig()
+		confidenceConf := confidence.Config{
+			Enabled:         true,
+			OnLowConfidence: confidence.ActionManualReviewFile,
+			Thresholds: map[string]float64{
+				"trivial": 0.70,
+				"low":     0.75,
+				"medium":  0.80,
+				"high":    0.90,
+				"expert":  0.95,
+			},
+		}
+
+		batchFixer := NewBatchFixerWithConfidence(mockProvider, tmpDir, false, batchConfig, confidenceConf)
+
+		assert.Equal(t, confidence.ActionManualReviewFile, batchFixer.confidenceConf.OnLowConfidence)
+		assert.Equal(t, 0.95, batchFixer.confidenceConf.Thresholds["expert"])
+	})
+
+	t.Run("respects batch config settings", func(t *testing.T) {
+		mockProvider := new(MockProvider)
+		tmpDir := t.TempDir()
+
+		batchConfig := BatchConfig{
+			MaxBatchSize: 5,
+			Parallelism:  3,
+		}
+		confidenceConf := confidence.DefaultConfig()
+
+		batchFixer := NewBatchFixerWithConfidence(mockProvider, tmpDir, false, batchConfig, confidenceConf)
+
+		assert.Equal(t, 5, batchFixer.config.MaxBatchSize)
+		assert.Equal(t, 3, batchFixer.config.Parallelism)
+	})
 }

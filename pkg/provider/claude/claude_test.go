@@ -1,6 +1,7 @@
 package claude
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -89,3 +90,22 @@ func TestProvider_EstimateCost(t *testing.T) {
 
 // NOTE: buildPrompt tests removed - prompts now generated via configurable templates
 // Prompt generation is tested indirectly through FixViolation integration tests
+
+func TestEnhanceAPIError(t *testing.T) {
+	t.Run("401 authentication error", func(t *testing.T) {
+		err := enhanceAPIError(assert.AnError)
+		assert.Error(t, err)
+		// Should wrap original error
+		assert.ErrorIs(t, err, assert.AnError)
+	})
+
+	t.Run("wraps error with Claude context", func(t *testing.T) {
+		originalErr := errors.New("API error")
+		enhanced := enhanceAPIError(originalErr)
+
+		assert.Error(t, enhanced)
+		assert.ErrorIs(t, enhanced, originalErr)
+		// The error should contain Claude-specific information
+		// (actual enhancement is tested in pkg/provider/common/errors_test.go)
+	})
+}

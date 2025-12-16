@@ -410,3 +410,96 @@ func (m *MockProvider) FixBatch(ctx context.Context, req provider.BatchRequest) 
 	}
 	return args.Get(0).(*provider.BatchResponse), args.Error(1)
 }
+
+func TestGenerate_ProviderReturnsResponseWithError(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "planner-test-*")
+	assert.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	analysisPath := filepath.Join(tmpDir, "analysis.yaml")
+	analysis := createTestAnalysis()
+	err = saveAnalysis(analysis, analysisPath)
+	assert.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+	mockProvider.On("Name").Return("test-provider").Maybe()
+	mockProvider.On("GeneratePlan", mock.Anything, mock.Anything).Return(
+		&provider.PlanResponse{
+			Error: assert.AnError, // Provider returns response with error
+		},
+		nil, // No error from the call itself
+	).Once()
+
+	config := Config{
+		AnalysisPath: analysisPath,
+		InputPath:    tmpDir,
+		Provider:     mockProvider,
+		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+	}
+
+	p := New(config)
+
+	ctx := context.Background()
+	result, err := p.Generate(ctx)
+
+	// Should return the provider's error
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.ErrorIs(t, err, assert.AnError)
+
+	mockProvider.AssertExpectations(t)
+}
+
+func TestGenerate_InvalidAnalysisPath(t *testing.T) {
+	mockProvider := new(MockProvider)
+
+	config := Config{
+		AnalysisPath: "/nonexistent/path/analysis.yaml",
+		InputPath:    "/tmp",
+		Provider:     mockProvider,
+		OutputPath:   "/tmp/plan.yaml",
+	}
+
+	p := New(config)
+
+	ctx := context.Background()
+	result, err := p.Generate(ctx)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "failed to load violations")
+
+	mockProvider.AssertNotCalled(t, "GeneratePlan")
+}
+
+func TestGenerate_AllViolationsFilteredOut(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "planner-test-*")
+	assert.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	analysisPath := filepath.Join(tmpDir, "analysis.yaml")
+	analysis := createTestAnalysis() // Has mandatory violations
+	err = saveAnalysis(analysis, analysisPath)
+	assert.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+
+	config := Config{
+		AnalysisPath: analysisPath,
+		InputPath:    tmpDir,
+		Provider:     mockProvider,
+		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+		Categories:   []string{"optional"}, // Filter only optional, but analysis has mandatory
+	}
+
+	p := New(config)
+
+	ctx := context.Background()
+	result, err := p.Generate(ctx)
+
+	assert.Error(t, err)
+	assert.Nil(t, result)
+	assert.Contains(t, err.Error(), "no violations match")
+
+	mockProvider.AssertNotCalled(t, "GeneratePlan")
+}
