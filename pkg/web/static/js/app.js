@@ -347,11 +347,10 @@ class PlanApp {
     }
 
     renderViolationDetails(violation) {
-        const sampleIncidents = violation.Incidents.slice(0, 5);
-        const hasMore = violation.Incidents.length > 5;
+        const violationId = violation.ViolationID.replace(/[^a-zA-Z0-9]/g, '-');
 
         return `
-            <div class="violation-detail">
+            <div class="violation-detail" data-violation-id="${violationId}">
                 <div class="violation-header">
                     <strong>${this.escapeHtml(violation.ViolationID)}</strong>
                     <span class="violation-meta">
@@ -361,28 +360,104 @@ class PlanApp {
                 </div>
                 <p class="violation-description">${this.escapeHtml(violation.Description)}</p>
 
-                <div class="incidents-list">
-                    <h5>Incidents (showing ${sampleIncidents.length} of ${violation.Incidents.length}):</h5>
-                    ${sampleIncidents.map((incident, idx) => `
-                        <div class="incident-item">
-                            <div class="incident-location">
-                                <span class="incident-number">${idx + 1}.</span>
-                                <code>${this.escapeHtml(incident.URI.replace('file://', '').replace('/opt/input/source/', ''))}</code>
-                                <span class="line-number">:${incident.LineNumber}</span>
-                            </div>
-                            ${incident.Message ? `
-                                <div class="incident-message">${this.formatIncidentMessage(incident.Message)}</div>
-                            ` : ''}
-                        </div>
-                    `).join('')}
-                    ${hasMore ? `
-                        <div class="more-incidents">
-                            ... and ${violation.Incidents.length - 5} more incidents
-                        </div>
-                    ` : ''}
+                <div class="incidents-viewer">
+                    <div class="incidents-nav">
+                        <button class="btn-nav" onclick="app.navigateIncident('${violationId}', -1)" ${violation.Incidents.length <= 1 ? 'disabled' : ''}>
+                            <i class="fas fa-chevron-left"></i> Previous
+                        </button>
+                        <span class="incident-counter" id="counter-${violationId}">
+                            1 of ${violation.Incidents.length}
+                        </span>
+                        <button class="btn-nav" onclick="app.navigateIncident('${violationId}', 1)" ${violation.Incidents.length <= 1 ? 'disabled' : ''}>
+                            Next <i class="fas fa-chevron-right"></i>
+                        </button>
+                    </div>
+
+                    <div class="incident-display" id="incident-${violationId}">
+                        ${this.renderIncident(violation.Incidents[0], 0, violation)}
+                    </div>
                 </div>
             </div>
         `;
+    }
+
+    renderIncident(incident, index, violation) {
+        const filePath = incident.URI.replace('file://', '').replace('/opt/input/source/', '').replace('/Users/tsanders/Workspace/tackle2-ui/', '');
+
+        let contentHtml = '';
+
+        // Show diff view if there's a message with Before/After blocks
+        if (incident.Message && (incident.Message.includes('Before:') || incident.Message.includes('After:'))) {
+            contentHtml = `
+                <div class="incident-diff">
+                    ${this.renderDiffView(incident.Message)}
+                </div>
+            `;
+        }
+        // Show message as description if it exists but has no Before/After
+        else if (incident.Message && incident.Message.trim()) {
+            contentHtml = `
+                <div class="incident-message">
+                    <p>${this.escapeHtml(incident.Message)}</p>
+                </div>
+            `;
+        }
+
+        // Show code snippet if available
+        if (incident.CodeSnip && incident.CodeSnip.trim()) {
+            contentHtml += `
+                <div class="incident-code-context">
+                    <h5><i class="fas fa-code"></i> Code Context</h5>
+                    <pre class="line-numbers"><code class="language-tsx">${this.escapeHtml(incident.CodeSnip)}</code></pre>
+                </div>
+            `;
+        }
+
+        return `
+            <div class="incident-card">
+                <div class="incident-header">
+                    <div class="incident-location">
+                        <i class="fas fa-file-code"></i>
+                        <code class="file-path">${this.escapeHtml(filePath)}</code>
+                        <span class="line-number">Line ${incident.LineNumber}</span>
+                    </div>
+                </div>
+                ${contentHtml || '<div class="incident-message"><p class="no-details">See file at specified line number for details.</p></div>'}
+            </div>
+        `;
+    }
+
+    navigateIncident(violationId, direction) {
+        // Find the violation in the plan
+        let violation = null;
+        for (const phase of this.plan.Phases) {
+            violation = phase.Violations.find(v => v.ViolationID.replace(/[^a-zA-Z0-9]/g, '-') === violationId);
+            if (violation) break;
+        }
+
+        if (!violation) return;
+
+        // Get current index from data attribute or initialize to 0
+        const displayEl = document.getElementById(`incident-${violationId}`);
+        if (!displayEl) return;
+
+        let currentIndex = parseInt(displayEl.dataset.currentIndex || '0');
+        currentIndex = (currentIndex + direction + violation.Incidents.length) % violation.Incidents.length;
+
+        // Update display
+        displayEl.dataset.currentIndex = currentIndex;
+        displayEl.innerHTML = this.renderIncident(violation.Incidents[currentIndex], currentIndex, violation);
+
+        // Update counter
+        const counterEl = document.getElementById(`counter-${violationId}`);
+        if (counterEl) {
+            counterEl.textContent = `${currentIndex + 1} of ${violation.Incidents.length}`;
+        }
+
+        // Apply syntax highlighting
+        if (window.Prism) {
+            Prism.highlightAllUnder(displayEl);
+        }
     }
 
     isPhaseApproved(phase) {
@@ -485,6 +560,13 @@ class PlanApp {
             detailsEl.classList.remove('hidden');
             iconEl.classList.remove('fa-chevron-down');
             iconEl.classList.add('fa-chevron-up');
+
+            // Apply syntax highlighting after expanding
+            if (window.Prism) {
+                setTimeout(() => {
+                    Prism.highlightAllUnder(detailsEl);
+                }, 100);
+            }
         } else {
             detailsEl.classList.add('hidden');
             iconEl.classList.remove('fa-chevron-up');
@@ -612,23 +694,60 @@ class PlanApp {
         return div.innerHTML;
     }
 
-    formatIncidentMessage(message) {
-        // Escape the message first
-        let formatted = this.escapeHtml(message);
+    renderDiffView(message) {
+        // Extract description and code blocks
+        const parts = message.split(/(?=Before:|After:)/);
+        let description = '';
+        let beforeCode = '';
+        let afterCode = '';
 
-        // Replace Before: code blocks with red highlighting
-        formatted = formatted.replace(
-            /Before:\n```\n([\s\S]*?)\n```/g,
-            '<div class="code-block before-block"><div class="code-label">Before:</div><pre>$1</pre></div>'
-        );
+        parts.forEach(part => {
+            if (part.includes('Before:')) {
+                const match = part.match(/Before:\s*\n```\s*\n([\s\S]*?)\n```/);
+                if (match) beforeCode = match[1];
+            } else if (part.includes('After:')) {
+                const match = part.match(/After:\s*\n```\s*\n([\s\S]*?)\n```/);
+                if (match) afterCode = match[1];
+            } else if (part.trim()) {
+                description += part;
+            }
+        });
 
-        // Replace After: code blocks with green highlighting
-        formatted = formatted.replace(
-            /After:\n```\n([\s\S]*?)\n```/g,
-            '<div class="code-block after-block"><div class="code-label">After:</div><pre>$1</pre></div>'
-        );
+        let html = '';
 
-        return formatted;
+        if (description.trim()) {
+            html += `<div class="diff-description">${this.escapeHtml(description.trim())}</div>`;
+        }
+
+        if (beforeCode || afterCode) {
+            html += '<div class="diff-container">';
+
+            if (beforeCode) {
+                html += `
+                    <div class="diff-pane before-pane">
+                        <div class="diff-header">
+                            <i class="fas fa-minus-circle"></i> Before
+                        </div>
+                        <pre class="line-numbers"><code class="language-tsx">${this.escapeHtml(beforeCode)}</code></pre>
+                    </div>
+                `;
+            }
+
+            if (afterCode) {
+                html += `
+                    <div class="diff-pane after-pane">
+                        <div class="diff-header">
+                            <i class="fas fa-plus-circle"></i> After
+                        </div>
+                        <pre class="line-numbers"><code class="language-tsx">${this.escapeHtml(afterCode)}</code></pre>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+        }
+
+        return html || `<div class="diff-description">${this.escapeHtml(message)}</div>`;
     }
 
     showSuccess(message) {

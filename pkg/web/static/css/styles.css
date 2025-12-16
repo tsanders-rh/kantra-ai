@@ -425,71 +425,206 @@ header h1 {
     font-size: 12px;
 }
 
-.incident-message {
-    font-size: 12px;
-    color: #555;
-    line-height: 1.5;
-    padding: 8px;
-    background-color: #f8f9fa;
-    border-left: 2px solid #3498db;
-    margin-top: 5px;
-    white-space: pre-wrap;
+/* Incidents Viewer */
+.incidents-viewer {
+    margin-top: 15px;
 }
 
-.code-block {
-    margin: 10px 0;
+.incidents-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: #ecf0f1;
+    border-radius: 4px;
+    margin-bottom: 10px;
+}
+
+.btn-nav {
+    padding: 6px 12px;
+    background-color: white;
+    border: 1px solid #bdc3c7;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    color: #2c3e50;
+    transition: all 0.2s;
+}
+
+.btn-nav:hover:not(:disabled) {
+    background-color: #3498db;
+    color: white;
+    border-color: #3498db;
+}
+
+.btn-nav:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-nav i {
+    font-size: 10px;
+}
+
+.incident-counter {
+    font-size: 13px;
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.incident-display {
+    min-height: 200px;
+}
+
+.incident-card {
+    background-color: white;
+    border: 1px solid #e1e8ed;
     border-radius: 4px;
     overflow: hidden;
 }
 
-.code-label {
+.incident-header {
+    background-color: #f8f9fa;
+    padding: 12px;
+    border-bottom: 1px solid #e1e8ed;
+}
+
+.file-path {
+    background-color: #ecf0f1;
+    padding: 4px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    font-family: 'Monaco', 'Courier New', monospace;
+    color: #2c3e50;
+    margin: 0 8px;
+}
+
+/* Diff Container */
+.diff-description {
+    padding: 12px;
+    background-color: #f8f9fa;
+    border-left: 3px solid #3498db;
+    margin-bottom: 15px;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #555;
+}
+
+.incident-message {
+    padding: 15px;
+    background-color: #f8f9fa;
+}
+
+.incident-message p {
+    margin: 0;
+    color: #555;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.incident-message .no-details {
+    font-style: italic;
+    color: #7f8c8d;
+}
+
+.incident-code-context {
+    padding: 15px;
+    background-color: #fafafa;
+}
+
+.incident-code-context h5 {
+    font-size: 13px;
     font-weight: 600;
-    font-size: 11px;
-    padding: 5px 10px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #2c3e50;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 }
 
-.before-block {
-    background-color: #ffeef0;
-    border-left: 3px solid #e74c3c;
+.incident-code-context h5 i {
+    color: #3498db;
 }
 
-.before-block .code-label {
+.incident-code-context pre {
+    margin: 0;
+    padding: 12px;
+    background-color: #2c3e50;
+    border-radius: 4px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.5;
+}
+
+.incident-code-context code {
+    color: #ecf0f1;
+    font-family: 'Monaco', 'Courier New', 'Consolas', monospace;
+}
+
+.diff-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    padding: 15px;
+    background-color: #fafafa;
+}
+
+.diff-pane {
+    border-radius: 4px;
+    overflow: hidden;
+    border: 1px solid #ddd;
+}
+
+.diff-header {
+    padding: 8px 12px;
+    font-weight: 600;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.before-pane .diff-header {
     background-color: #fadbd8;
     color: #c0392b;
+    border-bottom: 2px solid #e74c3c;
 }
 
-.before-block pre {
-    background-color: #ffeef0;
-    color: #c0392b;
-    padding: 10px;
-    margin: 0;
-    font-family: 'Monaco', 'Courier New', monospace;
-    font-size: 12px;
-    line-height: 1.5;
-    overflow-x: auto;
-}
-
-.after-block {
-    background-color: #e8f5e9;
-    border-left: 3px solid #27ae60;
-}
-
-.after-block .code-label {
+.after-pane .diff-header {
     background-color: #c8e6c9;
     color: #1b5e20;
+    border-bottom: 2px solid #27ae60;
 }
 
-.after-block pre {
-    background-color: #e8f5e9;
-    color: #1b5e20;
-    padding: 10px;
+.diff-pane pre {
     margin: 0;
-    font-family: 'Monaco', 'Courier New', monospace;
+    padding: 12px;
+    overflow-x: auto;
     font-size: 12px;
     line-height: 1.5;
-    overflow-x: auto;
+}
+
+.before-pane pre {
+    background-color: #ffeef0 !important;
+}
+
+.after-pane pre {
+    background-color: #e8f5e9 !important;
+}
+
+.diff-pane code {
+    font-family: 'Monaco', 'Courier New', 'Consolas', monospace;
+}
+
+/* Override Prism theme for diff panes */
+.before-pane pre[class*="language-"],
+.before-pane code[class*="language-"] {
+    background-color: #ffeef0 !important;
+}
+
+.after-pane pre[class*="language-"],
+.after-pane code[class*="language-"] {
+    background-color: #e8f5e9 !important;
 }
 
 .more-incidents {
