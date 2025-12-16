@@ -104,7 +104,7 @@ func TestResolveAndValidateFilePath_EdgeCases(t *testing.T) {
 		_, err := resolveAndValidateFilePath("src/file\x00.java", "/workspace/project")
 		// filepath.Clean will handle this, just ensure it doesn't panic
 		assert.NotPanics(t, func() {
-			resolveAndValidateFilePath("src/file\x00.java", "/workspace/project")
+			_, _ = resolveAndValidateFilePath("src/file\x00.java", "/workspace/project")
 		})
 		_ = err // May or may not error depending on OS
 	})
@@ -119,7 +119,7 @@ func TestResolveAndValidateFilePath_EdgeCases(t *testing.T) {
 		_, err := resolveAndValidateFilePath(longPath, "/workspace/project")
 		// Should not panic or cause issues
 		assert.NotPanics(t, func() {
-			resolveAndValidateFilePath(longPath, "/workspace/project")
+			_, _ = resolveAndValidateFilePath(longPath, "/workspace/project")
 		})
 		_ = err // May succeed or fail depending on OS path limits
 	})
