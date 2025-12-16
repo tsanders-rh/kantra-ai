@@ -8,13 +8,13 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
 	"runtime"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/tsanders/kantra-ai/pkg/executor"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 )
 
@@ -32,7 +32,6 @@ type PlanServer struct {
 	plan         *planfile.Plan
 	planPath     string
 	addr         string
-	executor     *executor.Executor
 	clients      map[*websocket.Conn]bool
 	clientsMutex sync.RWMutex
 	server       *http.Server
@@ -162,7 +161,10 @@ func (s *PlanServer) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Write(data)
+	if _, err := w.Write(data); err != nil {
+		// Log error but can't send response as headers are already written
+		fmt.Fprintf(os.Stderr, "Error writing response: %v\n", err)
+	}
 }
 
 // handleGetPlan returns the current plan as JSON.
@@ -173,7 +175,9 @@ func (s *PlanServer) handleGetPlan(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(s.plan)
+	if err := json.NewEncoder(w).Encode(s.plan); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding plan: %v\n", err)
+	}
 }
 
 // handleApprovePhase approves a phase by ID.
@@ -207,7 +211,9 @@ func (s *PlanServer) handleApprovePhase(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "approved"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "approved"}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
 }
 
 // handleDeferPhase defers a phase by ID.
@@ -241,7 +247,9 @@ func (s *PlanServer) handleDeferPhase(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "deferred"})
+	if err := json.NewEncoder(w).Encode(map[string]string{"status": "deferred"}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
 }
 
 // handleSavePlan saves the current plan to disk.
