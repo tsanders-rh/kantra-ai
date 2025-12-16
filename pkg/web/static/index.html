@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kantra-ai Migration Plan</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+</head>
+<body>
+    <div id="app">
+        <header>
+            <h1>kantra-ai Migration Plan</h1>
+            <div class="actions">
+                <button id="save-btn" class="btn btn-secondary">Save</button>
+                <button id="execute-btn" class="btn btn-primary">Execute</button>
+            </div>
+        </header>
+
+        <div class="dashboard">
+            <div class="metric-card">
+                <div class="metric-value" id="total-phases">0</div>
+                <div class="metric-label">Total Phases</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-violations">0</div>
+                <div class="metric-label">Total Violations</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="total-incidents">0</div>
+                <div class="metric-label">Total Incidents</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-value" id="estimated-cost">$0.00</div>
+                <div class="metric-label">Estimated Cost</div>
+            </div>
+        </div>
+
+        <div id="progress-container" class="hidden">
+            <div class="progress-header">
+                <span class="progress-text" id="progress-text">0% (0 of 0 approved)</span>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div id="phases-container"></div>
+
+        <div id="execution-view" class="hidden">
+            <h2>Execution in Progress</h2>
+            <div class="execution-content">
+                <div class="execution-message">
+                    Execution feature coming soon. For now, save your plan and use the CLI to execute:
+                    <pre>kantra-ai execute --plan .kantra-ai-plan.yaml</pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+# Git files
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+*_test.go
+testdata/
+
+# Examples
+examples/
+
+# Build artifacts
+kantra-ai
+*.exe
+*.dll
+*.so
+*.dylib
+dist/
+build/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Output files
+output.yaml
+.kantra-ai-plan.yaml
+.kantra-ai-state.yaml
+*.html

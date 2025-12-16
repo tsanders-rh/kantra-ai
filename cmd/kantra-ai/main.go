@@ -24,6 +24,7 @@ import (
 	"github.com/tsanders/kantra-ai/pkg/ux"
 	"github.com/tsanders/kantra-ai/pkg/verifier"
 	"github.com/tsanders/kantra-ai/pkg/violation"
+	"github.com/tsanders/kantra-ai/pkg/web"
 )
 
 var (
@@ -49,6 +50,7 @@ var (
 	planMaxPhases       int
 	planRiskTolerance   string
 	planInteractive     bool
+	planInteractiveWeb  bool
 
 	// Execute command flags
 	executePlanPath     string
@@ -124,7 +126,8 @@ phases that can be reviewed, edited, and executed incrementally.`,
 	planCmd.Flags().StringVar(&categories, "categories", "", "Comma-separated categories: mandatory, optional, potential")
 	planCmd.Flags().IntVar(&maxEffort, "max-effort", 0, "Maximum effort level (0 = no limit)")
 	planCmd.Flags().StringVar(&model, "model", "", "AI model to use (provider-specific)")
-	planCmd.Flags().BoolVar(&planInteractive, "interactive", false, "Enable interactive phase approval")
+	planCmd.Flags().BoolVar(&planInteractive, "interactive", false, "Enable interactive phase approval (CLI)")
+	planCmd.Flags().BoolVar(&planInteractiveWeb, "interactive-web", false, "Enable web-based interactive phase approval")
 
 	_ = planCmd.MarkFlagRequired("analysis")
 	_ = planCmd.MarkFlagRequired("input")
@@ -690,6 +693,25 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	htmlPath, err := report.GenerateHTML(result.Plan, result.PlanPath)
 	if err != nil {
 		ux.PrintWarning("Failed to generate HTML report: %v", err)
+	}
+
+	// Start web server for interactive approval if requested
+	if planInteractiveWeb {
+		ux.PrintHeader("Starting Web Interface")
+		fmt.Println()
+		fmt.Println("The web-based interactive planner is starting...")
+		fmt.Println("Press Ctrl+C to stop the server")
+		fmt.Println()
+
+		// Create web server
+		server := web.NewPlanServer(result.Plan, result.PlanPath)
+
+		// Start server (blocks until interrupted)
+		if err := server.Start(ctx, true); err != nil {
+			return fmt.Errorf("web server error: %w", err)
+		}
+
+		return nil
 	}
 
 	// Print success message
