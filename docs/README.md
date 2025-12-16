@@ -21,6 +21,7 @@ Located in [`design/`](./design/):
 - **[DESIGN.md](./design/DESIGN.md)** - Overall architecture and design decisions
 - **[PLANNING_WORKFLOW_DESIGN.md](./design/PLANNING_WORKFLOW_DESIGN.md)** - Detailed design for the plan → execute workflow
 - **[BATCH_PROCESSING_DESIGN.md](./design/BATCH_PROCESSING_DESIGN.md)** - Batch processing optimization design (50-80% cost reduction)
+- **[WEB_INTERACTIVE_PLAN.md](./design/WEB_INTERACTIVE_PLAN.md)** - Web-based interactive plan approval UI design (future enhancement)
 
 ## 📋 Project Planning
 
