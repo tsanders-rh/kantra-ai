@@ -9,6 +9,7 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 ## Features
 
 - **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
+- **Web-Based Interactive Planner**: Modern web UI for reviewing and approving phases with visual charts, code diffs, and live execution monitoring
 - **Interactive HTML Reports**: Beautiful, visual reports with diff-style highlighting and line-specific code annotations
 - **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
 - **Customizable AI Prompts**: Per-language prompt templates for technology-specific migrations (Java, Python, Go, etc.)
@@ -197,7 +198,37 @@ vim .kantra-ai-plan.yaml
 
 ### Interactive Phase Approval
 
-For full control over what gets executed, use interactive mode:
+kantra-ai offers two modes for interactive phase review:
+
+#### Web-Based Interactive Planner (Recommended)
+
+A modern web UI with visual charts, code diff viewer, and live execution monitoring:
+
+```bash
+./kantra-ai plan \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --interactive-web
+
+# Output:
+# 🌐 Starting web interface at http://localhost:8080
+# (Browser opens automatically)
+```
+
+**Features:**
+- **Visual Dashboard** - Metrics cards, charts, and progress tracking
+- **Code Diff Viewer** - Syntax-highlighted before/after comparisons
+- **Drag-and-Drop** - Reorder phase execution priority
+- **Live Execution** - Real-time progress updates via WebSocket
+- **Violation Filtering** - Select/deselect specific violations within phases
+- **Keyboard Shortcuts** - `Ctrl/Cmd+S` to save, `Ctrl/Cmd+E` to execute
+- **Export/Import** - Save and restore plan configurations
+
+**See:** [Web UI Documentation](docs/WEB_INTERACTIVE_USAGE.md) | [Quick Reference](docs/WEB_UI_QUICK_REFERENCE.md)
+
+#### CLI Interactive Mode
+
+For terminal-based review:
 
 ```bash
 ./kantra-ai plan \
