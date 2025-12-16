@@ -213,14 +213,22 @@ func detectLanguage(filePath string) string {
 		return "go"
 	case ".js":
 		return "javascript"
+	case ".jsx":
+		return "jsx"
 	case ".ts":
 		return "typescript"
+	case ".tsx":
+		return "tsx"
 	case ".rb":
 		return "ruby"
 	case ".xml":
 		return "xml"
 	case ".yaml", ".yml":
 		return "yaml"
+	case ".css":
+		return "css"
+	case ".scss", ".sass":
+		return "scss"
 	default:
 		return "unknown"
 	}
