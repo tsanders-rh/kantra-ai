@@ -2,171 +2,161 @@
 
 This document illustrates the end-to-end workflow from Konveyor analysis through kantra-ai automated remediation to manual developer activities.
 
-## Overview
+## High-Level Overview
 
-The migration process follows this high-level flow:
+```mermaid
+flowchart LR
+    A[1. Konveyor<br/>Analysis] --> B[2. kantra-ai<br/>Plan]
+    B --> C[3. Automated<br/>Remediation]
+    C --> D[4. Manual<br/>Development]
+    D --> E[5. Verification<br/>& Integration]
+    E --> F[Migration<br/>Complete]
 
-1. **Analyze** - Konveyor analyzes application and identifies violations
-2. **Plan** (optional) - AI generates phased migration plan with risk assessment
-3. **Automate** - kantra-ai fixes trivial/low/medium complexity violations
-4. **Manual** - Developers handle high/expert complexity violations
-5. **Verify** - Build/test verification ensures fixes work correctly
-6. **Integrate** - Git commits and PR creation for review
+    style A fill:#e1f5ff,stroke:#0077b6,stroke-width:2px
+    style B fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style C fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style D fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style E fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
+    style F fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+```
+
+## Detailed Workflow
+
+### 1. Konveyor Analysis
+
+```mermaid
+flowchart LR
+    App[Your Application] --> Analyze[kantra analyze<br/>--input=./app]
+    Analyze --> Output[output.yaml<br/>Violations + Incidents]
+
+    style App fill:#f8f9fa
+    style Analyze fill:#e1f5ff,stroke:#0077b6,stroke-width:2px
+    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+```
+
+Konveyor analyzes your application and produces `output.yaml` containing violations, incidents, and complexity metadata.
+
+### 2. Planning Workflow
 
 ```mermaid
 flowchart TB
-    Start([Application to Migrate]) --> KonveyorAnalyze
+    Output[output.yaml] --> Size{Violations?}
+    Size -->|< 20| Direct[Direct: kantra-ai remediate]
+    Size -->|20+| Plan[Phased: kantra-ai plan]
 
-    %% ===== KONVEYOR ANALYSIS =====
-    subgraph Konveyor["🔍 Konveyor Analysis (konveyor/kantra)"]
-        KonveyorAnalyze[Run kantra analyze<br/>--input=./app<br/>--output=./analysis]
-        KonveyorOutput[/output.yaml<br/>Violations + Incidents/]
+    Plan --> Review[Review HTML Report]
+    Review --> Execute[kantra-ai execute]
 
-        KonveyorAnalyze --> KonveyorOutput
-    end
+    Direct --> Auto[Automated Remediation]
+    Execute --> Auto
 
-    %% ===== WORKFLOW DECISION =====
-    KonveyorOutput --> WorkflowChoice{Migration Size?}
-    WorkflowChoice -->|< 20 violations<br/>Quick Fixes| DirectRemediate[Direct Remediation]
-    WorkflowChoice -->|20+ violations<br/>Large-Scale| PhasedWorkflow[Phased Migration]
-
-    %% ===== DIRECT REMEDIATION PATH =====
-    DirectRemediate --> Remediate
-
-    %% ===== PHASED MIGRATION PATH =====
-    subgraph PhasedPlan["📋 Planning Phase (kantra-ai plan)"]
-        PlanCmd[kantra-ai plan<br/>--analysis=output.yaml<br/>--provider=claude]
-        AIPlanning[AI analyzes violations<br/>Groups by complexity<br/>Assesses risk]
-        PlanYAML[/.kantra-ai-plan.yaml<br/>Machine-readable plan/]
-        PlanHTML[/.kantra-ai-plan.html<br/>Interactive report/]
-        ReviewPlan{Review Plan<br/>HTML Report}
-        ApprovePlan[Developer Approves]
-
-        PlanCmd --> AIPlanning
-        AIPlanning --> PlanYAML
-        AIPlanning --> PlanHTML
-        PlanYAML --> ReviewPlan
-        PlanHTML --> ReviewPlan
-        ReviewPlan -->|Approve| ApprovePlan
-        ReviewPlan -->|Revise| PlanCmd
-    end
-
-    PhasedWorkflow --> PlanCmd
-    ApprovePlan --> ExecuteCmd
-
-    %% ===== REMEDIATION/EXECUTION =====
-    subgraph RemediationEngine["🤖 Automated Remediation (kantra-ai remediate/execute)"]
-        Remediate[kantra-ai remediate]
-        ExecuteCmd[kantra-ai execute<br/>--plan=.kantra-ai-plan.yaml]
-
-        LoadViolations[Load Violations<br/>from Analysis]
-        FilterViolations{Apply Filters<br/>category, effort,<br/>violation-ids}
-
-        Remediate --> LoadViolations
-        ExecuteCmd --> LoadViolations
-        LoadViolations --> FilterViolations
-
-        %% Complexity-based routing
-        FilterViolations --> ClassifyComplexity[Classify by<br/>Migration Complexity]
-
-        ClassifyComplexity --> TrivialLow[Trivial/Low<br/>Complexity]
-        ClassifyComplexity --> Medium[Medium<br/>Complexity]
-        ClassifyComplexity --> HighExpert[High/Expert<br/>Complexity]
-
-        %% Processing for each complexity level
-        TrivialLow --> BatchProcess[Batch Processing<br/>Group similar violations<br/>50-80% cost reduction]
-        Medium --> BatchProcess
-        HighExpert --> ManualReviewFlag[Flag for<br/>Manual Review]
-
-        BatchProcess --> AIFix[AI Provider<br/>Claude/OpenAI<br/>Generate Fix]
-
-        AIFix --> ConfidenceCheck{Confidence<br/>Filtering<br/>Enabled?}
-
-        ConfidenceCheck -->|No| ApplyFix[Apply Fix<br/>to File]
-        ConfidenceCheck -->|Yes| CheckThreshold{Confidence >=<br/>Threshold?}
-
-        CheckThreshold -->|Yes<br/>0.70+ trivial<br/>0.75+ low<br/>0.80+ medium| ApplyFix
-        CheckThreshold -->|No| LowConfAction{on-low-<br/>confidence<br/>action?}
-
-        LowConfAction -->|skip| SkipFix[Skip Fix<br/>Report as Skipped]
-        LowConfAction -->|warn-and-apply| WarnApply[Warn + Apply Fix<br/>Log Warning]
-        LowConfAction -->|manual-review-file| WriteReview[Write to<br/>ReviewFileName.yaml]
-
-        WarnApply --> ApplyFix
-
-        ApplyFix --> VerifyEnabled{Verification<br/>Enabled?}
-        VerifyEnabled -->|No| GitEnabled
-        VerifyEnabled -->|Yes| RunVerify[Run Build/Test<br/>per-fix, per-violation,<br/>or at-end]
-
-        RunVerify --> VerifyResult{Passed?}
-        VerifyResult -->|Yes| GitEnabled
-        VerifyResult -->|No| RevertFix[Revert Fix<br/>Mark as Failed]
-
-        RevertFix --> FailReport
-
-        GitEnabled{Git Integration<br/>Enabled?}
-        GitEnabled -->|Yes| CreateCommit[Create Commit<br/>per-violation,<br/>per-incident,<br/>or at-end]
-        GitEnabled -->|No| SuccessReport
-
-        CreateCommit --> PREnabled{Create PR?}
-        PREnabled -->|Yes| CreatePR[Create GitHub PR<br/>with Fix Summary]
-        PREnabled -->|No| SuccessReport
-
-        CreatePR --> SuccessReport[Success Report<br/>Cost, Tokens,<br/>Fixes Applied]
-
-        SkipFix --> SkipReport
-        WriteReview --> ReviewReport
-    end
-
-    %% ===== MANUAL DEVELOPMENT ACTIVITIES =====
-    subgraph ManualDev["👨‍💻 Manual Development Activities"]
-        ManualReviewFlag --> ReviewQueue[Review Queue]
-        WriteReview --> ReviewFile[/ReviewFileName.yaml<br/>Low-confidence fixes/]
-        HighExpertList[High/Expert<br/>Violations List<br/>from Plan]
-
-        ReviewQueue --> DevReview[Developer Reviews<br/>Complex Violations]
-        ReviewFile --> DevReview
-        HighExpertList --> DevReview
-
-        DevReview --> ManualCode[Manual Code Changes<br/>Architectural decisions<br/>Domain expertise required]
-
-        ManualCode --> ManualTest[Manual Testing<br/>Verify complex changes]
-        ManualTest --> ManualCommit[Create Commit<br/>Manual fixes]
-    end
-
-    %% ===== OUTPUTS & REPORTS =====
-    subgraph Outputs["📊 Outputs & Reports"]
-        SuccessReport
-        SkipReport[Skipped Fixes Report]
-        ReviewReport[Manual Review Report]
-        FailReport[Failed Fixes Report]
-        FinalStats[Final Statistics<br/>Total fixes: X<br/>Automated: Y<br/>Manual: Z<br/>Cost: $A.BC]
-    end
-
-    SuccessReport --> FinalStats
-    SkipReport --> FinalStats
-    ReviewReport --> FinalStats
-    FailReport --> FinalStats
-    ManualCommit --> FinalStats
-
-    %% ===== COMPLETION =====
-    FinalStats --> Complete([Migration Complete])
-
-    %% ===== STYLING =====
-    classDef konveyorStyle fill:#e1f5ff,stroke:#0077b6,stroke-width:2px
-    classDef planStyle fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    classDef autoStyle fill:#d4edda,stroke:#28a745,stroke-width:2px
-    classDef manualStyle fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    classDef outputStyle fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
-    classDef decisionStyle fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-
-    class Konveyor konveyorStyle
-    class PhasedPlan planStyle
-    class RemediationEngine autoStyle
-    class ManualDev manualStyle
-    class Outputs outputStyle
-    class WorkflowChoice,ReviewPlan,FilterViolations,ConfidenceCheck,CheckThreshold,LowConfAction,VerifyEnabled,VerifyResult,GitEnabled,PREnabled decisionStyle
+    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Size fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
+    style Plan fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Direct fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Execute fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Auto fill:#d4edda,stroke:#28a745,stroke-width:2px
 ```
+
+**Small migrations** (< 20 violations): Use `remediate` for quick fixes
+**Large migrations** (20+ violations): Use `plan` → `execute` for phased approach
+
+### 3. Complexity-Based Routing
+
+```mermaid
+flowchart TB
+    Start[Load Violations] --> Classify[Classify by<br/>Complexity]
+
+    Classify --> Trivial[Trivial/Low<br/>95%+ AI success]
+    Classify --> Medium[Medium<br/>60%+ AI success]
+    Classify --> High[High/Expert<br/><50% AI success]
+
+    Trivial --> Batch[Batch Processing<br/>up to 10 violations]
+    Medium --> Batch
+    High --> Manual[Flag for<br/>Manual Review]
+
+    Batch --> AI[AI Provider<br/>Generate Fix]
+    AI --> Apply[Apply Fix]
+
+    Manual --> Dev[Developer<br/>Manual Fixes]
+
+    style Start fill:#f8f9fa
+    style Classify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
+    style Trivial fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Medium fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style High fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Batch fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style AI fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Manual fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Dev fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+```
+
+**Key Decision Point**: Migration complexity determines automation vs manual work
+
+| Complexity | AI Success Rate | Action |
+|------------|----------------|--------|
+| **Trivial** | 95%+ | ✅ Automated (batch) |
+| **Low** | 80%+ | ✅ Automated (batch) |
+| **Medium** | 60%+ | ✅ Automated (single) |
+| **High** | 30-50% | ⚠️ Manual review recommended |
+| **Expert** | <30% | ❌ Manual development required |
+
+### 4. Confidence Filtering (Optional Safety Layer)
+
+```mermaid
+flowchart TB
+    Fix[AI Generated Fix] --> Check{Confidence >=<br/>Threshold?}
+
+    Check -->|Yes| Apply[Apply Fix]
+    Check -->|No| Action{Low Confidence<br/>Action?}
+
+    Action -->|skip| Skip[Skip Fix]
+    Action -->|warn-and-apply| Warn[Apply with Warning]
+    Action -->|manual-review-file| Review[Write to<br/>ReviewFileName.yaml]
+
+    Warn --> Apply
+
+    style Fix fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Check fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Action fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
+    style Skip fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Warn fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+```
+
+**Thresholds by Complexity**:
+- Trivial: 0.70
+- Low: 0.75
+- Medium: 0.80
+- High: 0.90
+- Expert: 0.95
+
+### 5. Verification & Integration
+
+```mermaid
+flowchart LR
+    Apply[Fixes Applied] --> Verify[Build/Test<br/>Verification]
+    Verify -->|Pass| Commit[Git Commit]
+    Verify -->|Fail| Revert[Revert Fix]
+
+    Commit --> PR[Create PR]
+    PR --> Report[Final Report]
+
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Verify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
+    style Commit fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
+    style Revert fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style PR fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
+    style Report fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+```
+
+**Optional Steps**:
+- **Verification**: Run build/tests after fixes (`--verify=test`)
+- **Git Integration**: Auto-commit fixes (`--git-commit=per-violation`)
+- **PR Creation**: Create GitHub pull requests (`--create-pr`)
 
 ## Workflow Details
 
