@@ -5,14 +5,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>kantra-ai Migration Plan</title>
     <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
     <div id="app">
         <header>
-            <h1>kantra-ai Migration Plan</h1>
+            <h1><i class="fas fa-robot"></i> kantra-ai Migration Plan</h1>
             <div class="actions">
-                <button id="save-btn" class="btn btn-secondary">Save</button>
-                <button id="execute-btn" class="btn btn-primary">Execute</button>
+                <button id="save-btn" class="btn btn-secondary">
+                    <i class="fas fa-save"></i> Save
+                </button>
+                <button id="execute-btn" class="btn btn-primary">
+                    <i class="fas fa-play"></i> Execute
+                </button>
             </div>
         </header>
 
@@ -32,6 +38,21 @@
             <div class="metric-card">
                 <div class="metric-value" id="estimated-cost">$0.00</div>
                 <div class="metric-label">Estimated Cost</div>
+            </div>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-pie"></i> Complexity Distribution</h3>
+                <canvas id="complexity-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3><i class="fas fa-chart-bar"></i> Violations by Category</h3>
+                <canvas id="category-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3><i class="fas fa-exclamation-triangle"></i> Risk Distribution</h3>
+                <canvas id="risk-chart"></canvas>
             </div>
         </div>
 

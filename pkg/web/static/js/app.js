@@ -2,6 +2,11 @@ class PlanApp {
     constructor() {
         this.plan = null;
         this.ws = null;
+        this.charts = {
+            complexity: null,
+            category: null,
+            risk: null
+        };
         this.init();
     }
 
@@ -35,6 +40,8 @@ class PlanApp {
         try {
             console.log('Rendering dashboard...');
             this.renderDashboard();
+            console.log('Rendering charts...');
+            this.renderCharts();
             console.log('Rendering phases...');
             this.renderPhases();
             console.log('Updating progress...');
@@ -63,6 +70,223 @@ class PlanApp {
     renderPhases() {
         const container = document.getElementById('phases-container');
         container.innerHTML = this.plan.Phases.map(phase => this.renderPhase(phase)).join('');
+    }
+
+    renderCharts() {
+        this.renderComplexityChart();
+        this.renderCategoryChart();
+        this.renderRiskChart();
+    }
+
+    renderComplexityChart() {
+        // Destroy existing chart if it exists
+        if (this.charts.complexity) {
+            this.charts.complexity.destroy();
+        }
+
+        // Map effort to complexity levels
+        const effortToComplexity = (effort) => {
+            if (effort <= 1) return 'trivial';
+            if (effort <= 3) return 'low';
+            if (effort <= 5) return 'medium';
+            if (effort <= 7) return 'high';
+            return 'expert';
+        };
+
+        // Aggregate violations by complexity (mapped from effort)
+        const complexityCount = {
+            'trivial': 0,
+            'low': 0,
+            'medium': 0,
+            'high': 0,
+            'expert': 0
+        };
+
+        this.plan.Phases.forEach(phase => {
+            phase.Violations.forEach(v => {
+                const effort = v.Effort || 0;
+                const complexity = effortToComplexity(effort);
+                complexityCount[complexity]++;
+            });
+        });
+
+        // Filter out zero counts and prepare data
+        const labels = [];
+        const data = [];
+        const colors = {
+            'trivial': '#27ae60',
+            'low': '#2ecc71',
+            'medium': '#f39c12',
+            'high': '#e74c3c',
+            'expert': '#c0392b'
+        };
+        const backgroundColors = [];
+
+        Object.keys(complexityCount).forEach(key => {
+            if (complexityCount[key] > 0) {
+                labels.push(key.charAt(0).toUpperCase() + key.slice(1));
+                data.push(complexityCount[key]);
+                backgroundColors.push(colors[key]);
+            }
+        });
+
+        const ctx = document.getElementById('complexity-chart');
+        this.charts.complexity = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = Math.round((value / total) * 100);
+                                return `${label}: ${value} (${percentage}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    renderCategoryChart() {
+        // Destroy existing chart if it exists
+        if (this.charts.category) {
+            this.charts.category.destroy();
+        }
+
+        // Aggregate violations by category
+        const categoryCount = {};
+        this.plan.Phases.forEach(phase => {
+            phase.Violations.forEach(v => {
+                const category = v.Category || 'unknown';
+                categoryCount[category] = (categoryCount[category] || 0) + 1;
+            });
+        });
+
+        const ctx = document.getElementById('category-chart');
+        this.charts.category = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: Object.keys(categoryCount).map(k => k.charAt(0).toUpperCase() + k.slice(1)),
+                datasets: [{
+                    label: 'Violations',
+                    data: Object.values(categoryCount),
+                    backgroundColor: '#3498db',
+                    borderColor: '#2980b9',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Violations: ${context.parsed.y}`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    renderRiskChart() {
+        // Destroy existing chart if it exists
+        if (this.charts.risk) {
+            this.charts.risk.destroy();
+        }
+
+        // Aggregate phases by risk level
+        const riskCount = {
+            low: 0,
+            medium: 0,
+            high: 0
+        };
+
+        this.plan.Phases.forEach(phase => {
+            const risk = phase.Risk.toLowerCase();
+            if (riskCount.hasOwnProperty(risk)) {
+                riskCount[risk]++;
+            }
+        });
+
+        const ctx = document.getElementById('risk-chart');
+        this.charts.risk = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                datasets: [{
+                    data: [riskCount.low, riskCount.medium, riskCount.high],
+                    backgroundColor: [
+                        '#27ae60', // Low - green
+                        '#f39c12', // Medium - orange
+                        '#e74c3c'  // High - red
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 10,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.parsed || 0;
+                                return `${label}: ${value} phase${value !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
     }
 
     renderPhase(phase) {
@@ -108,13 +332,13 @@ class PlanApp {
 
                     <div class="phase-actions">
                         <button class="btn btn-success" onclick="app.approvePhase('${phase.ID}')">
-                            ✓ Approve
+                            <i class="fas fa-check"></i> Approve
                         </button>
                         <button class="btn btn-warning" onclick="app.deferPhase('${phase.ID}')">
-                            ↷ Defer
+                            <i class="fas fa-clock"></i> Defer
                         </button>
                         <button class="btn btn-info" onclick="app.toggleDetails('${phase.ID}')">
-                            <span class="toggle-icon" id="toggle-icon-${phase.ID}">▼</span> View Details
+                            <i class="fas fa-chevron-down toggle-icon" id="toggle-icon-${phase.ID}"></i> Details
                         </button>
                     </div>
                 </div>
@@ -259,10 +483,12 @@ class PlanApp {
 
         if (detailsEl.classList.contains('hidden')) {
             detailsEl.classList.remove('hidden');
-            iconEl.textContent = '▲';
+            iconEl.classList.remove('fa-chevron-down');
+            iconEl.classList.add('fa-chevron-up');
         } else {
             detailsEl.classList.add('hidden');
-            iconEl.textContent = '▼';
+            iconEl.classList.remove('fa-chevron-up');
+            iconEl.classList.add('fa-chevron-down');
         }
     }
 
