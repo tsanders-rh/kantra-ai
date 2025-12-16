@@ -592,6 +592,8 @@ kantra-ai/
 6. **PR Creation** (optional): Opens pull requests on GitHub with detailed summaries
 7. **Reporting**: Provides detailed metrics on success rates, costs, and tokens used
 
+For a comprehensive end-to-end workflow diagram showing how Konveyor analysis, kantra-ai automation, and manual development activities work together, see the **[Complete Migration Workflow Guide](./docs/WORKFLOW.md)**.
+
 ## Batch Processing Performance
 
 kantra-ai uses intelligent batch processing to dramatically reduce costs and execution time for large migrations.

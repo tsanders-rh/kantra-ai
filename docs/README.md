@@ -7,6 +7,7 @@ This directory contains all design documents and guides for kantra-ai.
 Located in [`guides/`](./guides/):
 
 - **[QUICKSTART.md](./guides/QUICKSTART.md)** - Get started quickly with basic usage examples
+- **[WORKFLOW.md](./WORKFLOW.md)** - Complete end-to-end migration workflow from Konveyor analysis to manual development
 - **[PROMPT_CUSTOMIZATION.md](./guides/PROMPT_CUSTOMIZATION.md)** - Customize AI prompts for your migration scenarios
 - **[TESTING.md](./guides/TESTING.md)** - Comprehensive testing instructions and troubleshooting
 - **[PR-TESTING-GUIDE.md](./guides/PR-TESTING-GUIDE.md)** - Guide for testing GitHub PR creation
@@ -36,7 +37,8 @@ Located in [`design/`](./design/):
 ### Getting Started
 1. Start with the main [README.md](../README.md)
 2. Read [QUICKSTART.md](./guides/QUICKSTART.md) for basic usage
-3. Review [examples/](../examples/) for real-world scenarios
+3. Review [WORKFLOW.md](./WORKFLOW.md) to understand the complete end-to-end workflow
+4. Review [examples/](../examples/) for real-world scenarios
 
 ### Advanced Features
 1. [PROMPT_CUSTOMIZATION.md](./guides/PROMPT_CUSTOMIZATION.md) - Customize AI prompts per language/technology
