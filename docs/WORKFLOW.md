@@ -12,12 +12,12 @@ flowchart LR
     D --> E[5. Verification<br/>& Integration]
     E --> F[Migration<br/>Complete]
 
-    style A fill:#e1f5ff,stroke:#0077b6,stroke-width:2px
-    style B fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style C fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style D fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    style E fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
-    style F fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+    style A fill:#e1f5ff,stroke:#0077b6,stroke-width:2px,color:#000
+    style B fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style C fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style D fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style E fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
+    style F fill:#d1ecf1,stroke:#0c5460,stroke-width:2px,color:#000
 ```
 
 ## Detailed Workflow
@@ -29,9 +29,9 @@ flowchart LR
     App[Your Application] --> Analyze[kantra analyze<br/>--input=./app]
     Analyze --> Output[output.yaml<br/>Violations + Incidents]
 
-    style App fill:#f8f9fa
-    style Analyze fill:#e1f5ff,stroke:#0077b6,stroke-width:2px
-    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style App fill:#f8f9fa,color:#000
+    style Analyze fill:#e1f5ff,stroke:#0077b6,stroke-width:2px,color:#000
+    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
 ```
 
 Konveyor analyzes your application and produces `output.yaml` containing violations, incidents, and complexity metadata.
@@ -50,13 +50,13 @@ flowchart TB
     Direct --> Auto[Automated Remediation]
     Execute --> Auto
 
-    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style Size fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-    style Plan fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style Direct fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style Execute fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Auto fill:#d4edda,stroke:#28a745,stroke-width:2px
+    style Output fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style Size fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style Plan fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style Direct fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style Execute fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Auto fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
 ```
 
 **Small migrations** (< 20 violations): Use `remediate` for quick fixes
@@ -81,16 +81,16 @@ flowchart TB
 
     Manual --> Dev[Developer<br/>Manual Fixes]
 
-    style Start fill:#f8f9fa
-    style Classify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-    style Trivial fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Medium fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style High fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    style Batch fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style AI fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Manual fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    style Dev fill:#f8d7da,stroke:#dc3545,stroke-width:2px
+    style Start fill:#f8f9fa,color:#000
+    style Classify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style Trivial fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Medium fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style High fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Batch fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style AI fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Manual fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Dev fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
 ```
 
 **Key Decision Point**: Migration complexity determines automation vs manual work
@@ -118,13 +118,13 @@ flowchart TB
 
     Warn --> Apply
 
-    style Fix fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Check fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Action fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-    style Skip fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    style Warn fill:#fff3cd,stroke:#ffc107,stroke-width:2px
-    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px
+    style Fix fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Check fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Action fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style Skip fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style Warn fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
+    style Review fill:#fff3cd,stroke:#ffc107,stroke-width:2px,color:#000
 ```
 
 **Thresholds by Complexity**:
@@ -145,12 +145,12 @@ flowchart LR
     Commit --> PR[Create PR]
     PR --> Report[Final Report]
 
-    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px
-    style Verify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px
-    style Commit fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
-    style Revert fill:#f8d7da,stroke:#dc3545,stroke-width:2px
-    style PR fill:#e2e3e5,stroke:#6c757d,stroke-width:2px
-    style Report fill:#d1ecf1,stroke:#0c5460,stroke-width:2px
+    style Apply fill:#d4edda,stroke:#28a745,stroke-width:2px,color:#000
+    style Verify fill:#cfe2ff,stroke:#0d6efd,stroke-width:2px,color:#000
+    style Commit fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
+    style Revert fill:#f8d7da,stroke:#dc3545,stroke-width:2px,color:#000
+    style PR fill:#e2e3e5,stroke:#6c757d,stroke-width:2px,color:#000
+    style Report fill:#d1ecf1,stroke:#0c5460,stroke-width:2px,color:#000
 ```
 
 **Optional Steps**:
