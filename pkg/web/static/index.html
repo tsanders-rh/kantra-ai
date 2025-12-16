@@ -17,22 +17,28 @@
 </head>
 <body>
     <div id="app">
+        <!-- Loading Overlay -->
+        <div id="loading-overlay" class="loading-overlay hidden">
+            <div class="spinner"></div>
+            <div class="loading-text">Loading plan...</div>
+        </div>
+
         <header>
             <h1><i class="fas fa-robot"></i> kantra-ai Migration Plan</h1>
             <div class="actions">
-                <button id="settings-btn" class="btn btn-secondary">
+                <button id="settings-btn" class="btn btn-secondary" title="Configure execution settings" aria-label="Settings">
                     <i class="fas fa-cog"></i> Settings
                 </button>
-                <button id="export-btn" class="btn btn-secondary">
+                <button id="export-btn" class="btn btn-secondary" title="Export plan as JSON" aria-label="Export plan">
                     <i class="fas fa-download"></i> Export
                 </button>
-                <button id="import-btn" class="btn btn-secondary">
+                <button id="import-btn" class="btn btn-secondary" title="Import plan from JSON" aria-label="Import plan">
                     <i class="fas fa-upload"></i> Import
                 </button>
-                <button id="save-btn" class="btn btn-secondary">
+                <button id="save-btn" class="btn btn-secondary" title="Save plan (Ctrl+S)" aria-label="Save plan">
                     <i class="fas fa-save"></i> Save
                 </button>
-                <button id="execute-btn" class="btn btn-primary">
+                <button id="execute-btn" class="btn btn-primary" title="Execute approved phases (Ctrl+E)" aria-label="Execute plan">
                     <i class="fas fa-play"></i> Execute
                 </button>
             </div>
@@ -92,11 +98,17 @@
                 <div class="execution-progress">
                     <div class="progress-header">
                         <span id="execution-current-phase">Initializing...</span>
+                        <span id="execution-timer" class="execution-timer">0:00</span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="execution-progress-bar" style="width: 0%"></div>
                     </div>
-                    <div class="progress-stats" id="execution-progress-text">0% (0 of 0 phases)</div>
+                    <div class="progress-stats">
+                        <span id="execution-progress-text">0% (0 of 0 phases)</span>
+                        <button id="cancel-execution-btn" class="btn btn-warning btn-sm" onclick="app.cancelExecution()">
+                            <i class="fas fa-stop"></i> Cancel
+                        </button>
+                    </div>
                 </div>
 
                 <div class="execution-activity-container">
@@ -108,6 +120,60 @@
 
                 <div id="execution-summary" class="hidden">
                     <!-- Summary will be inserted here by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Execution Confirmation Modal -->
+        <div id="confirm-execution-modal" class="modal hidden">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2><i class="fas fa-play-circle"></i> Confirm Execution</h2>
+                    <button class="modal-close" onclick="app.closeConfirmExecution()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="confirm-message">
+                        <p>You are about to execute the approved phases. This will apply AI-generated fixes to your code.</p>
+                    </div>
+                    <div class="execution-estimates">
+                        <h3>Estimates</h3>
+                        <div class="estimate-grid">
+                            <div class="estimate-item">
+                                <span class="estimate-label">Phases to execute:</span>
+                                <span class="estimate-value" id="estimate-phases">0</span>
+                            </div>
+                            <div class="estimate-item">
+                                <span class="estimate-label">Total violations:</span>
+                                <span class="estimate-value" id="estimate-violations">0</span>
+                            </div>
+                            <div class="estimate-item">
+                                <span class="estimate-label">Total incidents:</span>
+                                <span class="estimate-value" id="estimate-incidents">0</span>
+                            </div>
+                            <div class="estimate-item">
+                                <span class="estimate-label">Estimated cost:</span>
+                                <span class="estimate-value" id="estimate-cost">$0.00</span>
+                            </div>
+                            <div class="estimate-item">
+                                <span class="estimate-label">Estimated duration:</span>
+                                <span class="estimate-value" id="estimate-duration">~0 min</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="confirm-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <strong>Important:</strong> Make sure you have committed your changes or created a backup branch before proceeding.
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="app.closeConfirmExecution()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="app.confirmExecution()">
+                        <i class="fas fa-play"></i> Execute
+                    </button>
                 </div>
             </div>
         </div>

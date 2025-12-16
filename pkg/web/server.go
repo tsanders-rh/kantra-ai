@@ -72,6 +72,7 @@ func (s *PlanServer) Start(ctx context.Context, openBrowser bool) error {
 	mux.HandleFunc("/api/phase/defer", s.handleDeferPhase)
 	mux.HandleFunc("/api/plan/save", s.handleSavePlan)
 	mux.HandleFunc("/api/execute/start", s.handleExecuteStart)
+	mux.HandleFunc("/api/execute/cancel", s.handleExecuteCancel)
 	mux.HandleFunc("/api/execute/status", s.handleExecuteStatus)
 	mux.HandleFunc("/ws", s.handleWebSocket)
 
@@ -304,6 +305,43 @@ func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"status":  "started",
 		"message": "Execution started",
+	}); err != nil {
+		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
+	}
+}
+
+// handleExecuteCancel cancels the current execution.
+func (s *PlanServer) handleExecuteCancel(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	s.executionMutex.Lock()
+	if !s.executing {
+		s.executionMutex.Unlock()
+		http.Error(w, "No execution in progress", http.StatusBadRequest)
+		return
+	}
+
+	// Cancel the execution context
+	if s.executionCancel != nil {
+		s.executionCancel()
+	}
+	s.executionMutex.Unlock()
+
+	// Broadcast cancellation message
+	s.BroadcastUpdate(ExecutionUpdate{
+		Type: "cancelled",
+		Data: map[string]string{
+			"message": "Execution cancelled by user",
+		},
+	})
+
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"status":  "cancelled",
+		"message": "Execution cancelled",
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
 	}

@@ -7,6 +7,8 @@ class PlanApp {
             category: null,
             risk: null
         };
+        this.executionStartTime = null;
+        this.executionTimer = null;
         this.init();
     }
 
@@ -17,23 +19,93 @@ class PlanApp {
             this.attachEventListeners();
             this.initializeSortable();
             this.connectWebSocket();
+            this.setupKeyboardShortcuts();
         } catch (error) {
             console.error('Failed to initialize app:', error);
             this.showError('Failed to load plan. Please refresh the page.');
         }
     }
 
-    async loadPlan() {
-        const response = await fetch('/api/plan');
-        if (!response.ok) {
-            throw new Error('Failed to load plan');
-        }
-        this.plan = await response.json();
-        console.log('Loaded plan:', this.plan);
+    setupKeyboardShortcuts() {
+        document.addEventListener('keydown', (e) => {
+            // Don't trigger shortcuts when typing in inputs, textareas, or with modifiers
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') {
+                return;
+            }
 
-        // Validate plan structure
-        if (!this.plan.Phases) {
-            throw new Error('Plan is missing Phases array');
+            // Cmd/Ctrl + key shortcuts
+            if (e.metaKey || e.ctrlKey) {
+                switch(e.key.toLowerCase()) {
+                    case 's':
+                        e.preventDefault();
+                        this.savePlan();
+                        break;
+                    case 'e':
+                        e.preventDefault();
+                        if (!document.getElementById('execution-view').classList.contains('hidden')) {
+                            return; // Don't start execution if already executing
+                        }
+                        this.executePhases();
+                        break;
+                }
+                return;
+            }
+
+            // Single key shortcuts (no modifiers)
+            switch(e.key.toLowerCase()) {
+                case '?':
+                    e.preventDefault();
+                    this.showKeyboardHelp();
+                    break;
+                case 'escape':
+                    // Close any open modals
+                    this.closeSettings();
+                    this.closeConfirmExecution();
+                    break;
+            }
+        });
+    }
+
+    showKeyboardHelp() {
+        const helpText = `
+Keyboard Shortcuts:
+────────────────────────────────────
+Ctrl/Cmd + S    Save plan
+Ctrl/Cmd + E    Execute approved phases
+?               Show this help
+Esc             Close modals
+        `.trim();
+
+        alert(helpText);
+    }
+
+    showLoading(message = 'Loading...') {
+        const overlay = document.getElementById('loading-overlay');
+        const text = overlay.querySelector('.loading-text');
+        if (text) text.textContent = message;
+        overlay.classList.remove('hidden');
+    }
+
+    hideLoading() {
+        document.getElementById('loading-overlay').classList.add('hidden');
+    }
+
+    async loadPlan() {
+        this.showLoading('Loading plan...');
+        try {
+            const response = await fetch('/api/plan');
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}: ${response.statusText}`);
+            }
+            this.plan = await response.json();
+            console.log('Loaded plan:', this.plan);
+
+            // Validate plan structure
+            if (!this.plan.Phases) {
+                throw new Error('Invalid plan format: Missing Phases array');
+            }
+        } finally {
+            this.hideLoading();
         }
     }
 
@@ -556,6 +628,41 @@ class PlanApp {
     }
 
     async executePhases() {
+        // Show confirmation dialog with estimates
+        const approvedPhases = this.plan.Phases.filter(p => !p.Deferred);
+
+        if (approvedPhases.length === 0) {
+            this.showWarning('No phases approved for execution');
+            return;
+        }
+
+        // Calculate estimates
+        const totalViolations = approvedPhases.reduce((sum, p) => sum + p.Violations.length, 0);
+        const totalIncidents = approvedPhases.reduce((sum, p) =>
+            sum + p.Violations.reduce((vSum, v) => vSum + v.IncidentCount, 0), 0
+        );
+        const totalCost = approvedPhases.reduce((sum, p) => sum + p.EstimatedCost, 0);
+        const totalDuration = approvedPhases.reduce((sum, p) => sum + p.EstimatedDurationMinutes, 0);
+
+        // Update modal with estimates
+        document.getElementById('estimate-phases').textContent = approvedPhases.length;
+        document.getElementById('estimate-violations').textContent = totalViolations;
+        document.getElementById('estimate-incidents').textContent = totalIncidents;
+        document.getElementById('estimate-cost').textContent = this.formatCost(totalCost);
+        document.getElementById('estimate-duration').textContent = `~${totalDuration} min`;
+
+        // Show confirmation modal
+        document.getElementById('confirm-execution-modal').classList.remove('hidden');
+    }
+
+    closeConfirmExecution() {
+        document.getElementById('confirm-execution-modal').classList.add('hidden');
+    }
+
+    async confirmExecution() {
+        // Close confirmation modal
+        this.closeConfirmExecution();
+
         try {
             const response = await fetch('/api/execute/start', { method: 'POST' });
 
@@ -563,16 +670,61 @@ class PlanApp {
                 throw new Error('Failed to start execution');
             }
 
-            const result = await response.json();
-
             // Show execution view
             document.getElementById('execution-view').classList.remove('hidden');
             document.getElementById('phases-container').classList.add('hidden');
 
-            this.showInfo(result.message);
+            // Start execution timer
+            this.startExecutionTimer();
         } catch (error) {
             console.error('Error executing phases:', error);
             this.showError('Failed to start execution');
+        }
+    }
+
+    async cancelExecution() {
+        if (!confirm('Are you sure you want to cancel execution?')) {
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/execute/cancel', { method: 'POST' });
+
+            if (!response.ok) {
+                throw new Error('Failed to cancel execution');
+            }
+
+            this.stopExecutionTimer();
+            this.addActivityMessage('Execution cancelled by user', 'error');
+        } catch (error) {
+            console.error('Error cancelling execution:', error);
+            this.showError('Failed to cancel execution');
+        }
+    }
+
+    startExecutionTimer() {
+        this.executionStartTime = Date.now();
+        this.updateExecutionTimer();
+        this.executionTimer = setInterval(() => this.updateExecutionTimer(), 1000);
+    }
+
+    stopExecutionTimer() {
+        if (this.executionTimer) {
+            clearInterval(this.executionTimer);
+            this.executionTimer = null;
+        }
+    }
+
+    updateExecutionTimer() {
+        if (!this.executionStartTime) return;
+
+        const elapsed = Math.floor((Date.now() - this.executionStartTime) / 1000);
+        const minutes = Math.floor(elapsed / 60);
+        const seconds = elapsed % 60;
+
+        const timerEl = document.getElementById('execution-timer');
+        if (timerEl) {
+            timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
     }
 
@@ -709,11 +861,26 @@ class PlanApp {
             case 'error':
                 this.addActivityMessage(update.data.message, 'error');
                 break;
+            case 'cancelled':
+                this.handleExecutionCancelled(update.data);
+                break;
             case 'complete':
                 this.showExecutionSummary(update.data);
                 break;
             default:
                 console.log('Unknown update type:', update.type);
+        }
+    }
+
+    handleExecutionCancelled(data) {
+        this.stopExecutionTimer();
+        this.addActivityMessage(data.message || 'Execution cancelled', 'error');
+
+        // Hide cancel button
+        const cancelBtn = document.getElementById('cancel-execution-btn');
+        if (cancelBtn) {
+            cancelBtn.disabled = true;
+            cancelBtn.innerHTML = '<i class="fas fa-check"></i> Cancelled';
         }
     }
 
@@ -786,6 +953,17 @@ class PlanApp {
     }
 
     showExecutionSummary(data) {
+        // Stop execution timer
+        this.stopExecutionTimer();
+
+        // Calculate final duration
+        const duration = this.executionStartTime
+            ? Math.floor((Date.now() - this.executionStartTime) / 1000)
+            : 0;
+        const durationMin = Math.floor(duration / 60);
+        const durationSec = duration % 60;
+        const durationText = `${durationMin}:${durationSec.toString().padStart(2, '0')}`;
+
         const summaryEl = document.getElementById('execution-summary');
         if (!summaryEl) return;
 
@@ -810,6 +988,10 @@ class PlanApp {
                         <div class="stat-value">$${(data.total_cost || 0).toFixed(4)}</div>
                         <div class="stat-label">Total Cost</div>
                     </div>
+                    <div class="stat-card">
+                        <div class="stat-value">${durationText}</div>
+                        <div class="stat-label">Duration</div>
+                    </div>
                 </div>
                 <div class="summary-actions">
                     <button class="btn btn-primary" onclick="app.closeExecution()">
@@ -820,6 +1002,12 @@ class PlanApp {
         `;
 
         this.addActivityMessage('Execution completed successfully', 'success');
+
+        // Hide cancel button
+        const cancelBtn = document.getElementById('cancel-execution-btn');
+        if (cancelBtn) {
+            cancelBtn.style.display = 'none';
+        }
     }
 
     closeExecution() {
@@ -1124,15 +1312,39 @@ class PlanApp {
     }
 
     showNotification(message, type) {
-        // Simple alert for MVP - could be enhanced with toast notifications
-        const emoji = {
+        // Create toast notification
+        const toast = document.createElement('div');
+        toast.className = `toast toast-${type}`;
+
+        const icon = {
             'success': '✓',
             'warning': '⚠',
             'info': 'ℹ',
             'error': '✗'
         }[type] || '';
 
-        alert(`${emoji} ${message}`);
+        toast.innerHTML = `
+            <span class="toast-icon">${icon}</span>
+            <span class="toast-message">${this.escapeHtml(message)}</span>
+            <button class="toast-close" onclick="this.parentElement.remove()">×</button>
+        `;
+
+        // Add to page
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            document.body.appendChild(container);
+        }
+        container.appendChild(toast);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+            if (toast.parentElement) {
+                toast.classList.add('toast-fadeout');
+                setTimeout(() => toast.remove(), 300);
+            }
+        }, 5000);
     }
 
     openSettings() {
