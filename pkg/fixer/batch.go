@@ -31,9 +31,15 @@ type BatchConfig struct {
 // DefaultBatchConfig returns the recommended batch configuration
 func DefaultBatchConfig() BatchConfig {
 	return BatchConfig{
+		// MaxBatchSize is limited by the AI provider's context window
+		// 10 incidents provide good cost savings without overwhelming the model
 		MaxBatchSize: 10,
-		Parallelism:  4,
-		Enabled:      true,
+
+		// Parallelism set to 4 balances throughput with API rate limits
+		// Can be adjusted based on provider quotas and CPU availability
+		Parallelism: 4,
+
+		Enabled: true,
 	}
 }
 

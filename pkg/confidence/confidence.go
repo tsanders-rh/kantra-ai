@@ -1,3 +1,48 @@
+// Package confidence implements confidence-based filtering for AI-generated fixes.
+//
+// This package provides a framework for evaluating whether an AI-generated fix
+// should be applied based on the AI's confidence score and the migration complexity
+// of the violation being fixed.
+//
+// # Complexity Levels
+//
+// The package defines five complexity levels aligned with Konveyor's enhancement
+// proposal (https://github.com/konveyor/enhancements/pull/255):
+//
+//   - trivial: 95%+ AI success - mechanical find/replace operations
+//   - low: 80%+ AI success - straightforward API equivalents
+//   - medium: 60%+ AI success - requires understanding context
+//   - high: 30-50% AI success - architectural changes needed
+//   - expert: <30% AI success - domain expertise required
+//
+// # Configuration
+//
+// The package supports three actions for low-confidence fixes:
+//
+//   - skip: Don't apply the fix (safest, default)
+//   - warn-and-apply: Apply the fix but warn about low confidence
+//   - manual-review-file: Write to review file for manual processing
+//
+// Each complexity level has a configurable confidence threshold. The default
+// thresholds are tuned based on empirical success rates for AI-generated fixes.
+//
+// # Example Usage
+//
+//	config := confidence.DefaultConfig()
+//	config.Enabled = true
+//	config.OnLowConfidence = confidence.ActionSkip
+//
+//	// Check if a fix should be applied
+//	shouldApply, reason := config.ShouldApplyFix(0.75, "high", 8)
+//	if !shouldApply {
+//	    fmt.Println("Skipped:", reason)
+//	}
+//
+// # Statistics
+//
+// The package provides Stats for tracking applied vs skipped fixes across
+// complexity levels. Stats are thread-safe and can be used to report on
+// confidence filtering effectiveness.
 package confidence
 
 import (

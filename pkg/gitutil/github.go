@@ -18,6 +18,14 @@ const (
 	// maxResponseSize is the maximum size of GitHub API responses to prevent memory exhaustion
 	// GitHub API responses are typically small, 10MB is generous
 	maxResponseSize = 10 * 1024 * 1024 // 10MB
+
+	// maxRetries is the maximum number of retry attempts for transient errors (503, 502, 504)
+	// GitHub API can occasionally have service disruptions, retrying helps handle these gracefully
+	maxRetries = 3
+
+	// retryBackoffBase is the base duration for exponential backoff between retries
+	// Actual backoff = attempt * retryBackoffBase (1s, 2s, 3s)
+	retryBackoffBase = 1 * time.Second
 )
 
 // GitHubClient handles GitHub API interactions
@@ -135,10 +143,10 @@ func (c *GitHubClient) CreatePullRequest(req PullRequestRequest) (*PullRequestRe
 	// Execute request with retry logic
 	var resp *http.Response
 	var lastErr error
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := 0; attempt < maxRetries; attempt++ {
 		if attempt > 0 {
-			// Exponential backoff: 1s, 2s
-			time.Sleep(time.Duration(attempt) * time.Second)
+			// Exponential backoff using retryBackoffBase
+			time.Sleep(time.Duration(attempt) * retryBackoffBase)
 		}
 
 		resp, err = c.client.Do(httpReq)

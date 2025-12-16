@@ -1,3 +1,55 @@
+// Package fixer applies AI-generated fixes to source code files.
+//
+// This package provides two primary modes for fixing code violations:
+//
+//  1. Single-fix mode: Process one violation incident at a time
+//  2. Batch mode: Process multiple similar incidents together (50-80% cost savings)
+//
+// # Fixer
+//
+// The Fixer type handles single incident fixes. It:
+//
+//   - Reads source files and extracts violation context
+//   - Calls the AI provider to generate a fix
+//   - Validates the AI's confidence score against thresholds
+//   - Applies fixes to disk or writes to a review file
+//   - Supports dry-run mode for preview
+//
+// # BatchFixer
+//
+// The BatchFixer type processes multiple similar violations in one API call,
+// dramatically reducing costs and execution time. It:
+//
+//   - Groups incidents by violation type
+//   - Sends batches to the provider for parallel processing
+//   - Applies confidence filtering per-fix
+//   - Uses worker pools for concurrent batch processing
+//
+// # Confidence Filtering
+//
+// Both fixers integrate with the confidence package to:
+//
+//   - Skip low-confidence fixes (safest, default)
+//   - Warn and apply anyway (with user notification)
+//   - Write to review file for manual inspection
+//
+// The confidence threshold varies by migration complexity (trivial to expert).
+//
+// # Security
+//
+// All file paths are validated to prevent path traversal attacks. Paths
+// are resolved relative to the input directory and checked to ensure
+// they don't escape the project boundary.
+//
+// # Example Usage
+//
+//	// Single-fix mode
+//	fixer := fixer.New(provider, "./src", false)
+//	result, err := fixer.FixIncident(ctx, violation, incident)
+//
+//	// Batch mode (recommended for cost savings)
+//	batchFixer := fixer.NewBatchFixer(provider, "./src", false, batchConfig)
+//	results, err := batchFixer.FixViolationBatch(ctx, violation)
 package fixer
 
 import (

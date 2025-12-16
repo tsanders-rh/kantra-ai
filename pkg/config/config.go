@@ -1,3 +1,46 @@
+// Package config provides configuration management for kantra-ai.
+//
+// This package handles loading, parsing, and validating configuration from
+// YAML files (.kantra-ai.yaml) and provides defaults for all settings.
+//
+// # Configuration File
+//
+// The configuration file supports settings for:
+//
+//   - AI Provider: Claude, OpenAI, Groq, Ollama, etc.
+//   - Paths: Analysis input, source code directory
+//   - Prompts: Template files for single-fix and batch operations
+//   - Confidence: Thresholds and actions for low-confidence fixes
+//   - Batch Processing: Parallelism and batch size settings
+//   - Git Integration: Commit strategies and PR creation
+//   - Verification: Build/test commands to run after fixes
+//   - Cost Limits: Maximum spend controls
+//
+// # Configuration Loading
+//
+// The package searches for .kantra-ai.yaml in the current directory and
+// falls back to sensible defaults if not found. CLI flags can override
+// configuration file values.
+//
+// # Example Configuration
+//
+//	provider:
+//	  name: claude
+//	  model: claude-sonnet-4-20250514
+//	paths:
+//	  analysis: ./analysis/output.yaml
+//	  input: ./src
+//	confidence:
+//	  enabled: true
+//	  on-low-confidence: skip
+//	  complexity-thresholds:
+//	    high: 0.90
+//	    expert: 0.95
+//
+// # Validation
+//
+// Configuration is validated during loading with clear error messages
+// for invalid values, missing required fields, or out-of-range numbers.
 package config
 
 import (
