@@ -314,6 +314,9 @@ func (bf *BatchFixer) createBatchesByFile(v violation.Violation) []batchJob {
 // estimateIncidentTokens estimates the token count for an incident
 // Based on code context (10 lines around the incident) + incident metadata
 // Uses rough approximation: 1 token ≈ 4 characters
+// Reserved for future dynamic batch sizing based on MaxTokensPerBatch
+//
+//nolint:unused
 func estimateIncidentTokens(incident violation.Incident, fileContent string) int {
 	const (
 		tokensPerChar     = 0.25 // 1 token ≈ 4 chars
@@ -347,6 +350,9 @@ func estimateIncidentTokens(incident violation.Incident, fileContent string) int
 
 // estimateBatchTokens estimates total tokens for a batch of incidents
 // Includes prompt overhead for batch instructions
+// Reserved for future dynamic batch sizing based on MaxTokensPerBatch
+//
+//nolint:unused
 func estimateBatchTokens(incidents []violation.Incident, fileContents map[string]string) int {
 	const promptOverhead = 500 // Tokens for batch instructions, JSON format, etc.
 
