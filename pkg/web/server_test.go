@@ -343,7 +343,8 @@ func TestBroadcastUpdate(t *testing.T) {
 	server.BroadcastUpdate(update)
 
 	// Read the message
-	ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	assert.NoError(t, err)
 	_, message, err := ws.ReadMessage()
 	assert.NoError(t, err)
 
@@ -380,7 +381,8 @@ func TestWebSocketProgressWriter_Info(t *testing.T) {
 	writer.Info("Test info: %s", "value")
 
 	// Read message
-	ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	assert.NoError(t, err)
 	_, message, err := ws.ReadMessage()
 	assert.NoError(t, err)
 
@@ -411,7 +413,8 @@ func TestWebSocketProgressWriter_Error(t *testing.T) {
 	writer := &WebSocketProgressWriter{server: server}
 	writer.Error("Test error: %d", 404)
 
-	ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	assert.NoError(t, err)
 	_, message, err := ws.ReadMessage()
 	assert.NoError(t, err)
 
