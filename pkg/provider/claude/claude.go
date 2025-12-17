@@ -401,8 +401,11 @@ func calculateBatchDelay(tokensSoFar int, batchIndex int) time.Duration {
 
 // updateBatchProgress displays a progress bar for batch processing
 func updateBatchProgress(current, total int, status string) {
-	// Calculate progress (0.0 to 1.0)
-	progress := float64(current) / float64(total)
+	// Current is 0-based, so add 1 for display
+	currentBatch := current + 1
+
+	// Calculate progress (0.0 to 1.0) - show progress for the batch being worked on
+	progress := float64(currentBatch) / float64(total)
 
 	// Build progress bar (40 characters wide)
 	barWidth := 40
@@ -419,9 +422,9 @@ func updateBatchProgress(current, total int, status string) {
 	// Calculate percentage
 	percentage := int(progress * 100)
 
-	// Print progress bar
-	fmt.Printf("\r   Progress [%s] %d%% | Batch %d/%d | %s     ",
-		bar, percentage, current, total, status)
+	// Print progress bar with trailing spaces to clear leftover characters
+	fmt.Printf("\r   Progress [%s] %d%% | Batch %d/%d | %-20s",
+		bar, percentage, currentBatch, total, status)
 }
 
 // batchViolations splits violations into batches of specified size
