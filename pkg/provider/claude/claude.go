@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/anthropics/anthropic-sdk-go"
 	"github.com/anthropics/anthropic-sdk-go/option"
@@ -270,6 +271,20 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 
 	// Generate a mini-plan for each batch
 	for i, batch := range batches {
+		// Add delay between batches to respect rate limits
+		if i > 0 {
+			delay := calculateBatchDelay(totalTokens, i)
+			fmt.Printf("   ⏳ Waiting %v to respect rate limits...\n", delay.Round(time.Second))
+			select {
+			case <-ctx.Done():
+				return &provider.PlanResponse{
+					Error: ctx.Err(),
+				}, nil
+			case <-time.After(delay):
+				// Continue
+			}
+		}
+
 		fmt.Printf("   Processing batch %d/%d (%d violations)...\n", i+1, len(batches), len(batch))
 
 		batchReq := provider.PlanRequest{
@@ -303,6 +318,22 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 		TokensUsed: totalTokens,
 		Cost:       totalCost,
 	}, nil
+}
+
+// calculateBatchDelay calculates how long to wait between batches to respect rate limits
+// Claude has a 30,000 tokens/minute limit, so we need to space requests accordingly
+func calculateBatchDelay(tokensSoFar int, batchIndex int) time.Duration {
+	// Conservative delay: wait 20 seconds between batches
+	// This ensures we stay well under 30k tokens/minute
+	// (each batch is ~8-12k tokens, so 20s gives us plenty of headroom)
+	baseDelay := 20 * time.Second
+
+	// If we've already used a lot of tokens, wait a bit longer
+	if tokensSoFar > 20000 {
+		return 30 * time.Second
+	}
+
+	return baseDelay
 }
 
 // batchViolations splits violations into batches of specified size
