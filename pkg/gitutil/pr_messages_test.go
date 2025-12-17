@@ -387,3 +387,146 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 		assert.Contains(t, body, "10 files modified")
 	})
 }
+
+func TestFormatPRTitleForPhase(t *testing.T) {
+	tests := []struct {
+		name           string
+		phaseID        string
+		violationCount int
+		want           string
+	}{
+		{
+			name:           "single violation",
+			phaseID:        "phase-1",
+			violationCount: 1,
+			want:           "fix: Konveyor phase phase-1",
+		},
+		{
+			name:           "multiple violations",
+			phaseID:        "phase-2",
+			violationCount: 3,
+			want:           "fix: Konveyor phase phase-2 (3 violations)",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := FormatPRTitleForPhase(tt.phaseID, tt.violationCount)
+			assert.Equal(t, tt.want, got)
+		})
+	}
+}
+
+func TestFormatPRBodyForPhase(t *testing.T) {
+	t.Run("single violation", func(t *testing.T) {
+		fixesByViolation := map[string][]FixRecord{
+			"v1": {
+				{
+					Violation: violation.Violation{
+						ID:          "v1",
+						Description: "Test violation",
+						Category:    "mandatory",
+						Effort:      2,
+					},
+					Incident: violation.Incident{LineNumber: 10},
+					Result: &fixer.FixResult{
+						FilePath:   "file1.java",
+						Cost:       0.05,
+						TokensUsed: 100,
+						Confidence: 0.9,
+					},
+					PhaseID: "phase-1",
+				},
+			},
+		}
+
+		body := FormatPRBodyForPhase("phase-1", fixesByViolation, "claude")
+
+		assert.Contains(t, body, "Phase phase-1")
+		assert.Contains(t, body, "1** violation(s)")
+		assert.Contains(t, body, "1** total incident(s)")
+		assert.Contains(t, body, "v1")
+		assert.Contains(t, body, "Test violation")
+		assert.Contains(t, body, "mandatory")
+		assert.Contains(t, body, "file1.java")
+		assert.Contains(t, body, "$0.0500")
+		assert.Contains(t, body, "100")
+		assert.Contains(t, body, "### Confidence Assessment")
+		assert.Contains(t, body, "### Review Checklist")
+	})
+
+	t.Run("multiple violations", func(t *testing.T) {
+		fixesByViolation := map[string][]FixRecord{
+			"v1": {
+				{
+					Violation: violation.Violation{
+						ID:          "v1",
+						Description: "First violation",
+						Category:    "mandatory",
+						Effort:      1,
+					},
+					Result: &fixer.FixResult{
+						FilePath:   "file1.java",
+						Cost:       0.05,
+						TokensUsed: 100,
+						Confidence: 0.95,
+					},
+					PhaseID: "phase-1",
+				},
+				{
+					Violation: violation.Violation{
+						ID:          "v1",
+						Description: "First violation",
+						Category:    "mandatory",
+						Effort:      1,
+					},
+					Result: &fixer.FixResult{
+						FilePath:   "file2.java",
+						Cost:       0.03,
+						TokensUsed: 50,
+						Confidence: 0.92,
+					},
+					PhaseID: "phase-1",
+				},
+			},
+			"v2": {
+				{
+					Violation: violation.Violation{
+						ID:          "v2",
+						Description: "Second violation",
+						Category:    "optional",
+						Effort:      3,
+					},
+					Result: &fixer.FixResult{
+						FilePath:   "file3.java",
+						Cost:       0.10,
+						TokensUsed: 200,
+						Confidence: 0.85,
+					},
+					PhaseID: "phase-1",
+				},
+			},
+		}
+
+		body := FormatPRBodyForPhase("phase-1", fixesByViolation, "openai")
+
+		// Verify summary
+		assert.Contains(t, body, "Phase phase-1")
+		assert.Contains(t, body, "2** violation(s)")
+		assert.Contains(t, body, "3** total incident(s)")
+
+		// Verify both violations are listed
+		assert.Contains(t, body, "#### v1")
+		assert.Contains(t, body, "#### v2")
+		assert.Contains(t, body, "First violation")
+		assert.Contains(t, body, "Second violation")
+
+		// Verify totals
+		assert.Contains(t, body, "3**") // 3 files modified
+		assert.Contains(t, body, "$0.1800") // 0.05 + 0.03 + 0.10
+		assert.Contains(t, body, "350")     // 100 + 50 + 200
+
+		// Verify phase ID in details
+		assert.Contains(t, body, "- **Phase:** phase-1")
+	})
+}

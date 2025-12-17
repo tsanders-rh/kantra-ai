@@ -19,6 +19,8 @@ const (
 	PRStrategyPerViolation
 	// PRStrategyPerIncident creates one PR per incident
 	PRStrategyPerIncident
+	// PRStrategyPerPhase creates one PR per phase
+	PRStrategyPerPhase
 	// PRStrategyAtEnd creates one PR with all fixes
 	PRStrategyAtEnd
 )
@@ -30,6 +32,8 @@ func ParsePRStrategy(s string) (PRStrategy, error) {
 		return PRStrategyPerViolation, nil
 	case "per-incident":
 		return PRStrategyPerIncident, nil
+	case "per-phase":
+		return PRStrategyPerPhase, nil
 	case "at-end":
 		return PRStrategyAtEnd, nil
 	default:
@@ -49,6 +53,7 @@ type PRConfig struct {
 // PendingPR represents a PR that needs to be created
 type PendingPR struct {
 	ViolationID string
+	PhaseID     string // Phase ID for per-phase strategy
 	BranchName  string
 	Fixes       []FixRecord
 }
@@ -59,6 +64,7 @@ type CreatedPR struct {
 	URL         string
 	BranchName  string
 	ViolationID string
+	PhaseID     string // Phase ID for per-phase strategy
 }
 
 // PRTracker manages PR creation aligned with commit strategy
@@ -72,6 +78,7 @@ type PRTracker struct {
 
 	// Track fixes for PR creation
 	fixesByViolation map[string][]FixRecord
+	fixesByPhase     map[string][]FixRecord // For per-phase strategy
 	allFixes         []FixRecord
 
 	// Track created PRs
@@ -140,6 +147,7 @@ func NewPRTracker(config PRConfig, workingDir string, providerName string, progr
 		originalBranch:   currentBranch,
 		progress:         progress,
 		fixesByViolation: make(map[string][]FixRecord),
+		fixesByPhase:     make(map[string][]FixRecord),
 		allFixes:         make([]FixRecord, 0),
 		createdPRs:       make([]CreatedPR, 0),
 	}, nil
@@ -158,16 +166,38 @@ func NewPRTracker(config PRConfig, workingDir string, providerName string, progr
 //
 // Returns nil (currently never returns an error, but signature allows for future validation)
 func (pt *PRTracker) TrackForPR(v violation.Violation, incident violation.Incident, result *fixer.FixResult) error {
+	return pt.TrackForPRWithPhase(v, incident, result, "")
+}
+
+// TrackForPRWithPhase records that a fix should be included in a pull request with phase information.
+//
+// This method extends TrackForPR to support per-phase PR strategies by tracking which phase
+// the fix belongs to. Use this when you need per-phase PRs.
+//
+// Parameters:
+//   - v: The violation that was fixed
+//   - incident: The specific incident that was fixed
+//   - result: The fix result containing file path, cost, and tokens used
+//   - phaseID: The ID of the phase this fix belongs to (for per-phase strategy)
+//
+// Returns nil (currently never returns an error, but signature allows for future validation)
+func (pt *PRTracker) TrackForPRWithPhase(v violation.Violation, incident violation.Incident, result *fixer.FixResult, phaseID string) error {
 	record := FixRecord{
 		Violation: v,
 		Incident:  incident,
 		Result:    result,
 		Timestamp: time.Now(),
+		PhaseID:   phaseID,
 	}
 
 	// Track by violation
 	violationID := v.ID
 	pt.fixesByViolation[violationID] = append(pt.fixesByViolation[violationID], record)
+
+	// Track by phase (if phase ID provided)
+	if phaseID != "" {
+		pt.fixesByPhase[phaseID] = append(pt.fixesByPhase[phaseID], record)
+	}
 
 	// Track all fixes
 	pt.allFixes = append(pt.allFixes, record)
@@ -233,6 +263,8 @@ func (pt *PRTracker) Finalize() error {
 		return pt.createPRsPerViolation(baseBranch)
 	case PRStrategyPerIncident:
 		return pt.createPRsPerIncident(baseBranch)
+	case PRStrategyPerPhase:
+		return pt.createPRsPerPhase(baseBranch)
 	case PRStrategyAtEnd:
 		return pt.createPRAtEnd(baseBranch)
 	default:
@@ -343,6 +375,64 @@ func (pt *PRTracker) createPRsPerIncident(baseBranch string) error {
 			URL:         pr.HTMLURL,
 			BranchName:  branchName,
 			ViolationID: fix.Violation.ID,
+		})
+
+		// Return to original branch for next PR (skip in dry-run)
+		if !pt.config.DryRun {
+			if err := CheckoutBranch(pt.workingDir, pt.originalBranch); err != nil {
+				return fmt.Errorf("failed to return to original branch: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// createPRsPerPhase creates one PR for each phase
+func (pt *PRTracker) createPRsPerPhase(baseBranch string) error {
+	timestamp := time.Now().Unix()
+
+	prCount := len(pt.fixesByPhase)
+	currentPR := 0
+
+	for phaseID, fixes := range pt.fixesByPhase {
+		if len(fixes) == 0 {
+			continue
+		}
+
+		currentPR++
+		pt.progress.Printf("\n[%d/%d] Creating PR for phase: %s\n", currentPR, prCount, phaseID)
+
+		// Generate branch name
+		branchName := fmt.Sprintf("%s-%s-%d", pt.config.BranchPrefix, phaseID, timestamp)
+
+		// Create and push branch
+		if err := pt.createAndPushBranch(branchName); err != nil {
+			return fmt.Errorf("failed to create branch for phase %s: %w", phaseID, err)
+		}
+
+		// Group fixes by violation for the PR body
+		fixesByViolation := make(map[string][]FixRecord)
+		for _, fix := range fixes {
+			violationID := fix.Violation.ID
+			fixesByViolation[violationID] = append(fixesByViolation[violationID], fix)
+		}
+
+		// Create PR
+		title := FormatPRTitleForPhase(phaseID, len(fixesByViolation))
+		body := FormatPRBodyForPhase(phaseID, fixesByViolation, pt.providerName)
+
+		pr, err := pt.createPR(title, body, branchName, baseBranch)
+		if err != nil {
+			return fmt.Errorf("failed to create PR for phase %s: %w", phaseID, err)
+		}
+
+		// Track created PR
+		pt.createdPRs = append(pt.createdPRs, CreatedPR{
+			Number:     pr.Number,
+			URL:        pr.HTMLURL,
+			BranchName: branchName,
+			PhaseID:    phaseID,
 		})
 
 		// Return to original branch for next PR (skip in dry-run)

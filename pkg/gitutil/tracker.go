@@ -45,6 +45,7 @@ type FixRecord struct {
 	Incident  violation.Incident
 	Result    *fixer.FixResult
 	Timestamp time.Time
+	PhaseID   string // Optional: Phase ID for per-phase PR strategy
 }
 
 // CommitTracker tracks successful fixes and creates git commits based on strategy
