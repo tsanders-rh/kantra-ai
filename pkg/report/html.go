@@ -164,13 +164,13 @@ func formatMessageAsDiff(message string) string {
 
 	// Before pane (removal - red)
 	html.WriteString("<div class='diff-pane before-pane'>")
-	html.WriteString("<div class='diff-header'>− Before</div>")
+	html.WriteString("<div class='diff-header'><i class='fas fa-minus-circle'></i> Before</div>")
 	html.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>", template.HTMLEscapeString(beforeCode)))
 	html.WriteString("</div>")
 
 	// After pane (addition - green)
 	html.WriteString("<div class='diff-pane after-pane'>")
-	html.WriteString("<div class='diff-header'>+ After</div>")
+	html.WriteString("<div class='diff-header'><i class='fas fa-plus-circle'></i> After</div>")
 	html.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>", template.HTMLEscapeString(afterCode)))
 	html.WriteString("</div>")
 

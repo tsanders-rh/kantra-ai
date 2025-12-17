@@ -6,6 +6,7 @@ const htmlTemplate = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>kantra-ai Migration Plan</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * {
@@ -516,7 +517,7 @@ const htmlTemplate = `<!DOCTYPE html>
     <div id="app">
         <header>
             <div>
-                <h1>kantra-ai Migration Plan</h1>
+                <h1><i class="fas fa-robot"></i> kantra-ai Migration Plan</h1>
                 <p>Generated: {{.Plan.Metadata.CreatedAt.Format "January 2, 2006 at 3:04 PM"}}</p>
             </div>
         </header>
@@ -547,15 +548,15 @@ const htmlTemplate = `<!DOCTYPE html>
         <!-- Charts -->
         <div class="charts-container">
             <div class="chart-card">
-                <h3>Complexity Distribution</h3>
+                <h3><i class="fas fa-chart-pie"></i> Complexity Distribution</h3>
                 <canvas id="complexity-chart"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Violations by Category</h3>
+                <h3><i class="fas fa-chart-bar"></i> Violations by Category</h3>
                 <canvas id="category-chart"></canvas>
             </div>
             <div class="chart-card">
-                <h3>Risk Distribution</h3>
+                <h3><i class="fas fa-exclamation-triangle"></i> Risk Distribution</h3>
                 <canvas id="risk-chart"></canvas>
             </div>
         </div>
@@ -583,7 +584,7 @@ const htmlTemplate = `<!DOCTYPE html>
                     {{if eq $phase.Risk "high"}}
                     <div class="risk-warning">
                         <div class="risk-warning-header">
-                            ⚠️ High Risk Phase - Review Carefully
+                            <i class="fas fa-exclamation-triangle"></i> High Risk Phase - Review Carefully
                         </div>
                         <div class="risk-warning-content">
                             <p>This phase contains complex changes that may require manual review.</p>
@@ -598,9 +599,9 @@ const htmlTemplate = `<!DOCTYPE html>
                     </div>
 
                     <div class="phase-stats">
-                        <span>💰 Cost: ${{printf "%.2f" $phase.EstimatedCost}}</span>
-                        <span>⏱️ Duration: {{$phase.EstimatedDurationMinutes}} min</span>
-                        <span>🔧 Violations: {{len $phase.Violations}}</span>
+                        <span><i class="fas fa-dollar-sign"></i> Cost: ${{printf "%.2f" $phase.EstimatedCost}}</span>
+                        <span><i class="fas fa-clock"></i> Duration: {{$phase.EstimatedDurationMinutes}} min</span>
+                        <span><i class="fas fa-wrench"></i> Violations: {{len $phase.Violations}}</span>
                     </div>
 
                     <div class="phase-explanation">
@@ -623,6 +624,7 @@ const htmlTemplate = `<!DOCTYPE html>
                                     {{range $iIndex, $incident := $violation.Incidents}}
                                     <div class="incident-item">
                                         <div class="incident-location">
+                                            <i class="fas fa-file-code"></i>
                                             <code>{{$incident.URI}}</code>
                                             <span class="line-number">:{{$incident.LineNumber}}</span>
                                         </div>
