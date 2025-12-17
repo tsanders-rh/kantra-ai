@@ -444,7 +444,8 @@ func TestWebSocketProgressWriter_StartPhase(t *testing.T) {
 	writer := &WebSocketProgressWriter{server: server}
 	writer.StartPhase("Test Phase 1")
 
-	ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	assert.NoError(t, err)
 	_, message, err := ws.ReadMessage()
 	assert.NoError(t, err)
 
@@ -481,7 +482,8 @@ func TestWebSocketProgressWriter_EndPhase(t *testing.T) {
 	}
 	writer.EndPhase()
 
-	ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = ws.SetReadDeadline(time.Now().Add(1 * time.Second))
+	assert.NoError(t, err)
 	_, message, err := ws.ReadMessage()
 	assert.NoError(t, err)
 
