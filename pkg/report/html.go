@@ -152,25 +152,25 @@ func formatMessageAsDiff(message string) string {
 	afterCode = strings.TrimSuffix(afterCode, "```")
 	afterCode = strings.TrimSpace(afterCode)
 
-	// Build HTML with diff styling
+	// Build HTML with diff styling matching web UI
 	var html strings.Builder
 
 	if description != "" {
-		html.WriteString(fmt.Sprintf("<div style='margin-bottom: 12px;'>%s</div>", template.HTMLEscapeString(description)))
+		html.WriteString(fmt.Sprintf("<div class='diff-description' style='margin-bottom: 12px; color: #555;'>%s</div>", template.HTMLEscapeString(description)))
 	}
 
 	html.WriteString("<div class='diff-container'>")
 
-	// Before section (removal - red)
-	html.WriteString("<div class='diff-section diff-removal'>")
-	html.WriteString("<div class='diff-label'>- Before:</div>")
-	html.WriteString(fmt.Sprintf("<pre class='diff-code'><code>%s</code></pre>", template.HTMLEscapeString(beforeCode)))
+	// Before pane (removal - red)
+	html.WriteString("<div class='diff-pane before-pane'>")
+	html.WriteString("<div class='diff-header'>− Before</div>")
+	html.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>", template.HTMLEscapeString(beforeCode)))
 	html.WriteString("</div>")
 
-	// After section (addition - green)
-	html.WriteString("<div class='diff-section diff-addition'>")
-	html.WriteString("<div class='diff-label'>+ After:</div>")
-	html.WriteString(fmt.Sprintf("<pre class='diff-code'><code>%s</code></pre>", template.HTMLEscapeString(afterCode)))
+	// After pane (addition - green)
+	html.WriteString("<div class='diff-pane after-pane'>")
+	html.WriteString("<div class='diff-header'>+ After</div>")
+	html.WriteString(fmt.Sprintf("<pre><code>%s</code></pre>", template.HTMLEscapeString(afterCode)))
 	html.WriteString("</div>")
 
 	html.WriteString("</div>")
