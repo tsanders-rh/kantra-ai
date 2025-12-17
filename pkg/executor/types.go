@@ -38,6 +38,7 @@ type Result struct {
 	TotalFixes       int     // Total fixes attempted
 	SuccessfulFixes  int     // Fixes that succeeded
 	FailedFixes      int     // Fixes that failed
+	SkippedFixes     int     // Fixes skipped (already completed)
 	TotalCost        float64 // Total cost incurred
 	TotalTokens      int     // Total tokens used
 	StatePath        string  // Path to state file
@@ -50,6 +51,7 @@ type PhaseResult struct {
 	PhaseName       string
 	SuccessfulFixes int
 	FailedFixes     int
+	SkippedFixes    int // Fixes skipped (already completed)
 	Cost            float64
 	Tokens          int
 	Error           error

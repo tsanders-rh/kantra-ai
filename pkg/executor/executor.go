@@ -104,6 +104,7 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 		result.TotalFixes += phaseResult.SuccessfulFixes + phaseResult.FailedFixes
 		result.SuccessfulFixes += phaseResult.SuccessfulFixes
 		result.FailedFixes += phaseResult.FailedFixes
+		result.SkippedFixes += phaseResult.SkippedFixes
 		result.TotalCost += phaseResult.Cost
 		result.TotalTokens += phaseResult.Tokens
 
@@ -234,6 +235,7 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 
 		// Filter incidents that need fixing
 		incidentsToFix := make([]violation.Incident, 0, len(plannedViolation.Incidents))
+		skippedCount := 0
 		for _, incident := range plannedViolation.Incidents {
 			incidentURI := incident.URI
 
@@ -241,6 +243,7 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 			if exists {
 				if incidentStatus, ok := violationStatus.Incidents[incidentURI]; ok {
 					if incidentStatus.Status == planfile.StatusCompleted {
+						skippedCount++
 						continue
 					}
 				}
@@ -249,7 +252,15 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 			incidentsToFix = append(incidentsToFix, incident)
 		}
 
+		// Track skipped incidents
+		result.SkippedFixes += skippedCount
+
 		if len(incidentsToFix) == 0 {
+			// All incidents already fixed - skip this violation
+			if skippedCount > 0 && e.config.Progress != nil {
+				e.config.Progress.Info("   ⏭️  Skipped %d already-fixed incident(s) for %s",
+					skippedCount, plannedViolation.ViolationID)
+			}
 			continue
 		}
 

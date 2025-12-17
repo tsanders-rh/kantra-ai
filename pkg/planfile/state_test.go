@@ -241,3 +241,49 @@ func TestHasFailures(t *testing.T) {
 
 	assert.True(t, state.HasFailures())
 }
+
+func TestIsIncidentCompleted(t *testing.T) {
+	state := NewState(".kantra-ai-plan.yaml", 1)
+
+	// Non-existent violation
+	assert.False(t, state.IsIncidentCompleted("v1", "file:///test.java:10"))
+
+	// Record a successful fix
+	state.RecordIncidentFix("v1", "file:///test.java:10", 0.5)
+
+	// Should now return true
+	assert.True(t, state.IsIncidentCompleted("v1", "file:///test.java:10"))
+
+	// Different incident should return false
+	assert.False(t, state.IsIncidentCompleted("v1", "file:///test.java:20"))
+
+	// Record a failure for another incident
+	state.RecordIncidentFailure("phase-1", "v1", "file:///test.java:30", "error")
+
+	// Completed incident should still return true
+	assert.True(t, state.IsIncidentCompleted("v1", "file:///test.java:10"))
+
+	// Failed incident should return false
+	assert.False(t, state.IsIncidentCompleted("v1", "file:///test.java:30"))
+}
+
+func TestGetCompletedIncidentCount(t *testing.T) {
+	state := NewState(".kantra-ai-plan.yaml", 1)
+
+	// No violations yet
+	assert.Equal(t, 0, state.GetCompletedIncidentCount("v1"))
+
+	// Record some fixes
+	state.RecordIncidentFix("v1", "file:///test.java:10", 0.5)
+	assert.Equal(t, 1, state.GetCompletedIncidentCount("v1"))
+
+	state.RecordIncidentFix("v1", "file:///test.java:20", 0.3)
+	assert.Equal(t, 2, state.GetCompletedIncidentCount("v1"))
+
+	// Record a failure - should not be counted
+	state.RecordIncidentFailure("phase-1", "v1", "file:///test.java:30", "error")
+	assert.Equal(t, 2, state.GetCompletedIncidentCount("v1"))
+
+	// Different violation should return 0
+	assert.Equal(t, 0, state.GetCompletedIncidentCount("v2"))
+}

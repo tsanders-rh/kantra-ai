@@ -827,6 +827,7 @@ func printExecutionSummary(result *executor.Result, duration time.Duration) {
 		{"→ Executed phases:", ux.Info(fmt.Sprintf("%d", result.ExecutedPhases))},
 		{ux.Success("✓") + " Successful fixes:", ux.Success(fmt.Sprintf("%d", result.SuccessfulFixes))},
 		{ux.Error("✗") + " Failed fixes:", ux.Error(fmt.Sprintf("%d", result.FailedFixes))},
+		{"⏭️  Skipped fixes:", ux.Info(fmt.Sprintf("%d (already completed)", result.SkippedFixes))},
 		{"💰 Total cost:", ux.FormatCost(result.TotalCost)},
 		{"🎫 Total tokens:", ux.FormatTokens(result.TotalTokens)},
 		{"⏱  Duration:", ux.FormatDuration(duration)},

@@ -204,6 +204,37 @@ func (s *ExecutionState) HasFailures() bool {
 	return s.LastFailure != nil
 }
 
+// IsIncidentCompleted checks if an incident has been successfully fixed
+func (s *ExecutionState) IsIncidentCompleted(violationID, incidentURI string) bool {
+	if s.Violations == nil {
+		return false
+	}
+	violation, exists := s.Violations[violationID]
+	if !exists {
+		return false
+	}
+	incident, exists := violation.Incidents[incidentURI]
+	return exists && incident.Status == StatusCompleted
+}
+
+// GetCompletedIncidentCount returns the number of completed incidents for a violation
+func (s *ExecutionState) GetCompletedIncidentCount(violationID string) int {
+	if s.Violations == nil {
+		return 0
+	}
+	violation, exists := s.Violations[violationID]
+	if !exists {
+		return 0
+	}
+	count := 0
+	for _, incident := range violation.Incidents {
+		if incident.Status == StatusCompleted {
+			count++
+		}
+	}
+	return count
+}
+
 // updateSummary recalculates the execution summary
 func (s *ExecutionState) updateSummary() {
 	completed := 0
