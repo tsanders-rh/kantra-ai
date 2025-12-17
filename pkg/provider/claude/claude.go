@@ -526,8 +526,30 @@ func phasePriority(phase provider.PlannedPhase) int {
 
 // buildPlanPrompt constructs the prompt for plan generation
 func buildPlanPrompt(req provider.PlanRequest) string {
-	// Convert violations to JSON for the prompt
-	violationsJSON, _ := json.MarshalIndent(req.Violations, "", "  ")
+	// Create a lightweight version of violations (without full incident details)
+	// to avoid exceeding token limits
+	type lightweightViolation struct {
+		ID                  string `json:"id"`
+		Description         string `json:"description"`
+		Category            string `json:"category"`
+		Effort              int    `json:"effort"`
+		IncidentCount       int    `json:"incident_count"`
+		MigrationComplexity string `json:"migration_complexity,omitempty"`
+	}
+
+	lightViolations := make([]lightweightViolation, len(req.Violations))
+	for i, v := range req.Violations {
+		lightViolations[i] = lightweightViolation{
+			ID:                  v.ID,
+			Description:         v.Description,
+			Category:            v.Category,
+			Effort:              v.Effort,
+			IncidentCount:       len(v.Incidents),
+			MigrationComplexity: v.MigrationComplexity,
+		}
+	}
+
+	violationsJSON, _ := json.MarshalIndent(lightViolations, "", "  ")
 
 	maxPhases := req.MaxPhases
 	if maxPhases == 0 {
