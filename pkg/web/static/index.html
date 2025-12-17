@@ -247,6 +247,15 @@
                             <input type="checkbox" id="setting-create-pr">
                             Create pull request after execution
                         </label>
+                        <div class="settings-field">
+                            <label>PR strategy:</label>
+                            <select id="setting-pr-strategy">
+                                <option value="per-violation">Per violation</option>
+                                <option value="per-incident">Per incident</option>
+                                <option value="per-phase" selected>Per phase (recommended)</option>
+                                <option value="at-end">Single PR at end</option>
+                            </select>
+                        </div>
                     </div>
 
                     <div class="settings-section">

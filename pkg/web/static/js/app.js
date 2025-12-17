@@ -1379,6 +1379,7 @@ Esc             Close modals
         document.getElementById('setting-create-commits').checked = settings.createCommits || false;
         document.getElementById('setting-commit-strategy').value = settings.commitStrategy || 'single';
         document.getElementById('setting-create-pr').checked = settings.createPR || false;
+        document.getElementById('setting-pr-strategy').value = settings.prStrategy || 'per-phase';
 
         document.getElementById('setting-batch-enabled').checked = settings.batchEnabled !== false;
         document.getElementById('setting-batch-size').value = settings.batchSize || 10;
@@ -1398,6 +1399,7 @@ Esc             Close modals
             createCommits: document.getElementById('setting-create-commits').checked,
             commitStrategy: document.getElementById('setting-commit-strategy').value,
             createPR: document.getElementById('setting-create-pr').checked,
+            prStrategy: document.getElementById('setting-pr-strategy').value,
 
             batchEnabled: document.getElementById('setting-batch-enabled').checked,
             batchSize: parseInt(document.getElementById('setting-batch-size').value),
