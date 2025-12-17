@@ -57,7 +57,7 @@ func TestNew(t *testing.T) {
 	p := New(config)
 
 	assert.NotNil(t, p)
-	assert.Equal(t, ".kantra-ai-plan.yaml", p.config.OutputPath)
+	assert.Equal(t, ".kantra-ai-plan", p.config.OutputPath)
 	assert.Equal(t, "balanced", p.config.RiskTolerance)
 }
 
@@ -68,13 +68,13 @@ func TestNew_WithCustomDefaults(t *testing.T) {
 		AnalysisPath:  "/tmp/analysis.yaml",
 		InputPath:     "/tmp/input",
 		Provider:      mockProvider,
-		OutputPath:    "custom-plan.yaml",
+		OutputPath:    "custom-plan-dir",
 		RiskTolerance: "conservative",
 	}
 
 	p := New(config)
 
-	assert.Equal(t, "custom-plan.yaml", p.config.OutputPath)
+	assert.Equal(t, "custom-plan-dir", p.config.OutputPath)
 	assert.Equal(t, "conservative", p.config.RiskTolerance)
 }
 
@@ -89,7 +89,7 @@ func TestGenerate_BasicFlow(t *testing.T) {
 	err = saveAnalysis(analysis, analysisPath)
 	assert.NoError(t, err)
 
-	outputPath := filepath.Join(tmpDir, "plan.yaml")
+	outputDir := filepath.Join(tmpDir, "output")
 
 	// Create mock provider
 	mockProvider := new(MockProvider)
@@ -120,7 +120,7 @@ func TestGenerate_BasicFlow(t *testing.T) {
 		AnalysisPath: analysisPath,
 		InputPath:    tmpDir,
 		Provider:     mockProvider,
-		OutputPath:   outputPath,
+		OutputPath:   outputDir,
 	}
 
 	p := New(config)
@@ -130,14 +130,15 @@ func TestGenerate_BasicFlow(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.NotNil(t, result)
-	assert.Equal(t, outputPath, result.PlanPath)
+	expectedPlanPath := filepath.Join(outputDir, "plan.yaml")
+	assert.Equal(t, expectedPlanPath, result.PlanPath)
 	assert.Equal(t, 1, result.TotalPhases)
 	assert.Equal(t, 0.50, result.TotalCost)
 	assert.Equal(t, 0.10, result.GenerateCost)
 	assert.Equal(t, 500, result.TokensUsed)
 
 	// Verify plan file was created
-	plan, err := planfile.LoadPlan(outputPath)
+	plan, err := planfile.LoadPlan(expectedPlanPath)
 	assert.NoError(t, err)
 	assert.NotNil(t, plan)
 	assert.Len(t, plan.Phases, 1)
@@ -156,7 +157,7 @@ func TestGenerate_WithFilters(t *testing.T) {
 	err = saveAnalysis(analysis, analysisPath)
 	assert.NoError(t, err)
 
-	outputPath := filepath.Join(tmpDir, "plan.yaml")
+	outputDir := filepath.Join(tmpDir, "output")
 
 	mockProvider := new(MockProvider)
 	mockProvider.On("Name").Return("test-provider").Maybe()
@@ -186,7 +187,7 @@ func TestGenerate_WithFilters(t *testing.T) {
 		AnalysisPath:  analysisPath,
 		InputPath:     tmpDir,
 		Provider:      mockProvider,
-		OutputPath:    outputPath,
+		OutputPath:    outputDir,
 		Categories:    []string{"mandatory"},
 		RiskTolerance: "balanced",
 	}
@@ -223,7 +224,7 @@ func TestGenerate_ProviderError(t *testing.T) {
 		AnalysisPath: analysisPath,
 		InputPath:    tmpDir,
 		Provider:     mockProvider,
-		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+		OutputPath:   filepath.Join(tmpDir, "output"),
 	}
 
 	p := New(config)
@@ -256,7 +257,7 @@ func TestGenerate_NoViolations(t *testing.T) {
 		AnalysisPath: analysisPath,
 		InputPath:    tmpDir,
 		Provider:     mockProvider,
-		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+		OutputPath:   filepath.Join(tmpDir, "output"),
 	}
 
 	p := New(config)
@@ -434,7 +435,7 @@ func TestGenerate_ProviderReturnsResponseWithError(t *testing.T) {
 		AnalysisPath: analysisPath,
 		InputPath:    tmpDir,
 		Provider:     mockProvider,
-		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+		OutputPath:   filepath.Join(tmpDir, "output"),
 	}
 
 	p := New(config)
@@ -457,7 +458,7 @@ func TestGenerate_InvalidAnalysisPath(t *testing.T) {
 		AnalysisPath: "/nonexistent/path/analysis.yaml",
 		InputPath:    "/tmp",
 		Provider:     mockProvider,
-		OutputPath:   "/tmp/plan.yaml",
+		OutputPath:   "/tmp/output",
 	}
 
 	p := New(config)
@@ -488,7 +489,7 @@ func TestGenerate_AllViolationsFilteredOut(t *testing.T) {
 		AnalysisPath: analysisPath,
 		InputPath:    tmpDir,
 		Provider:     mockProvider,
-		OutputPath:   filepath.Join(tmpDir, "plan.yaml"),
+		OutputPath:   filepath.Join(tmpDir, "output"),
 		Categories:   []string{"optional"}, // Filter only optional, but analysis has mandatory
 	}
 

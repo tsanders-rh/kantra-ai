@@ -1,0 +1,29 @@
+version: "1.0"
+plan_file: /var/folders/lr/3wc11l3j38d4gs0yg5nm2jb80000gn/T/web-test-1431799454/plan.yaml
+started_at: 2025-12-16T18:59:51.496541-05:00
+updated_at: 2025-12-16T18:59:51.49664-05:00
+execution_summary:
+    total_phases: 1
+    completed_phases: 1
+    pending_phases: 0
+    total_cost: 0
+phases:
+    - phase_id: phase-1
+      status: completed
+      started_at: 2025-12-16T18:59:51.496543-05:00
+      completed_at: 2025-12-16T18:59:51.496633-05:00
+      fixes_applied: 0
+      cost: 0
+violations:
+    test-violation-1:
+        status: failed
+        incidents:
+            file:///test.java:
+                status: failed
+                cost: 0
+                timestamp: 2025-12-16T18:59:51.496633-05:00
+last_failure:
+    phase_id: phase-1
+    violation_id: test-violation-1
+    incident_uri: file:///test.java
+    error: 'failed to read file /var/folders/lr/3wc11l3j38d4gs0yg5nm2jb80000gn/T/web-test-1431799454/test.java: open /var/folders/lr/3wc11l3j38d4gs0yg5nm2jb80000gn/T/web-test-1431799454/test.java: no such file or directory'

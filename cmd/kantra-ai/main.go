@@ -119,7 +119,7 @@ phases that can be reviewed, edited, and executed incrementally.`,
 	planCmd.Flags().StringVar(&analysisPath, "analysis", "", "Path to Konveyor analysis output.yaml (required)")
 	planCmd.Flags().StringVar(&inputPath, "input", "", "Path to application source code (required)")
 	planCmd.Flags().StringVar(&providerName, "provider", "claude", "AI provider: claude (openai not yet supported for planning)")
-	planCmd.Flags().StringVar(&planOutputPath, "output", ".kantra-ai-plan.yaml", "Output plan file path")
+	planCmd.Flags().StringVar(&planOutputPath, "output", ".kantra-ai-plan", "Output directory for plan files (plan.yaml and plan.html)")
 	planCmd.Flags().IntVar(&planMaxPhases, "max-phases", 0, "Maximum number of phases (0 = auto, typically 3-5)")
 	planCmd.Flags().StringVar(&planRiskTolerance, "risk-tolerance", "balanced", "Risk tolerance: conservative, balanced, aggressive")
 	planCmd.Flags().StringVar(&violationIDs, "violation-ids", "", "Comma-separated violation IDs to include")
@@ -647,8 +647,13 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	fmt.Printf("📋 Analysis: %s\n", analysisPath)
 	fmt.Printf("📂 Input: %s\n", inputPath)
 	fmt.Printf("🤖 Provider: %s\n", prov.Name())
-	fmt.Printf("📝 Output: %s\n", planOutputPath)
+	fmt.Printf("📁 Output directory: %s\n", planOutputPath)
 	fmt.Println()
+
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(planOutputPath, 0755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
+	}
 
 	// Parse filters
 	var violationIDList []string

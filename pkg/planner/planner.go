@@ -3,6 +3,8 @@ package planner
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/tsanders/kantra-ai/pkg/confidence"
@@ -21,7 +23,7 @@ type Planner struct {
 func New(config Config) *Planner {
 	// Set defaults
 	if config.OutputPath == "" {
-		config.OutputPath = ".kantra-ai-plan.yaml"
+		config.OutputPath = ".kantra-ai-plan"
 	}
 	if config.RiskTolerance == "" {
 		config.RiskTolerance = "balanced"
@@ -75,14 +77,20 @@ func (p *Planner) Generate(ctx context.Context) (*Result, error) {
 		}
 	}
 
-	// Save plan to file
-	if err := planfile.SavePlan(plan, p.config.OutputPath); err != nil {
+	// Create output directory if it doesn't exist
+	if err := os.MkdirAll(p.config.OutputPath, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create output directory: %w", err)
+	}
+
+	// OutputPath is now a directory, save plan.yaml inside it
+	planPath := filepath.Join(p.config.OutputPath, "plan.yaml")
+	if err := planfile.SavePlan(plan, planPath); err != nil {
 		return nil, fmt.Errorf("failed to save plan: %w", err)
 	}
 
 	return &Result{
 		Plan:         plan,
-		PlanPath:     p.config.OutputPath,
+		PlanPath:     planPath,
 		TotalPhases:  len(plan.Phases),
 		TotalCost:    plan.GetTotalCost(),
 		TokensUsed:   planResp.TokensUsed,

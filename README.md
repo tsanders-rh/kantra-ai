@@ -129,16 +129,17 @@ For larger migrations with 20+ violations, use the `plan` → `execute` workflow
   --provider=claude
 
 # Output:
-# Plan saved to: .kantra-ai-plan.yaml
-# HTML report:   .kantra-ai-plan.html
+# Created directory: .kantra-ai-plan/
+# Plan saved to:     .kantra-ai-plan/plan.yaml
+# HTML report:       .kantra-ai-plan/plan.html
 #   Total phases: 3
 #   Total violations: 45
 #   Estimated cost: $4.30
 ```
 
-The plan command generates two files:
-- **YAML file** (.kantra-ai-plan.yaml) - Machine-readable plan for execution
-- **HTML report** (.kantra-ai-plan.html) - Static visual report with same styling as web UI
+The plan command creates a directory containing both files:
+- **plan.yaml** - Machine-readable plan for execution
+- **plan.html** - Static visual report with same styling as web UI
 
 **HTML Report Features:**
 
@@ -158,20 +159,20 @@ The HTML report uses the same visual design as `--interactive-web` and includes:
 
 ```bash
 # View interactive HTML report in browser
-open .kantra-ai-plan.html
+open .kantra-ai-plan/plan.html
 
 # Or review YAML plan
-cat .kantra-ai-plan.yaml
+cat .kantra-ai-plan/plan.yaml
 
 # Edit if needed (mark phases as deferred, adjust order, etc.)
-vim .kantra-ai-plan.yaml
+vim .kantra-ai-plan/plan.yaml
 ```
 
 **Step 3: Execute the plan** with progress tracking:
 
 ```bash
 ./kantra-ai execute \
-  --plan=.kantra-ai-plan.yaml \
+  --plan=.kantra-ai-plan/plan.yaml \
   --input=./your-app \
   --provider=claude
 
@@ -183,7 +184,7 @@ vim .kantra-ai-plan.yaml
 ```bash
 # If execution fails mid-way, resume from the failure point
 ./kantra-ai execute \
-  --plan=.kantra-ai-plan.yaml \
+  --plan=.kantra-ai-plan/plan.yaml \
   --input=./your-app \
   --provider=claude \
   --resume
@@ -565,7 +566,7 @@ For complete examples and template syntax, see [.kantra-ai.example.yaml](./.kant
 | `--input` | Path to source code directory (required) | `--input=./src` |
 | `--provider` | AI provider: `claude` (OpenAI not yet supported for planning) | `--provider=claude` |
 | `--model` | Specific model override (optional) | `--model=claude-opus-4-20250514` |
-| `--output` | Output plan file path (default: .kantra-ai-plan.yaml) | `--output=my-plan.yaml` |
+| `--output` | Output directory path (default: .kantra-ai-plan) | `--output=my-plan-dir` |
 | `--max-phases` | Maximum number of phases (0 = auto, typically 3-5) | `--max-phases=5` |
 | `--risk-tolerance` | Risk tolerance: `conservative`, `balanced`, `aggressive` | `--risk-tolerance=conservative` |
 | `--categories` | Filter by category | `--categories=mandatory` |

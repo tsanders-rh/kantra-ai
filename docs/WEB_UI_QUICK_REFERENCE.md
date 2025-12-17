@@ -206,7 +206,9 @@ kill -9 <PID>
 
 | File | Purpose |
 |------|---------|
-| `.kantra-ai-plan.yaml` | Plan with approval decisions |
+| `.kantra-ai-plan/` | Directory containing plan files |
+| `.kantra-ai-plan/plan.yaml` | Plan with approval decisions |
+| `.kantra-ai-plan/plan.html` | Visual HTML report |
 | `.kantra-ai-state.yaml` | Execution state and history |
 | `kantra-ai-plan-export.json` | Exported plan backup |
 

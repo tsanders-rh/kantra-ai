@@ -1,0 +1,1925 @@
+version: "1.0"
+metadata:
+    created_at: 2025-12-16T20:46:13.730879-05:00
+    provider: claude
+    total_violations: 9
+phases:
+    - id: phase-1
+      name: Core Component API Removals
+      order: 1
+      risk: medium
+      category: mandatory
+      effort_range:
+        - 3
+        - 3
+      explanation: These violations involve removed props and APIs that are straightforward to fix but affect core UI components. Starting with these ensures basic component functionality is preserved while being relatively low-risk changes that mostly involve prop removal.
+      violations:
+        - violation_id: patternfly-v5-to-patternfly-v6-removed-props-00050
+          description: isSelected usage detected (removed API)
+          category: mandatory
+          effort: 3
+          incident_count: 16
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/MultiselectFilterControl.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 262
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/MultiselectFilterControl.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/MultiselectFilterControl.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 275
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/MultiselectFilterControl.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/SelectFilterControl.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 116
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/SelectFilterControl.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/SelectFilterControl.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 122
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/SelectFilterControl.tsx
+            - uri: file:///opt/input/source/client/src/app/components/SimpleSelectBasic.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 65
+              variables:
+                file: file:///opt/input/source/client/src/app/components/SimpleSelectBasic.tsx
+            - uri: file:///opt/input/source/client/src/app/components/SimpleSelectCheckbox.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 108
+              variables:
+                file: file:///opt/input/source/client/src/app/components/SimpleSelectCheckbox.tsx
+            - uri: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 15
+              variables:
+                file: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+            - uri: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 35
+              variables:
+                file: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+            - uri: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 43
+              variables:
+                file: file:///opt/input/source/client/src/app/components/simple-document-viewer/AttachmentToggle.tsx
+            - uri: file:///opt/input/source/client/src/app/components/simple-document-viewer/LanguageToggle.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 45
+              variables:
+                file: file:///opt/input/source/client/src/app/components/simple-document-viewer/LanguageToggle.tsx
+            - uri: file:///opt/input/source/client/src/app/components/simple-document-viewer/SimpleDocumentViewer.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 218
+              variables:
+                file: file:///opt/input/source/client/src/app/components/simple-document-viewer/SimpleDocumentViewer.tsx
+            - uri: file:///opt/input/source/client/src/app/components/target-card/target-card.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 128
+              variables:
+                file: file:///opt/input/source/client/src/app/components/target-card/target-card.tsx
+            - uri: file:///opt/input/source/client/src/app/hooks/selection/useBulkSelection.ts
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 94
+              variables:
+                file: file:///opt/input/source/client/src/app/hooks/selection/useBulkSelection.ts
+            - uri: file:///opt/input/source/client/src/app/hooks/useSelectionState/useSelectionState.ts
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 13
+              variables:
+                file: file:///opt/input/source/client/src/app/hooks/useSelectionState/useSelectionState.ts
+            - uri: file:///opt/input/source/client/src/app/hooks/useSelectionState/useSelectionState.ts
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 15
+              variables:
+                file: file:///opt/input/source/client/src/app/hooks/useSelectionState/useSelectionState.ts
+            - uri: file:///opt/input/source/client/src/app/pages/applications/generate-assets-wizard/step-select-target-profile.tsx
+              message: |-
+                The isSelected prop has been removed from PageHeaderToolsItem.
+                Remove usage of `isSelected` (API has been removed).
+
+                Before:
+                ```
+                <PageHeaderToolsItem isSelected />
+                ```
+
+                After:
+                ```
+                <PageHeaderToolsItem />
+                ```
+              codeSnip: ""
+              lineNumber: 109
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/generate-assets-wizard/step-select-target-profile.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-removed-props-00110
+          description: labelOff usage detected (removed API)
+          category: mandatory
+          effort: 3
+          incident_count: 1
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: |-
+                The labelOff prop has been removed from Switch. The label for a Switch
+                should not dynamically update based on the on/off state.
+                Remove usage of `labelOff` (API has been removed).
+
+                Before:
+                ```
+                <Switch labelOff='Some label' />
+                ```
+
+                After:
+                ```
+                <Switch />
+                ```
+              codeSnip: ""
+              lineNumber: 279
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-removed-props-00140
+          description: widths usage detected (removed API)
+          category: mandatory
+          effort: 3
+          incident_count: 1
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 137
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-removed-props-00150
+          description: alignment usage detected (removed API)
+          category: mandatory
+          effort: 3
+          incident_count: 2
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 15
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 169
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-removed-props-00160
+          description: spaceItems usage detected (removed API)
+          category: mandatory
+          effort: 3
+          incident_count: 5
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/components/Autocomplete/Autocomplete.tsx
+              message: |-
+                The spaceItems property has been removed from ToolbarGroup and ToolbarToggleGroup.
+                Remove usage of `spaceItems` (API has been removed).
+
+                Before:
+                ```
+                <ToolbarGroup spaceItems= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup />
+                ```
+              codeSnip: ""
+              lineNumber: 161
+              variables:
+                file: file:///opt/input/source/client/src/app/components/Autocomplete/Autocomplete.tsx
+            - uri: file:///opt/input/source/client/src/app/components/Autocomplete/GroupedAutocomplete.tsx
+              message: |-
+                The spaceItems property has been removed from ToolbarGroup and ToolbarToggleGroup.
+                Remove usage of `spaceItems` (API has been removed).
+
+                Before:
+                ```
+                <ToolbarGroup spaceItems= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup />
+                ```
+              codeSnip: ""
+              lineNumber: 165
+              variables:
+                file: file:///opt/input/source/client/src/app/components/Autocomplete/GroupedAutocomplete.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+              message: |-
+                The spaceItems property has been removed from ToolbarGroup and ToolbarToggleGroup.
+                Remove usage of `spaceItems` (API has been removed).
+
+                Before:
+                ```
+                <ToolbarGroup spaceItems= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup />
+                ```
+              codeSnip: ""
+              lineNumber: 197
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/components/Icons/IconWithLabel.tsx
+              message: |-
+                The spaceItems property has been removed from ToolbarGroup and ToolbarToggleGroup.
+                Remove usage of `spaceItems` (API has been removed).
+
+                Before:
+                ```
+                <ToolbarGroup spaceItems= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup />
+                ```
+              codeSnip: ""
+              lineNumber: 21
+              variables:
+                file: file:///opt/input/source/client/src/app/components/Icons/IconWithLabel.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/reports/components/application-landscape/application-landscape.tsx
+              message: |-
+                The spaceItems property has been removed from ToolbarGroup and ToolbarToggleGroup.
+                Remove usage of `spaceItems` (API has been removed).
+
+                Before:
+                ```
+                <ToolbarGroup spaceItems= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup />
+                ```
+              codeSnip: ""
+              lineNumber: 144
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/reports/components/application-landscape/application-landscape.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-components-00060
+          description: isActive should be replaced with Remove isActive prop
+          category: mandatory
+          effort: 3
+          incident_count: 7
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/components/BreadCrumbPath.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 34
+              variables:
+                file: file:///opt/input/source/client/src/app/components/BreadCrumbPath.tsx
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 106
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 115
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment/components/assessment-actions/assessment-actions-page.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 44
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment/components/assessment-actions/assessment-actions-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment/components/view-archetypes/view-archetypes-page.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 77
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment/components/view-archetypes/view-archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 145
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+              message: |-
+                The isActive prop has been removed from ExpandableSection component in
+                PatternFly 6
+
+                Replace `isActive` with `Remove isActive prop`.
+
+                Before:
+                ```
+                <ExpandableSection isActive>Content</ExpandableSection>
+                ```
+
+                After:
+                ```
+                <ExpandableSection>Content</ExpandableSection>
+                ```
+              codeSnip: ""
+              lineNumber: 145
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+      estimated_cost: 1.35
+      estimated_duration_minutes: 45
+      deferred: false
+    - id: phase-2
+      name: Toolbar and Layout Restructuring
+      order: 2
+      risk: high
+      category: mandatory
+      effort_range:
+        - 3
+        - 3
+      explanation: This phase focuses on the extensive ToolbarItem width removals and spacer-to-gap property renames. These changes affect layout and spacing throughout the application and require careful testing to ensure visual consistency. The high number of incidents (150+ for ToolbarItem) makes this a significant but necessary refactoring effort.
+      violations:
+        - violation_id: patternfly-v5-to-patternfly-v6-component-props-00140
+          description: ToolbarItem widths should be replaced with ToolbarItem without widths
+          category: mandatory
+          effort: 3
+          incident_count: 181
+          incidents:
+            - uri: file:///Users/tsanders/Workspace/tackle2-ui/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: ""
+              codeSnip: " 38    summaryData: Assessment | Questionnaire | undefined;\n 39    summaryType: SummaryType;\n 40  }\n 41  \n 42  const QuestionnaireSummary: React.FC<QuestionnaireSummaryProps> = ({\n 43    summaryData,\n 44    summaryType,\n 45    isFetching = false,\n 46    fetchError = null,\n 47  }) => {\n 48    const isArchetype = useIsArchetype();\n 49  \n 50    const [activeSectionIndex, setActiveSectionIndex] = useState<\"all\" | number>(\n 51      \"all\"\n 52    );\n 53  \n 54    const handleTabClick = (_event: unknown, tabKey: string | number) => {\n 55      setActiveSectionIndex(tabKey as \"all\" | number);\n 56    };\n 57  \n 58    const [searchValue, setSearchValue] = useState(\"\");\n 59  \n 60    const filteredSummaryData = useMemo<Assessment | Questionnaire | null>(() => {\n 61      if (!summaryData) return null;\n 62  \n 63      return {\n 64        ...summaryData,\n 65        sections: summaryData?.sections?.map((section) => ({\n 66          ...section,\n 67          questions: section.questions.filter(({ text, explanation }) =>\n 68            [text, explanation].some((text) =>\n 69              text?.toLowerCase().includes(searchValue.toLowerCase())\n 70            )\n 71          ),\n 72        })),\n 73      };\n 74    }, [summaryData, searchValue]);\n 75  \n 76    const allQuestions =\n 77      summaryData?.sections?.flatMap((section) => section.questions) || [];\n 78    const allMatchingQuestions =\n 79      filteredSummaryData?.sections?.flatMap((section) => section.questions) ||\n 80      [];\n 81  \n 82    const dynamicPath = isArchetype\n 83      ? formatPath(Paths.archetypeAssessmentActions, {\n 84          archetypeId: (summaryData as Assessment)?.archetype?.id,\n 85        })\n 86      : formatPath(Paths.applicationAssessmentActions, {\n 87          applicationId: (summaryData as Assessment)?.application?.id,\n 88        });\n 89  \n 90    // questionnaire is the base definition\n 91    // assessment is the answers to a questionnaire for an application or archetype\n 92    const summaryName = !summaryData\n 93      ? \"\"\n 94      : summaryType === SummaryType.Questionnaire\n 95        ? (summaryData as Questionnaire).name\n 96        : summaryType === SummaryType.Assessment\n 97          ? (summaryData as Assessment).questionnaire.name\n 98          : \"\";\n 99  \n100    const BreadcrumbPath =\n101      summaryType === SummaryType.Assessment ? (\n102        <Breadcrumb>\n103          <BreadcrumbItem>\n104            <Link to={dynamicPath}>Assessment</Link>\n105          </BreadcrumbItem>\n106          <BreadcrumbItem to=\"#\" isActive>\n107            {summaryName}\n108          </BreadcrumbItem>\n109        </Breadcrumb>\n110      ) : (\n111        <Breadcrumb>\n112          <BreadcrumbItem>\n113            <Link to={Paths.assessment}>Assessment</Link>\n114          </BreadcrumbItem>\n115          <BreadcrumbItem to=\"#\" isActive>\n116            {summaryName}\n117          </BreadcrumbItem>\n118        </Breadcrumb>\n119      );\n120    return (\n121      <>\n122        <PageSection variant={PageSectionVariants.light}>\n123          <TextContent>\n124            <Text component=\"h1\">{summaryType}</Text>\n125          </TextContent>\n126          {BreadcrumbPath}\n127        </PageSection>\n128        <PageSection>\n129          <ConditionalRender when={isFetching} then={<AppPlaceholder />}>\n130            <div\n131              style={{\n132                backgroundColor: \"var(--pf-v5-global--BackgroundColor--100)\",\n133              }}\n134            >\n135              <Toolbar>\n136                <ToolbarContent>\n137                  <ToolbarItem widths={{ default: \"300px\" }}>\n138                    <SearchInput\n139                      placeholder=\"Search questions\"\n140                      value={searchValue}\n141                      onChange={(_event, value) => setSearchValue(value)}\n142                      onClear={() => setSearchValue(\"\")}\n143                      resultsCount={\n144                        (searchValue && allMatchingQuestions.length) || undefined\n145                      }\n146                    />\n147                  </ToolbarItem>\n148                </ToolbarContent>\n149              </Toolbar>\n150              <div className=\"tabs-vertical-container\">\n151                <Tabs\n152                  activeKey={activeSectionIndex}\n153                  onSelect={handleTabClick}\n154                  isVertical\n155                  aria-label=\"Tabs for summaryData sections\"\n156                  role=\"region\"\n157                  className=\"tabs-vertical-container__tabs\"\n158                >\n159                  {[\n160                    <Tab\n161                      key=\"all\"\n162                      eventKey=\"all\"\n163                      title={\n164                        <QuestionnaireSectionTabTitle\n165                          isSearching={!!searchValue}\n166                          sectionName=\"All questions\"\n167                          unfilteredQuestions={allQuestions}\n168                          filteredQuestions={allMatchingQuestions}\n169                        />\n170                      }\n171                    >\n172                      <QuestionsTable\n173                        fetchError={fetchError}\n174                        questions={allMatchingQuestions}\n175                        isSearching={!!searchValue}\n176                        data={summaryData}\n177                        isAllQuestionsTab\n178                        hideAnswerKey={summaryType === SummaryType.Assessment}\n179                      />\n180                    </Tab>,\n181                    ...(summaryData?.sections?.map((section, index) => {\n182                      const filteredQuestions =\n183                        filteredSummaryData?.sections[index]?.questions || [];\n184                      return (\n185                        <Tab\n186                          key={index}\n187                          eventKey={index}\n188                          title={\n189                            <QuestionnaireSectionTabTitle\n190                              isSearching={!!searchValue}\n191                              sectionName={section.name}\n192                              unfilteredQuestions={section.questions}\n193                              filteredQuestions={filteredQuestions}\n194                            />\n195                          }\n196                        >\n197                          <QuestionsTable\n198                            fetchError={fetchError}\n199                            questions={filteredQuestions}\n200                            isSearching={!!searchValue}\n201                            data={summaryData}\n202                            hideAnswerKey={summaryType === SummaryType.Assessment}\n203                          />\n204                          {section?.comment && (\n205                            <TextContent className={spacing.myMd}>\n206                              <Text component=\"h4\">Section comments</Text>\n207                              <Text key={index} component=\"p\">\n208                                {section.comment}\n209                              </Text>\n210                            </TextContent>\n211                          )}\n212                        </Tab>\n213                      );\n214                    }) || []),\n215                  ]}\n216                </Tabs>\n217              </div>\n218            </div>\n219          </ConditionalRender>\n220        </PageSection>\n221      </>\n222    );\n223  };\n224  \n225  export default QuestionnaireSummary;\n"
+              lineNumber: 137
+              variables:
+                matchingText: ""
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 9
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 202
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 221
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 239
+              variables:
+                file: file:///opt/input/source/client/src/app/components/FilterToolbar/FilterToolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 2
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 22
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 32
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkExpander.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 9
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 103
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+            - uri: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 140
+              variables:
+                file: file:///opt/input/source/client/src/app/components/ToolbarBulkSelector.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 7
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 138
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 144
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/all-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 12
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 201
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 202
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 227
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 233
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 239
+              variables:
+                file: file:///opt/input/source/client/src/app/components/insights/tables/single-application-insights-table.tsx
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 16
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 137
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+            - uri: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 147
+              variables:
+                file: file:///opt/input/source/client/src/app/components/questionnaire-summary/questionnaire-summary.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 16
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 45
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 47
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 63
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 78
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 88
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 90
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 106
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 112
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 11
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 36
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 86
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/SsoToolbarItem.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 19
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 303
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 315
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/analysis-wizard/custom-rules.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/application-facts.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 7
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/application-facts.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/application-facts.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 68
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/application-facts.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/components/application-tags.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 14
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/components/application-tags.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/components/application-tags.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 190
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/components/application-tags.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 4
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 148
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 155
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/application-detail-drawer/tab-tasks-content.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 16
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 968
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 985
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 986
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 991
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1016
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1018
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1022
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1027
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1038
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 1044
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 8
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 31
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 43
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/applications-table/components/manage-columns-toolbar.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 16
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 156
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 166
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports-details/manage-imports-details.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 18
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 182
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 192
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 193
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 210
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 212
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 218
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/applications/manage-imports/manage-imports.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 19
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 279
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 281
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 283
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 289
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/archetypes-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 18
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 126
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 136
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/archetypes/target-profiles-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 28
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 184
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 196
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 199
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 213
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 216
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 222
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/assessment-management/assessment-settings/assessment-settings-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 20
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 243
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 253
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 255
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 261
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/asset-generators.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 3
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 87
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 94
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/asset-generators/components/generator-collection-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 15
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 190
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 205
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 207
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 213
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/business-services/business-services.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 14
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 167
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 173
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/job-functions/job-functions.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 20
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 202
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 217
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 219
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 225
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholder-groups/stakeholder-groups.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 20
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 220
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 230
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 233
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 239
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/stakeholders/stakeholders.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 16
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 257
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 267
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 268
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 278
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 281
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 287
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/controls/tags/tag-categories-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 13
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 167
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 173
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependencies.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 9
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 175
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 182
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/dependencies/dependency-apps-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 19
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 184
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 194
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 206
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 212
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/external/jira/trackers.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 19
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 202
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 211
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 213
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 219
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/identities/identities.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 13
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 163
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 169
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 7
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 116
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 123
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/insights/insight-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 13
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 163
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 169
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/affected-applications-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 7
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 116
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 123
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/issues/issue-affected-files-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 32
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 257
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 266
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-targets/migration-targets.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 15
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 245
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 251
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/manage-applications-form.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 2
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 63
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 72
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/stakeholders-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 3
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 78
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 87
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 10
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 104
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 110
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/components/wave-status-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 25
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 301
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 311
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 314
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 361
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 364
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 370
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/migration-waves/migration-waves.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 10
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 291
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 297
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/reports/components/identified-risks-table/identified-risks-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 4
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 88
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 95
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/components/platform-applications-table.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 19
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 226
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 228
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 230
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 236
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/source-platforms/source-platforms.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 12
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 277
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+            - uri: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+              message: ""
+              codeSnip: ""
+              lineNumber: 283
+              variables:
+                file: file:///opt/input/source/client/src/app/pages/tasks/tasks-page.tsx
+        - violation_id: patternfly-v5-to-patternfly-v6-renamed-props-00180
+          description: spacer should be replaced with gap
+          category: mandatory
+          effort: 3
+          incident_count: 5
+          incidents:
+            - uri: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+              message: |-
+                The spacer property has been removed from ToolbarGroup, ToolbarItem, and
+                ToolbarToggleGroup. Use gap, columnGap, or rowGap properties instead.
+
+                Replace `spacer` with `gap`.
+
+                Before:
+                ```
+                <ToolbarGroup spacer= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup gap=
+                />
+                ```
+              codeSnip: ""
+              lineNumber: 36
+              variables:
+                file: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+            - uri: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+              message: |-
+                The spacer property has been removed from ToolbarGroup, ToolbarItem, and
+                ToolbarToggleGroup. Use gap, columnGap, or rowGap properties instead.
+
+                Replace `spacer` with `gap`.
+
+                Before:
+                ```
+                <ToolbarGroup spacer= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup gap=
+                />
+                ```
+              codeSnip: ""
+              lineNumber: 37
+              variables:
+                file: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+            - uri: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+              message: |-
+                The spacer property has been removed from ToolbarGroup, ToolbarItem, and
+                ToolbarToggleGroup. Use gap, columnGap, or rowGap properties instead.
+
+                Replace `spacer` with `gap`.
+
+                Before:
+                ```
+                <ToolbarGroup spacer= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup gap=
+                />
+                ```
+              codeSnip: ""
+              lineNumber: 47
+              variables:
+                file: file:///opt/input/source/client/src/app/components/AppTableActionButtons.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: |-
+                The spacer property has been removed from ToolbarGroup, ToolbarItem, and
+                ToolbarToggleGroup. Use gap, columnGap, or rowGap properties instead.
+
+                Replace `spacer` with `gap`.
+
+                Before:
+                ```
+                <ToolbarGroup spacer= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup gap=
+                />
+                ```
+              codeSnip: ""
+              lineNumber: 54
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+              message: |-
+                The spacer property has been removed from ToolbarGroup, ToolbarItem, and
+                ToolbarToggleGroup. Use gap, columnGap, or rowGap properties instead.
+
+                Replace `spacer` with `gap`.
+
+                Before:
+                ```
+                <ToolbarGroup spacer= />
+                ```
+
+                After:
+                ```
+                <ToolbarGroup gap=
+                />
+                ```
+              codeSnip: ""
+              lineNumber: 85
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/HeaderApp/HeaderApp.tsx
+      estimated_cost: 7.75
+      estimated_duration_minutes: 90
+      deferred: false
+    - id: phase-3
+      name: Theme and Sidebar Modernization
+      order: 3
+      risk: low
+      category: mandatory
+      effort_range:
+        - 3
+        - 3
+      explanation: Final phase addresses PageSidebar theme prop removal, which affects theming but is isolated to sidebar components. This is lower risk as it's a contained change that removes deprecated theming props without affecting core functionality.
+      violations:
+        - violation_id: patternfly-v5-to-patternfly-v6-component-props-00090
+          description: PageSidebar theme should be replaced with PageSidebar without theme
+          category: mandatory
+          effort: 3
+          incident_count: 4
+          incidents:
+            - uri: file:///Users/tsanders/Workspace/tackle2-ui/client/src/app/layout/SidebarApp/SidebarApp.tsx
+              message: |-
+                The theme prop has been removed from PageSidebar as theming is no longer
+                handled React-side.
+
+                Replace `PageSidebar theme` with `PageSidebar without theme`.
+
+                Before:
+                ```
+                <PageSidebar theme='dark' />
+                ```
+
+                After:
+                ```
+                <PageSidebar />
+                ```
+              codeSnip: "  1  import React from \"react\";\n  2  import { useTranslation } from \"react-i18next\";\n  3  import { NavLink, Route, Switch, useHistory } from \"react-router-dom\";\n  4  import {\n  5    Nav,\n  6    NavExpandable,\n  7    NavItem,\n  8    NavList,\n  9    PageSidebar,\n 10    PageSidebarBody,\n 11  } from \"@patternfly/react-core\";\n 12  \n 13  import { isDevtoolsEnabled } from \"@app/Constants\";\n 14  import { AdminPaths, DevPaths, DevtoolPaths } from \"@app/Paths\";\n 15  import {\n 16    administrationRoutes,\n 17    devtoolRoutes,\n 18    migrationRoutes,\n 19  } from \"@app/Routes\";\n 20  import { SimpleSelectBasic } from \"@app/components/SimpleSelectBasic\";\n 21  import keycloak from \"@app/keycloak\";\n 22  import { checkAccess } from \"@app/utils/rbac-utils\";\n 23  \n 24  import { LayoutTheme } from \"../LayoutUtils\";\n 25  import \"./SidebarApp.css\";\n 26  \n 27  const PersonaDefinition = {\n 28    ADMINISTRATION: {\n 29      label: \"Administration\",\n 30      startPath: AdminPaths.general,\n 31    },\n 32    MIGRATION: {\n 33      label: \"Migration\",\n 34      startPath: DevPaths.applications,\n 35    },\n 36    DEVTOOL: {\n 37      label: \"Development Tools\",\n 38      startPath: DevtoolPaths.schemaDefined,\n 39    },\n 40  } as const;\n 41  \n 42  type PersonaType = keyof typeof PersonaDefinition;\n 43  \n 44  export const SidebarApp: React.FC = () => (\n 45    <Switch>\n 46      {migrationRoutes.map(({ path, exact }, index) => (\n 47        <Route\n 48          path={path}\n 49          exact={exact}\n 50          key={index}\n 51          render={() => <MigrationSidebar />}\n 52        />\n 53      ))}\n 54      {administrationRoutes.map(({ path, exact }, index) => (\n 55        <Route\n 56          path={path}\n 57          exact={exact}\n 58          key={index}\n 59          render={() => <AdminSidebar />}\n 60        />\n 61      ))}\n 62      {devtoolRoutes.map(({ path, exact }, index) => (\n 63        <Route\n 64          path={path}\n 65          exact={exact}\n 66          key={index}\n 67          render={() => <DevtoolSidebar />}\n 68        />\n 69      ))}\n 70    </Switch>\n 71  );\n 72  \n 73  const PersonaSidebar: React.FC<{\n 74    children: React.ReactNode;\n 75    selectedPersona: PersonaType;\n 76  }> = ({ children, selectedPersona }) => {\n 77    const token = keycloak.tokenParsed || undefined;\n 78    const userRoles = token?.realm_access?.roles || [];\n 79    const adminAccess = checkAccess(userRoles, [\"tackle-admin\"]);\n 80  \n 81    const personaOptions = [\n 82      \"MIGRATION\",\n 83      adminAccess && \"ADMINISTRATION\",\n 84      isDevtoolsEnabled && \"DEVTOOL\",\n 85    ].filter<PersonaType>(Boolean);\n 86  \n 87    const history = useHistory();\n 88    return (\n 89      <PageSidebar theme={LayoutTheme}>\n 90        <div className=\"perspective\">\n 91          <SimpleSelectBasic\n 92            value={selectedPersona}\n 93            options={personaOptions.map((value) => ({\n 94              value,\n 95              children: PersonaDefinition[value]?.label,\n 96            }))}\n 97            onChange={(value) => {\n 98              const startPath =\n 99                PersonaDefinition[value as PersonaType]?.startPath;\n100              if (value !== selectedPersona && startPath) {\n101                history.push(startPath);\n102              }\n103            }}\n104          />\n105        </div>\n106        <PageSidebarBody>\n107          <Nav id=\"nav-primary\" aria-label=\"Nav\" theme={LayoutTheme}>\n108            {children}\n109          </Nav>\n110        </PageSidebarBody>\n111      </PageSidebar>\n112    );\n113  };\n114  \n115  export const MigrationSidebar = () => {\n116    const { t } = useTranslation();\n117  \n118    return (\n119      <PersonaSidebar selectedPersona=\"MIGRATION\">\n120        <NavList title=\"Global\">\n121          <NavItem>\n122            <NavLink to={DevPaths.applications} activeClassName=\"pf-m-current\">\n123              {t(\"sidebar.applicationInventory\")}\n124            </NavLink>\n125          </NavItem>\n126          <NavItem>\n127            <NavLink to={DevPaths.archetypes} activeClassName=\"pf-m-current\">\n128              {t(\"sidebar.archetypes\")}\n129            </NavLink>\n130          </NavItem>\n131          <NavItem>\n132            <NavLink to={DevPaths.reports} activeClassName=\"pf-m-current\">\n133              {t(\"sidebar.reports\")}\n134            </NavLink>\n135          </NavItem>\n136          <NavItem>\n137            <NavLink to={DevPaths.controls} activeClassName=\"pf-m-current\">\n138              {t(\"sidebar.controls\")}\n139            </NavLink>\n140          </NavItem>\n141          <NavItem>\n142            <NavLink to={DevPaths.migrationWaves} activeClassName=\"pf-m-current\">\n143              {t(\"sidebar.migrationWaves\")}\n144            </NavLink>\n145          </NavItem>\n146          <NavItem>\n147            <NavLink to={DevPaths.issuesAllTab} activeClassName=\"pf-m-current\">\n148              {t(\"sidebar.issues\")}\n149            </NavLink>\n150          </NavItem>\n151          <NavItem>\n152            <NavLink to={DevPaths.insightsAllTab} activeClassName=\"pf-m-current\">\n153              {t(\"sidebar.insights\")}\n154            </NavLink>\n155          </NavItem>\n156          <NavItem>\n157            <NavLink to={DevPaths.dependencies} activeClassName=\"pf-m-current\">\n158              {t(\"sidebar.dependencies\")}\n159            </NavLink>\n160          </NavItem>\n161          <NavItem>\n162            <NavLink to={DevPaths.tasks} activeClassName=\"pf-m-current\">\n163              {t(\"sidebar.tasks\")}\n164            </NavLink>\n165          </NavItem>\n166        </NavList>\n167      </PersonaSidebar>\n168    );\n169  };\n170  \n171  export const AdminSidebar = () => {\n172    const { t } = useTranslation();\n173    return (\n174      <PersonaSidebar selectedPersona=\"ADMINISTRATION\">\n175        <NavList title=\"Admin\">\n176          <NavItem>\n177            <NavLink to={AdminPaths.general} activeClassName=\"pf-m-current\">\n178              {t(\"terms.general\")}\n179            </NavLink>\n180          </NavItem>\n181          <NavItem>\n182            <NavLink to={AdminPaths.identities} activeClassName=\"pf-m-current\">\n183              {t(\"terms.credentials\")}\n184            </NavLink>\n185          </NavItem>\n186          <NavExpandable\n187            title=\"Repositories\"\n188            srText=\"SR Link\"\n189            groupId=\"admin-repos\"\n190            isExpanded"
+              lineNumber: 89
+              variables:
+                matchingText: ""
+            - uri: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+              message: |-
+                The theme prop has been removed from PageSidebar as theming is no longer
+                handled React-side.
+
+                Replace `PageSidebar theme` with `PageSidebar without theme`.
+
+                Before:
+                ```
+                <PageSidebar theme='dark' />
+                ```
+
+                After:
+                ```
+                <PageSidebar />
+                ```
+              codeSnip: ""
+              lineNumber: 9
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+              message: |-
+                The theme prop has been removed from PageSidebar as theming is no longer
+                handled React-side.
+
+                Replace `PageSidebar theme` with `PageSidebar without theme`.
+
+                Before:
+                ```
+                <PageSidebar theme='dark' />
+                ```
+
+                After:
+                ```
+                <PageSidebar />
+                ```
+              codeSnip: ""
+              lineNumber: 89
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+            - uri: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+              message: |-
+                The theme prop has been removed from PageSidebar as theming is no longer
+                handled React-side.
+
+                Replace `PageSidebar theme` with `PageSidebar without theme`.
+
+                Before:
+                ```
+                <PageSidebar theme='dark' />
+                ```
+
+                After:
+                ```
+                <PageSidebar />
+                ```
+              codeSnip: ""
+              lineNumber: 111
+              variables:
+                file: file:///opt/input/source/client/src/app/layout/SidebarApp/SidebarApp.tsx
+      estimated_cost: 0.2
+      estimated_duration_minutes: 15
+      deferred: false

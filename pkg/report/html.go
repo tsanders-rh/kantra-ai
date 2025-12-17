@@ -12,10 +12,11 @@ import (
 )
 
 // GenerateHTML creates an HTML report from a migration plan.
-// The HTML file is written to the same directory as the plan file with .html extension.
+// The HTML file is written to the same directory as the plan file as plan.html.
 func GenerateHTML(plan *planfile.Plan, planPath string) (string, error) {
-	// Determine output path
-	htmlPath := strings.TrimSuffix(planPath, filepath.Ext(planPath)) + ".html"
+	// Determine output path - save as plan.html in the same directory
+	dir := filepath.Dir(planPath)
+	htmlPath := filepath.Join(dir, "plan.html")
 
 	// Create HTML file
 	f, err := os.Create(htmlPath)
