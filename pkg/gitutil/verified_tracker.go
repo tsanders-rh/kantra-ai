@@ -2,6 +2,7 @@ package gitutil
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/verifier"
@@ -14,6 +15,8 @@ type VerifiedCommitTracker struct {
 	verifier      *verifier.Verifier
 	verifyConfig  verifier.Config
 	stats         VerificationStats
+	githubClient  *GitHubClient // Optional: for reporting status checks
+	workingDir    string
 }
 
 // VerificationStats tracks verification outcomes
@@ -31,6 +34,17 @@ func NewVerifiedCommitTracker(
 	providerName string,
 	verifyConfig verifier.Config,
 ) (*VerifiedCommitTracker, error) {
+	return NewVerifiedCommitTrackerWithGitHub(commitStrategy, workingDir, providerName, verifyConfig, nil)
+}
+
+// NewVerifiedCommitTrackerWithGitHub creates a commit tracker with verification and optional GitHub status checks
+func NewVerifiedCommitTrackerWithGitHub(
+	commitStrategy CommitStrategy,
+	workingDir string,
+	providerName string,
+	verifyConfig verifier.Config,
+	githubClient *GitHubClient,
+) (*VerifiedCommitTracker, error) {
 	// Create verifier if verification is enabled
 	var v *verifier.Verifier
 	var err error
@@ -46,6 +60,8 @@ func NewVerifiedCommitTracker(
 		verifier:      v,
 		verifyConfig:  verifyConfig,
 		stats:         VerificationStats{},
+		githubClient:  githubClient,
+		workingDir:    workingDir,
 	}, nil
 }
 
@@ -117,18 +133,36 @@ func (vct *VerifiedCommitTracker) shouldVerifyNow(v violation.Violation, inciden
 func (vct *VerifiedCommitTracker) runVerification() error {
 	vct.stats.TotalVerifications++
 
+	// Report pending status to GitHub if enabled
+	if vct.githubClient != nil {
+		vct.reportPendingStatus()
+	}
+
 	result, err := vct.verifier.Verify()
 	if err != nil {
+		// Report error status to GitHub if enabled
+		if vct.githubClient != nil {
+			vct.reportErrorStatus(err)
+		}
 		return fmt.Errorf("verification error: %w", err)
 	}
 
 	if result.Success {
 		vct.stats.PassedVerifications++
+		// Report success status to GitHub if enabled
+		if vct.githubClient != nil {
+			vct.reportSuccessStatus(result)
+		}
 		return nil
 	}
 
 	// Verification failed
 	vct.stats.FailedVerifications++
+
+	// Report failure status to GitHub if enabled
+	if vct.githubClient != nil {
+		vct.reportFailureStatus(result)
+	}
 
 	// Handle failure based on configuration
 	if vct.verifyConfig.FailFast {
@@ -178,4 +212,121 @@ func (vct *VerifiedCommitTracker) GetStats() VerificationStats {
 // GetCommitTracker returns the underlying commit tracker
 func (vct *VerifiedCommitTracker) GetCommitTracker() *CommitTracker {
 	return vct.commitTracker
+}
+
+// reportPendingStatus reports a pending verification status to GitHub
+func (vct *VerifiedCommitTracker) reportPendingStatus() {
+	sha, err := GetCurrentCommitSHA(vct.workingDir)
+	if err != nil {
+		fmt.Printf("Warning: failed to get commit SHA for status check: %v\n", err)
+		return
+	}
+
+	context := vct.getStatusContext()
+	description := vct.getVerificationDescription() + " - running..."
+
+	req := CommitStatusRequest{
+		State:       StatusStatePending,
+		Description: description,
+		Context:     context,
+	}
+
+	if _, err := vct.githubClient.CreateCommitStatus(sha, req); err != nil {
+		fmt.Printf("Warning: failed to report pending status to GitHub: %v\n", err)
+	}
+}
+
+// reportSuccessStatus reports a successful verification status to GitHub
+func (vct *VerifiedCommitTracker) reportSuccessStatus(result *verifier.Result) {
+	sha, err := GetCurrentCommitSHA(vct.workingDir)
+	if err != nil {
+		fmt.Printf("Warning: failed to get commit SHA for status check: %v\n", err)
+		return
+	}
+
+	context := vct.getStatusContext()
+	description := fmt.Sprintf("%s passed (%s)", vct.getVerificationDescription(), result.Duration.Round(100*time.Millisecond))
+
+	req := CommitStatusRequest{
+		State:       StatusStateSuccess,
+		Description: description,
+		Context:     context,
+	}
+
+	if _, err := vct.githubClient.CreateCommitStatus(sha, req); err != nil {
+		fmt.Printf("Warning: failed to report success status to GitHub: %v\n", err)
+	} else {
+		fmt.Printf("✓ Reported verification success to GitHub\n")
+	}
+}
+
+// reportFailureStatus reports a failed verification status to GitHub
+func (vct *VerifiedCommitTracker) reportFailureStatus(result *verifier.Result) {
+	sha, err := GetCurrentCommitSHA(vct.workingDir)
+	if err != nil {
+		fmt.Printf("Warning: failed to get commit SHA for status check: %v\n", err)
+		return
+	}
+
+	context := vct.getStatusContext()
+	description := fmt.Sprintf("%s failed", vct.getVerificationDescription())
+
+	req := CommitStatusRequest{
+		State:       StatusStateFailure,
+		Description: description,
+		Context:     context,
+	}
+
+	if _, err := vct.githubClient.CreateCommitStatus(sha, req); err != nil {
+		fmt.Printf("Warning: failed to report failure status to GitHub: %v\n", err)
+	} else {
+		fmt.Printf("✗ Reported verification failure to GitHub\n")
+	}
+}
+
+// reportErrorStatus reports an error during verification to GitHub
+func (vct *VerifiedCommitTracker) reportErrorStatus(verifyErr error) {
+	sha, err := GetCurrentCommitSHA(vct.workingDir)
+	if err != nil {
+		fmt.Printf("Warning: failed to get commit SHA for status check: %v\n", err)
+		return
+	}
+
+	context := vct.getStatusContext()
+	description := fmt.Sprintf("%s encountered an error", vct.getVerificationDescription())
+
+	req := CommitStatusRequest{
+		State:       StatusStateError,
+		Description: description,
+		Context:     context,
+	}
+
+	if _, err := vct.githubClient.CreateCommitStatus(sha, req); err != nil {
+		fmt.Printf("Warning: failed to report error status to GitHub: %v\n", err)
+	}
+}
+
+// getStatusContext returns the context string for GitHub status checks
+// Format: "kantra-ai/verify-{type}"
+func (vct *VerifiedCommitTracker) getStatusContext() string {
+	verifyType := "verification"
+	switch vct.verifyConfig.Type {
+	case verifier.VerificationBuild:
+		verifyType = "build"
+	case verifier.VerificationTest:
+		verifyType = "test"
+	}
+	return fmt.Sprintf("kantra-ai/verify-%s", verifyType)
+}
+
+// getVerificationDescription returns a human-readable description of the verification type
+func (vct *VerifiedCommitTracker) getVerificationDescription() string {
+	switch vct.verifyConfig.Type {
+	case verifier.VerificationBuild:
+		return "Build verification"
+	case verifier.VerificationTest:
+		return "Test verification"
+	default:
+		return "Verification"
+	}
 }

@@ -253,3 +253,221 @@ func TestGitHubClient_GetDefaultBranch(t *testing.T) {
 		assert.Equal(t, "master", branch)
 	})
 }
+
+func TestGitHubClient_CreateCommitStatus(t *testing.T) {
+	t.Run("successful status creation - success state", func(t *testing.T) {
+		// Create mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify request
+			assert.Equal(t, "/repos/test-owner/test-repo/statuses/abc123", r.URL.Path)
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "token test-token", r.Header.Get("Authorization"))
+
+			// Verify request body
+			var reqBody CommitStatusRequest
+			err := json.NewDecoder(r.Body).Decode(&reqBody)
+			assert.NoError(t, err)
+			assert.Equal(t, StatusStateSuccess, reqBody.State)
+			assert.Equal(t, "kantra-ai/verify-build", reqBody.Context)
+			assert.Equal(t, "Build passed", reqBody.Description)
+
+			// Send mock response
+			w.WriteHeader(http.StatusCreated)
+			resp := CommitStatusResponse{
+				State:       "success",
+				Description: "Build passed",
+				Context:     "kantra-ai/verify-build",
+				CreatedAt:   "2025-01-15T10:00:00Z",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create status
+		req := CommitStatusRequest{
+			State:       StatusStateSuccess,
+			Description: "Build passed",
+			Context:     "kantra-ai/verify-build",
+		}
+		resp, err := client.CreateCommitStatus("abc123", req)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp.State)
+		assert.Equal(t, "Build passed", resp.Description)
+		assert.Equal(t, "kantra-ai/verify-build", resp.Context)
+	})
+
+	t.Run("successful status creation - failure state", func(t *testing.T) {
+		// Create mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify request body
+			var reqBody CommitStatusRequest
+			err := json.NewDecoder(r.Body).Decode(&reqBody)
+			assert.NoError(t, err)
+			assert.Equal(t, StatusStateFailure, reqBody.State)
+
+			// Send mock response
+			w.WriteHeader(http.StatusCreated)
+			resp := CommitStatusResponse{
+				State:       "failure",
+				Description: "Build failed",
+				Context:     "kantra-ai/verify-test",
+				CreatedAt:   "2025-01-15T10:00:00Z",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create status
+		req := CommitStatusRequest{
+			State:       StatusStateFailure,
+			Description: "Build failed",
+			Context:     "kantra-ai/verify-test",
+		}
+		resp, err := client.CreateCommitStatus("def456", req)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, "failure", resp.State)
+	})
+
+	t.Run("successful status creation - pending state", func(t *testing.T) {
+		// Create mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify request body
+			var reqBody CommitStatusRequest
+			err := json.NewDecoder(r.Body).Decode(&reqBody)
+			assert.NoError(t, err)
+			assert.Equal(t, StatusStatePending, reqBody.State)
+
+			// Send mock response
+			w.WriteHeader(http.StatusCreated)
+			resp := CommitStatusResponse{
+				State:       "pending",
+				Description: "Verification running",
+				Context:     "kantra-ai/verify-build",
+				CreatedAt:   "2025-01-15T10:00:00Z",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create status
+		req := CommitStatusRequest{
+			State:       StatusStatePending,
+			Description: "Verification running",
+			Context:     "kantra-ai/verify-build",
+		}
+		resp, err := client.CreateCommitStatus("ghi789", req)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, "pending", resp.State)
+	})
+
+	t.Run("unauthorized error", func(t *testing.T) {
+		// Create mock server that returns 401
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+			errResp := map[string]string{
+				"message": "Bad credentials",
+			}
+			_ = json.NewEncoder(w).Encode(errResp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "invalid-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create status
+		req := CommitStatusRequest{
+			State:       StatusStateSuccess,
+			Description: "Build passed",
+			Context:     "kantra-ai/verify-build",
+		}
+		_, err := client.CreateCommitStatus("abc123", req)
+
+		// Assert error
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "401")
+		assert.Contains(t, err.Error(), "Bad credentials")
+	})
+
+	t.Run("with target URL", func(t *testing.T) {
+		// Create mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify request body includes target_url
+			var reqBody CommitStatusRequest
+			err := json.NewDecoder(r.Body).Decode(&reqBody)
+			assert.NoError(t, err)
+			assert.Equal(t, "https://example.com/build/123", reqBody.TargetURL)
+
+			// Send mock response
+			w.WriteHeader(http.StatusCreated)
+			resp := CommitStatusResponse{
+				State:       "success",
+				Description: "Build passed",
+				Context:     "kantra-ai/verify-build",
+				CreatedAt:   "2025-01-15T10:00:00Z",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create status with target URL
+		req := CommitStatusRequest{
+			State:       StatusStateSuccess,
+			Description: "Build passed",
+			Context:     "kantra-ai/verify-build",
+			TargetURL:   "https://example.com/build/123",
+		}
+		resp, err := client.CreateCommitStatus("abc123", req)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, "success", resp.State)
+	})
+}

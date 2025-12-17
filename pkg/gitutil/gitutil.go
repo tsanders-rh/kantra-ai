@@ -148,6 +148,17 @@ func GetCurrentBranch(workingDir string) (string, error) {
 	return strings.TrimSpace(string(output)), nil
 }
 
+// GetCurrentCommitSHA returns the current commit SHA (HEAD)
+func GetCurrentCommitSHA(workingDir string) (string, error) {
+	cmd := exec.Command("git", "rev-parse", "HEAD")
+	cmd.Dir = workingDir
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to get current commit SHA: %w", err)
+	}
+	return strings.TrimSpace(string(output)), nil
+}
+
 // CreateBranch creates and checks out a new branch
 func CreateBranch(workingDir string, branchName string) error {
 	// Validate branch name to prevent command injection
