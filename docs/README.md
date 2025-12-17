@@ -6,9 +6,18 @@ This directory contains all design documents and guides for kantra-ai.
 
 Located in [`guides/`](./guides/):
 
+### Getting Started
 - **[QUICKSTART.md](./guides/QUICKSTART.md)** - Get started quickly with basic usage examples
-- **[WORKFLOW.md](./WORKFLOW.md)** - Complete end-to-end migration workflow from Konveyor analysis to manual development
+- **[USAGE_EXAMPLES.md](./guides/USAGE_EXAMPLES.md)** - Practical examples for common workflows
+- **[CLI_REFERENCE.md](./guides/CLI_REFERENCE.md)** - Complete command-line flag reference
+
+### Advanced Features
+- **[AI_PROVIDERS.md](./guides/AI_PROVIDERS.md)** - Guide to 50+ supported AI providers
+- **[CONFIDENCE_FILTERING.md](./guides/CONFIDENCE_FILTERING.md)** - Confidence threshold filtering guide
 - **[PROMPT_CUSTOMIZATION.md](./guides/PROMPT_CUSTOMIZATION.md)** - Customize AI prompts for your migration scenarios
+
+### Workflow & Development
+- **[WORKFLOW.md](./WORKFLOW.md)** - Complete end-to-end migration workflow from Konveyor analysis to manual development
 - **[TESTING.md](./guides/TESTING.md)** - Comprehensive testing instructions and troubleshooting
 - **[PR-TESTING-GUIDE.md](./guides/PR-TESTING-GUIDE.md)** - Guide for testing GitHub PR creation
 - **[CONTRIBUTING.md](./guides/CONTRIBUTING.md)** - How to contribute to the project
@@ -38,13 +47,17 @@ Located in [`design/`](./design/):
 ### Getting Started
 1. Start with the main [README.md](../README.md)
 2. Read [QUICKSTART.md](./guides/QUICKSTART.md) for basic usage
-3. Review [WORKFLOW.md](./WORKFLOW.md) to understand the complete end-to-end workflow
-4. Review [examples/](../examples/) for real-world scenarios
+3. Browse [USAGE_EXAMPLES.md](./guides/USAGE_EXAMPLES.md) for practical examples
+4. Reference [CLI_REFERENCE.md](./guides/CLI_REFERENCE.md) for all command-line options
+5. Review [WORKFLOW.md](./WORKFLOW.md) to understand the complete end-to-end workflow
+6. Review [examples/](../examples/) for real-world scenarios
 
 ### Advanced Features
-1. [PROMPT_CUSTOMIZATION.md](./guides/PROMPT_CUSTOMIZATION.md) - Customize AI prompts per language/technology
-2. [PLANNING_WORKFLOW_DESIGN.md](./design/PLANNING_WORKFLOW_DESIGN.md) - Large-scale migration planning
-3. [BATCH_PROCESSING_DESIGN.md](./design/BATCH_PROCESSING_DESIGN.md) - Cost/performance optimization
+1. [AI_PROVIDERS.md](./guides/AI_PROVIDERS.md) - Choose and configure AI providers (Claude, OpenAI, Groq, Ollama, etc.)
+2. [CONFIDENCE_FILTERING.md](./guides/CONFIDENCE_FILTERING.md) - Configure confidence-based filtering for safer migrations
+3. [PROMPT_CUSTOMIZATION.md](./guides/PROMPT_CUSTOMIZATION.md) - Customize AI prompts per language/technology
+4. [PLANNING_WORKFLOW_DESIGN.md](./design/PLANNING_WORKFLOW_DESIGN.md) - Large-scale migration planning
+5. [BATCH_PROCESSING_DESIGN.md](./design/BATCH_PROCESSING_DESIGN.md) - Cost/performance optimization
 
 ### Understanding Architecture
 1. [DESIGN.md](./design/DESIGN.md) - Overall architecture

@@ -8,56 +8,31 @@ AI-powered automated remediation for [Konveyor](https://www.konveyor.io/) violat
 
 ## Features
 
-- **Phased Migration Planning**: AI-generated migration plans with risk assessment and execution order
-- **Web-Based Interactive Planner**: Modern web UI for reviewing and approving phases with visual charts, code diffs, and live execution monitoring
-- **Interactive HTML Reports**: Beautiful, visual reports with diff-style highlighting and line-specific code annotations
-- **Automated Code Fixes**: AI analyzes violations and applies fixes directly to your source code
-- **Customizable AI Prompts**: Per-language prompt templates for technology-specific migrations (Java, Python, Go, etc.)
-- **Confidence Threshold Filtering**: Automatically skip low-confidence fixes based on migration complexity for maximum safety
-- **Batch Processing**: Group similar violations together for 50-80% cost reduction and 70-90% faster execution
-- **50+ AI Providers**: Support for Claude, OpenAI, Groq, Ollama (local), Together AI, Anyscale, Perplexity, OpenRouter, and any OpenAI-compatible API
-- **Smart Filtering**: Filter by violation category, effort level, or specific violation IDs
-- **Resume Capability**: Resume from failures with incident-level state tracking
-- **Interactive Approval**: Review and approve phases before execution
-- **Git Integration**: Automatic commit creation with configurable strategies (per-violation, per-incident, or batch)
-- **GitHub PR Automation**: Automatically create pull requests with detailed fix summaries
-- **Build/Test Verification**: Run tests or builds after fixes to ensure they don't break existing functionality
-- **Cost Controls**: Set spending limits and track API costs per fix
-- **Dry-Run Mode**: Preview changes before applying them
-- **Detailed Reporting**: Track success rates, costs, and tokens used
+- 🤖 **AI-Powered Fixes** - Automated code remediation using Claude, OpenAI, or 50+ other providers
+- 📋 **Phased Migration Planning** - AI-generated migration plans with risk assessment and execution order
+- 🌐 **Interactive Web UI** - Modern interface for reviewing and approving phases with visual charts and live execution monitoring
+- 📊 **Visual Reports** - Beautiful HTML reports with diff highlighting and code annotations
+- ⚡ **Batch Processing** - 50-80% cost reduction and 70-90% faster execution
+- 🎯 **Confidence Filtering** - Skip low-confidence fixes based on migration complexity
+- 🔄 **Resume Capability** - Continue from failures with incident-level state tracking
+- 🔧 **Customizable Prompts** - Per-language prompt templates for technology-specific migrations
+- 💰 **Cost Controls** - Set spending limits and track API costs per fix
+- 🔐 **Git Integration** - Automatic commits and GitHub PR creation
+- ✅ **Verification** - Run tests/builds after fixes to ensure they work
 
 ## Quick Start
 
 ### Prerequisites
 
-**Required:**
 - Go 1.21 or higher
-- AI provider API key (see supported providers below)
+- AI provider API key ([Claude](https://console.anthropic.com/settings/keys), [OpenAI](https://platform.openai.com/api-keys), or [others](docs/guides/AI_PROVIDERS.md))
 - Konveyor analysis output (`output.yaml`)
 
-**Optional (for PR creation):**
-- GitHub personal access token with `repo` scope
-
 ```bash
-# Set your AI provider API key based on your chosen provider:
-
-# Claude (Anthropic)
-export ANTHROPIC_API_KEY=sk-ant-...
-
-# OpenAI
-export OPENAI_API_KEY=sk-...
-
-# Groq (fast inference)
-export OPENAI_API_KEY=gsk_...
-
-# Together AI
-export OPENAI_API_KEY=...
-
-# Ollama (local - no API key needed)
-# Just run: ollama serve
-
-# Optional: Set GitHub token for PR creation
-export GITHUB_TOKEN=ghp_...
+# Set your AI provider API key
+export ANTHROPIC_API_KEY=sk-ant-...  # For Claude (recommended)
+# or
+export OPENAI_API_KEY=sk-...         # For OpenAI
 ```
 
 ### Installation
@@ -86,7 +61,6 @@ go install github.com/tsanders-rh/kantra-ai/cmd/kantra-ai@latest
    ./kantra-ai remediate \
      --analysis=./analysis/output.yaml \
      --input=./your-app \
-     --provider=claude \
      --dry-run
    ```
 
@@ -95,17 +69,18 @@ go install github.com/tsanders-rh/kantra-ai/cmd/kantra-ai@latest
    ./kantra-ai remediate \
      --analysis=./analysis/output.yaml \
      --input=./your-app \
-     --provider=claude \
      --max-cost=5.00
    ```
 
-## Two Workflows
+**See:** [Quick Start Guide](docs/guides/QUICKSTART.md) | [Usage Examples](docs/guides/USAGE_EXAMPLES.md)
 
-kantra-ai supports two workflows depending on the size and complexity of your migration:
+---
+
+## Two Workflows
 
 ### 1. Direct Remediation (Quick Fixes)
 
-For small migrations with < 20 violations, use the `remediate` command for immediate fixes:
+For small migrations with < 20 violations:
 
 ```bash
 ./kantra-ai remediate \
@@ -120,7 +95,16 @@ For small migrations with < 20 violations, use the `remediate` command for immed
 
 For larger migrations with 20+ violations, use the `plan` → `execute` workflow:
 
-**Step 1: Generate a plan** with AI-powered grouping and risk assessment:
+**Step 1: Generate a plan**
+
+```bash
+./kantra-ai plan \
+  --analysis=./analysis/output.yaml \
+  --input=./your-app \
+  --interactive-web  # Launch web UI for interactive planning
+```
+
+Or use CLI mode:
 
 ```bash
 ./kantra-ai plan \
@@ -129,144 +113,59 @@ For larger migrations with 20+ violations, use the `plan` → `execute` workflow
   --provider=claude
 
 # Output:
-# Created directory: .kantra-ai-plan/
-# Plan saved to:     .kantra-ai-plan/plan.yaml
-# HTML report:       .kantra-ai-plan/plan.html
-#   Total phases: 3
-#   Total violations: 45
-#   Estimated cost: $4.30
+# Created: .kantra-ai-plan/plan.yaml
+# Report:  .kantra-ai-plan/plan.html
 ```
 
-The plan command creates a directory containing both files:
-- **plan.yaml** - Machine-readable plan for execution
-- **plan.html** - Static visual report with same styling as web UI
-
-**HTML Report Features:**
-
-<p align="center">
-  <img src="docs/images/html-report-example.png" alt="HTML Migration Plan Report" width="800">
-</p>
-
-The HTML report uses the same visual design as `--interactive-web` and includes:
-- **Summary dashboard** - Metric cards showing phases, violations, incidents, and cost
-- **Collapsible phases** - Expand/collapse each phase to review details
-- **Risk indicators** - Color-coded badges (low/medium/high risk)
-- **Side-by-side diffs** - Before/After code changes in red/green panes
-- **Code highlighting** - Syntax-highlighted code snippets
-- **Modern styling** - Clean, professional design matching the web UI
-
-**Step 2: Review and edit the plan** (optional):
+**Step 2: Review the plan**
 
 ```bash
-# View interactive HTML report in browser
+# View interactive HTML report
 open .kantra-ai-plan/plan.html
-
-# Or review YAML plan
-cat .kantra-ai-plan/plan.yaml
-
-# Edit if needed (mark phases as deferred, adjust order, etc.)
-vim .kantra-ai-plan/plan.yaml
 ```
 
-**Step 3: Execute the plan** with progress tracking:
+<p align="center">
+  <img src="docs/images/html-report-example.png" alt="HTML Migration Plan Report" width="700">
+</p>
+
+**The HTML report includes:**
+- Summary dashboard with metrics and charts
+- Risk indicators (low/medium/high)
+- Side-by-side code diffs
+- Collapsible phase details
+- Same styling as web UI
+
+**Step 3: Execute the plan**
 
 ```bash
 ./kantra-ai execute \
   --plan=.kantra-ai-plan/plan.yaml \
   --input=./your-app \
   --provider=claude
-
-# State is saved to .kantra-ai-state.yaml for resume capability
 ```
 
-**Step 4: Resume from failures** if needed:
+**Step 4: Resume from failures** (if needed)
 
 ```bash
-# If execution fails mid-way, resume from the failure point
 ./kantra-ai execute \
   --plan=.kantra-ai-plan/plan.yaml \
   --input=./your-app \
-  --provider=claude \
   --resume
 ```
 
-**Benefits of phased migration**:
-- **AI-powered grouping**: Violations grouped by risk, category, and effort
-- **Incremental execution**: Execute one phase at a time
-- **Resume capability**: Continue from where you left off after failures
-- **State tracking**: Incident-level progress tracking
-- **Interactive approval**: Review phases before execution (with `--interactive`)
+**Benefits**:
+- AI-powered grouping by risk, category, and effort
+- Incremental execution (one phase at a time)
+- Resume capability with state tracking
+- Interactive approval and review
 
-### Interactive Phase Approval
+**See:** [Web UI Guide](docs/WEB_INTERACTIVE_USAGE.md) | [Web UI Quick Reference](docs/WEB_UI_QUICK_REFERENCE.md)
 
-kantra-ai offers two modes for interactive phase review:
+---
 
-#### Web-Based Interactive Planner (Recommended)
+## Configuration
 
-A modern web UI with visual charts, code diff viewer, and live execution monitoring:
-
-```bash
-./kantra-ai plan \
-  --analysis=./analysis/output.yaml \
-  --input=./your-app \
-  --interactive-web
-
-# Output:
-# 🌐 Starting web interface at http://localhost:8080
-# (Browser opens automatically)
-```
-
-**Features:**
-- **Visual Dashboard** - Metrics cards, charts, and progress tracking
-- **Code Diff Viewer** - Syntax-highlighted before/after comparisons
-- **Drag-and-Drop** - Reorder phase execution priority
-- **Live Execution** - Real-time progress updates via WebSocket
-- **Violation Filtering** - Select/deselect specific violations within phases
-- **Keyboard Shortcuts** - `Ctrl/Cmd+S` to save, `Ctrl/Cmd+E` to execute
-- **Export/Import** - Save and restore plan configurations
-
-**See:** [Web UI Documentation](docs/WEB_INTERACTIVE_USAGE.md) | [Quick Reference](docs/WEB_UI_QUICK_REFERENCE.md)
-
-#### CLI Interactive Mode
-
-For terminal-based review:
-
-```bash
-./kantra-ai plan \
-  --analysis=./analysis/output.yaml \
-  --input=./your-app \
-  --interactive
-
-# Output:
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# Phase 1 of 3: Critical Mandatory Fixes - High Effort
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-#
-# Order:    1
-# Risk:     🔴 HIGH
-# Category: mandatory
-# Effort:   5-7
-#
-# Why this grouping:
-#   These violations require significant refactoring of core APIs.
-#   Should be done first but requires careful review.
-#
-# Violations (2):
-#   • javax-to-jakarta-001 (23 incidents)
-#   • javax-to-jakarta-002 (18 incidents)
-#
-# Actions:
-#   [a] Approve and continue
-#   [d] Defer (skip this phase)
-#   [v] View incident details
-#   [q] Quit and save plan
-#
-# Choice:
-```
-
-## Configuration File
-
-kantra-ai supports configuration files to avoid repetitive command-line flags. Create a `.kantra-ai.yaml` file in your project directory or home directory:
+Create a `.kantra-ai.yaml` file to avoid repetitive flags:
 
 ```yaml
 # .kantra-ai.yaml
@@ -280,12 +179,6 @@ paths:
 
 limits:
   max-cost: 10.00
-  max-effort: 5
-
-filters:
-  categories:
-    - mandatory
-    - optional
 
 git:
   commit-strategy: per-violation
@@ -297,302 +190,152 @@ verification:
   strategy: at-end
 ```
 
-**Configuration priority** (highest to lowest):
-1. CLI flags (e.g., `--provider=openai`)
-2. Configuration file in current directory (`./.kantra-ai.yaml`)
-3. Configuration file in home directory (`~/.kantra-ai.yaml`)
-4. Built-in defaults
+**Configuration priority**: CLI flags > `./.kantra-ai.yaml` > `~/.kantra-ai.yaml` > defaults
 
-See [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) for a complete configuration example with all available options.
+**See:** [Example config](.kantra-ai.example.yaml) | [Prompt Customization](docs/guides/PROMPT_CUSTOMIZATION.md)
 
-## Customizable AI Prompts
+---
 
-kantra-ai supports **customizable prompt templates** that allow you to tailor AI prompts for your specific migration scenarios. This is especially powerful for optimizing prompts per programming language or technology stack.
+## Key Features
 
-### Features
+### AI Provider Support
 
-- **Base Templates**: Define custom prompts for all migrations
-- **Language-Specific Templates**: Override prompts per language (Java, Python, Go, etc.)
-- **Template Variables**: Rich variable substitution using Go's `text/template` syntax
-- **Automatic Fallback**: Language-specific templates fall back to base templates
+kantra-ai supports 50+ LLM providers:
 
-### Configuration
+- **Claude** (Anthropic) - Recommended for highest quality
+- **OpenAI** - GPT-4, GPT-3.5 Turbo
+- **Groq** - Ultra-fast inference
+- **Ollama** - Free local models
+- **Together AI**, **Anyscale**, **Perplexity**, **OpenRouter**, **LM Studio**
+- Any OpenAI-compatible API
 
-Add custom prompts to `.kantra-ai.yaml`:
+```bash
+# Claude (recommended for production)
+./kantra-ai remediate --provider=claude
 
-```yaml
-prompts:
-  # Base templates (used as fallback)
-  single-fix-template: ./prompts/base-fix.txt
-  batch-fix-template: ./prompts/base-batch.txt
+# Groq (fast, great for testing)
+./kantra-ai remediate --provider=groq --model=llama-3.1-70b-versatile
 
-  # Language-specific overrides (optional)
-  language-templates:
-    java:
-      single-fix: ./prompts/java-fix.txt      # Optimized for javax→jakarta
-      batch-fix: ./prompts/java-batch.txt
-    python:
-      single-fix: ./prompts/python-fix.txt    # Optimized for Python 2→3
-      batch-fix: ./prompts/python-batch.txt
+# Ollama (free, local, private)
+ollama serve
+./kantra-ai remediate --provider=ollama --model=codellama
 ```
 
-### Template Variables
+**See:** [AI Providers Guide](docs/guides/AI_PROVIDERS.md)
 
-**Single-fix templates** have access to:
-- `{{.Category}}` - Violation category (mandatory, optional, potential)
-- `{{.Description}}` - Violation description
-- `{{.RuleID}}` - Rule identifier
-- `{{.RuleMessage}}` - Rule message
-- `{{.File}}` - File path
-- `{{.Line}}` - Line number
-- `{{.CodeSnippet}}` - Code snippet at violation
-- `{{.FileContent}}` - Full file content
-- `{{.Language}}` - Programming language (java, python, go, etc.)
-- `{{.IncidentMessage}}` - Specific incident message
+---
 
-**Batch-fix templates** have access to:
-- `{{.ViolationID}}` - Violation identifier
-- `{{.Description}}` - Violation description
-- `{{.IncidentCount}}` - Number of incidents in batch
-- `{{.Language}}` - Programming language
-- `{{.Incidents}}` - Array of incidents with:
-  - `{{.Index}}` - 1-based index
-  - `{{.File}}` - File path
-  - `{{.Line}}` - Line number
-  - `{{.Message}}` - Incident message
-  - `{{.CodeContext}}` - Code context around incident
+### Batch Processing
 
-### Example Template
-
-Create `./prompts/java-fix.txt`:
+Automatically groups similar violations for 50-80% cost reduction and 70-90% faster execution:
 
 ```
-You are a Java migration expert specializing in javax → jakarta migrations.
-
-VIOLATION: {{.RuleID}}
-{{.Description}}
-
-FILE: {{.File}}:{{.Line}}
-
-CODE SNIPPET:
-{{.CodeSnippet}}
-
-MIGRATION GUIDELINES:
-1. Replace javax.* imports with jakarta.* equivalents
-2. Update package references in annotations
-3. Verify compatibility with Jakarta EE 9+
-4. Preserve all formatting and comments
-
-FULL FILE:
-{{.FileContent}}
-
-Return JSON: {"fixed_content": "...", "confidence": 0.0-1.0, "explanation": "..."}
+Without batching: 100 violations × $0.10 = $10.00, ~50 minutes
+With batching:     100 violations ÷ 10 × $0.10 = $1.00, ~8 minutes
+Savings:          $9.00 (90% reduction), 42 minutes (84% faster)
 ```
 
-### Use Cases
+Batching is enabled by default. Customize with:
 
-**Technology-Specific Migrations:**
-- Java: javax → jakarta, JUnit 4 → 5
-- Python: Python 2 → 3, Django upgrades
-- JavaScript: ES5 → ES6, framework migrations
-
-**Domain-Specific Guidance:**
-- Emphasize security best practices
-- Enforce coding standards
-- Include company-specific patterns
-
-**Cost Optimization:**
-- Shorter prompts for simple migrations
-- More detailed prompts for complex changes
-
-### How Template Selection Works
-
-1. Check if a language-specific template exists for the file's language
-2. If yes, use the language-specific template
-3. If no, fall back to the base template
-4. If no base template, use built-in defaults
-
-Example for a Java file:
-```
-java-fix.txt exists → Use java-fix.txt
-java-fix.txt missing → Use base-fix.txt
-base-fix.txt missing → Use built-in default
+```bash
+./kantra-ai remediate --batch-size=10 --batch-parallelism=4
 ```
 
-For complete examples and template syntax, see [.kantra-ai.example.yaml](./.kantra-ai.example.yaml) and the [Prompt Customization Guide](./docs/guides/PROMPT_CUSTOMIZATION.md).
+**See:** [Batch Processing Design](docs/design/BATCH_PROCESSING_DESIGN.md)
 
-## Usage Examples
+---
 
-### Filtering Violations
+### Confidence Filtering
+
+Skip low-confidence fixes based on migration complexity:
+
+```bash
+./kantra-ai remediate \
+  --enable-confidence \
+  --on-low-confidence=skip
+```
+
+| Complexity | Threshold | Description |
+|------------|-----------|-------------|
+| trivial | 0.70 | Mechanical find/replace |
+| low | 0.75 | Straightforward API equivalents |
+| medium | 0.80 | Requires context understanding |
+| high | 0.90 | Architectural changes |
+| expert | 0.95 | Domain expertise required |
+
+**See:** [Confidence Filtering Guide](docs/guides/CONFIDENCE_FILTERING.md)
+
+---
+
+### Git Integration
+
+Automatic commit creation and GitHub PR automation:
+
+```bash
+# Single commit with all fixes
+./kantra-ai remediate --git-commit=at-end --create-pr
+
+# One commit per violation type
+./kantra-ai remediate --git-commit=per-violation --create-pr
+```
+
+PRs include detailed summaries, file breakdowns, and cost metrics.
+
+**See:** [PR Testing Guide](docs/guides/PR-TESTING-GUIDE.md)
+
+---
+
+### Verification
+
+Run tests or builds after fixes to ensure they work:
+
+```bash
+# Run tests after all fixes
+./kantra-ai remediate --verify=test
+
+# Run build only (faster)
+./kantra-ai remediate --verify=build
+
+# Custom command
+./kantra-ai remediate --verify=test --verify-command="make test"
+```
+
+---
+
+## Common Examples
+
+### Filter by Category
 
 ```bash
 # Only fix mandatory violations
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --categories=mandatory
+./kantra-ai remediate --categories=mandatory
 
-# Only fix low-effort violations (effort <= 3)
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --max-effort=3
-
-# Fix specific violations by ID
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --violation-ids=javax-to-jakarta-001,log4j-migration-002
+# Fix mandatory and optional
+./kantra-ai remediate --categories=mandatory,optional
 ```
 
-### Git Commit Strategies
+### Filter by Effort
 
 ```bash
-# One commit per violation type (groups related fixes)
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=per-violation
-
-# One commit per file/incident
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=per-incident
-
-# Single commit with all fixes
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end
+# Only fix low-effort violations (≤3)
+./kantra-ai remediate --max-effort=3
 ```
 
-### Build/Test Verification
+### Safe Production Migration
 
 ```bash
-# Run tests after fixes to ensure they don't break anything
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --verify=test
-
-# Run build verification only (faster than tests)
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --verify=build
-
-# Verify after each fix (slow but catches issues immediately)
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=per-violation \
+./kantra-ai execute \
+  --plan=.kantra-ai-plan/plan.yaml \
+  --enable-confidence \
+  --on-low-confidence=skip \
   --verify=test \
-  --verify-strategy=per-fix
-
-# Custom verification command
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --verify=test \
-  --verify-command="make test"
-
-# Continue on verification failures (don't stop at first failure)
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --verify=test \
-  --verify-fail-fast=false
-```
-
-### GitHub Pull Request Creation
-
-```bash
-# Create a single PR with all fixes
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --create-pr
-
-# Create separate PRs per violation type
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
   --git-commit=per-violation \
   --create-pr
-
-# Customize the branch name
-./kantra-ai remediate \
-  --analysis=output.yaml \
-  --input=src \
-  --git-commit=at-end \
-  --create-pr \
-  --branch=feature/konveyor-migration
 ```
 
-## Command-Line Options
+**See:** [Usage Examples](docs/guides/USAGE_EXAMPLES.md) | [CLI Reference](docs/guides/CLI_REFERENCE.md)
 
-### `kantra-ai remediate` - Direct Remediation
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--analysis` | Path to Konveyor output.yaml (required) | `--analysis=./output.yaml` |
-| `--input` | Path to source code directory (required) | `--input=./src` |
-| `--provider` | AI provider: `claude` or `openai` (default: claude) | `--provider=openai` |
-| `--model` | Specific model override (optional) | `--model=gpt-4` |
-| `--dry-run` | Preview changes without applying them | `--dry-run` |
-| `--max-cost` | Maximum spending limit in USD | `--max-cost=10.00` |
-| `--max-effort` | Only fix violations with effort ≤ this value | `--max-effort=5` |
-| `--categories` | Filter by category: `mandatory`, `optional`, `potential` | `--categories=mandatory` |
-| `--violation-ids` | Comma-separated list of specific violation IDs | `--violation-ids=v001,v002` |
-| `--git-commit` | Git commit strategy: `per-violation`, `per-incident`, `at-end` | `--git-commit=per-violation` |
-| `--create-pr` | Create GitHub pull request(s) (requires `--git-commit`) | `--create-pr` |
-| `--branch` | Custom branch name for PR (default: auto-generated) | `--branch=feature/fixes` |
-| `--verify` | Run verification after fixes: `build`, `test` | `--verify=test` |
-| `--verify-strategy` | When to verify: `per-fix`, `per-violation`, `at-end` (default: at-end) | `--verify-strategy=per-fix` |
-| `--verify-command` | Custom verification command (overrides auto-detection) | `--verify-command="make test"` |
-| `--verify-fail-fast` | Stop on first verification failure (default: true) | `--verify-fail-fast=false` |
-
-### `kantra-ai plan` - Generate Migration Plan
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--analysis` | Path to Konveyor output.yaml (required) | `--analysis=./output.yaml` |
-| `--input` | Path to source code directory (required) | `--input=./src` |
-| `--provider` | AI provider: `claude` (OpenAI not yet supported for planning) | `--provider=claude` |
-| `--model` | Specific model override (optional) | `--model=claude-opus-4-20250514` |
-| `--output` | Output directory path (default: .kantra-ai-plan) | `--output=my-plan-dir` |
-| `--max-phases` | Maximum number of phases (0 = auto, typically 3-5) | `--max-phases=5` |
-| `--risk-tolerance` | Risk tolerance: `conservative`, `balanced`, `aggressive` | `--risk-tolerance=conservative` |
-| `--categories` | Filter by category | `--categories=mandatory` |
-| `--violation-ids` | Filter by specific violation IDs | `--violation-ids=v001,v002` |
-| `--max-effort` | Maximum effort level filter | `--max-effort=5` |
-| `--interactive` | Enable interactive phase approval | `--interactive` |
-
-### `kantra-ai execute` - Execute Migration Plan
-
-| Flag | Description | Example |
-|------|-------------|---------|
-| `--plan` | Path to plan file (default: .kantra-ai-plan.yaml) | `--plan=./my-plan.yaml` |
-| `--state` | Path to state file (default: .kantra-ai-state.yaml) | `--state=./my-state.yaml` |
-| `--input` | Path to source code directory (required) | `--input=./src` |
-| `--provider` | AI provider: `claude` or `openai` | `--provider=claude` |
-| `--model` | Specific model override (optional) | `--model=gpt-4` |
-| `--phase` | Execute specific phase only (e.g., phase-1) | `--phase=phase-1` |
-| `--resume` | Resume from last failure | `--resume` |
-| `--dry-run` | Preview changes without applying them | `--dry-run` |
-| `--git-commit` | Git commit strategy | `--git-commit=per-violation` |
-| `--create-pr` | Create GitHub pull request(s) | `--create-pr` |
-| `--branch` | Custom branch name for PR | `--branch=feature/fixes` |
-| `--verify` | Run verification after fixes | `--verify=test` |
-| `--verify-strategy` | When to verify | `--verify-strategy=at-end` |
-| `--verify-command` | Custom verification command | `--verify-command="make test"` |
-| `--verify-fail-fast` | Stop on first verification failure | `--verify-fail-fast=false` |
+---
 
 ## Architecture
 
@@ -614,308 +357,89 @@ kantra-ai/
 └── examples/             # Example violations and plans
 ```
 
+---
+
 ## How It Works
 
-1. **Parse Analysis**: Reads Konveyor's `output.yaml` to identify violations
-2. **AI Processing**: Sends violation context to AI provider (Claude/OpenAI)
-3. **Apply Fixes**: Applies AI-generated fixes to source files
-4. **Verification** (optional): Runs tests or builds to ensure fixes don't break functionality
-5. **Git Integration** (optional): Creates commits with meaningful messages
-6. **PR Creation** (optional): Opens pull requests on GitHub with detailed summaries
-7. **Reporting**: Provides detailed metrics on success rates, costs, and tokens used
+1. **Parse Analysis** - Reads Konveyor's `output.yaml` to identify violations
+2. **AI Processing** - Sends violation context to AI provider (Claude/OpenAI)
+3. **Apply Fixes** - Applies AI-generated fixes to source files
+4. **Verification** (optional) - Runs tests or builds to ensure fixes work
+5. **Git Integration** (optional) - Creates commits with meaningful messages
+6. **PR Creation** (optional) - Opens pull requests on GitHub with summaries
+7. **Reporting** - Provides detailed metrics on success rates, costs, and tokens used
 
-For a comprehensive end-to-end workflow diagram showing how Konveyor analysis, kantra-ai automation, and manual development activities work together, see the **[Complete Migration Workflow Guide](./docs/WORKFLOW.md)**.
+**See:** [Complete Workflow Guide](docs/WORKFLOW.md) | [Design Documentation](docs/design/DESIGN.md)
 
-## Batch Processing Performance
+---
 
-kantra-ai uses intelligent batch processing to dramatically reduce costs and execution time for large migrations.
+## Documentation
 
-**Supported Providers:** Claude, OpenAI, Groq, Together AI, Ollama, and all OpenAI-compatible providers.
+### Getting Started
+- [Quick Start Guide](docs/guides/QUICKSTART.md)
+- [Usage Examples](docs/guides/USAGE_EXAMPLES.md)
+- [CLI Reference](docs/guides/CLI_REFERENCE.md)
 
-**How It Works:**
-- Groups similar violations together (same violation ID)
-- Processes up to 10 incidents in a single API call
-- Runs 4 batches in parallel by default
-- Maintains incident-level tracking for resume capability
+### Advanced Features
+- [AI Providers Guide](docs/guides/AI_PROVIDERS.md)
+- [Confidence Filtering](docs/guides/CONFIDENCE_FILTERING.md)
+- [Prompt Customization](docs/guides/PROMPT_CUSTOMIZATION.md)
+- [Web Interactive Planner](docs/WEB_INTERACTIVE_USAGE.md)
+- [Web UI Quick Reference](docs/WEB_UI_QUICK_REFERENCE.md)
 
-**Performance Benefits:**
-- **50-80% cost reduction**: One API call for 10 violations instead of 10 separate calls
-- **70-90% faster execution**: Parallel processing with 4 concurrent workers
-- **Better AI context**: AI sees all related violations together for more consistent fixes
+### Development
+- [Testing Guide](docs/guides/TESTING.md)
+- [Contributing Guide](docs/guides/CONTRIBUTING.md)
+- [Design Documentation](docs/design/DESIGN.md)
+- [Batch Processing Design](docs/design/BATCH_PROCESSING_DESIGN.md)
+- [Planning Workflow Design](docs/design/PLANNING_WORKFLOW_DESIGN.md)
 
-**Example:**
-```
-Without batching: 100 violations × $0.10 = $10.00, ~50 minutes
-With batching:     100 violations ÷ 10 × $0.10 = $1.00, ~8 minutes
-Savings:          $9.00 (90% cost reduction), 42 minutes (84% faster)
-```
-
-**Configuration:**
-Batching is enabled by default. To customize:
-
-```yaml
-# .kantra-ai.yaml
-batch:
-  enabled: true        # Enable/disable batching
-  max-batch-size: 10   # Max incidents per batch (1-10)
-  parallelism: 4       # Concurrent batches (1-8)
-```
-
-Or via CLI flags:
-```bash
-./kantra-ai execute \
-  --plan=.kantra-ai-plan.yaml \
-  --input=./your-app \
-  --batch-size=10 \
-  --batch-parallelism=4
-```
-
-**Note:** Batch processing is available for both Claude and OpenAI-compatible providers (OpenAI, Groq, Together AI, Ollama, etc.).
-
-## Confidence Threshold Filtering
-
-kantra-ai supports confidence-based filtering that automatically skips low-confidence fixes based on migration complexity, providing an extra layer of safety for automated remediation.
-
-**Key Features:**
-- **Complexity-Aware Thresholds**: Different confidence requirements based on migration complexity (trivial, low, medium, high, expert)
-- **Migration Complexity Integration**: Leverages Konveyor's [migration complexity metadata](https://github.com/konveyor/enhancements/pull/255) from rulesets
-- **Multiple Actions**: Skip, warn-and-apply, or write to manual review file
-- **Manual Review Flagging**: High/expert complexity violations automatically marked for manual review in plans
-
-**How It Works:**
-
-kantra-ai uses AI confidence scores (0.0-1.0) combined with Konveyor's migration complexity levels to determine whether to apply a fix:
-
-| Complexity | Expected AI Success | Default Threshold | Description |
-|------------|-------------------|------------------|-------------|
-| **trivial** | 95%+ | 0.70 | Mechanical find/replace (e.g., package renames) |
-| **low** | 80%+ | 0.75 | Straightforward API equivalents |
-| **medium** | 60%+ | 0.80 | Requires context understanding |
-| **high** | 30-50% | 0.90 | Architectural changes, manual review recommended |
-| **expert** | <30% | 0.95 | Domain expertise required, manual review required |
-
-**Configuration:**
-
-Enable via config file (`.kantra-ai.yaml`):
-```yaml
-confidence:
-  enabled: true              # Enable confidence filtering
-  on-low-confidence: skip    # skip, warn-and-apply, or manual-review-file
-
-  # Optional: Override default thresholds
-  complexity-thresholds:
-    high: 0.95    # Require very high confidence for complex changes
-    expert: 0.98  # Require near-perfect confidence for expert-level changes
-```
-
-Or via CLI flags:
-```bash
-# Skip low-confidence fixes (safest, recommended)
-./kantra-ai remediate \
-  --enable-confidence \
-  --on-low-confidence=skip
-
-# Global minimum confidence (applies to all complexity levels)
-./kantra-ai remediate \
-  --enable-confidence \
-  --min-confidence=0.85
-
-# Custom thresholds per complexity level
-./kantra-ai remediate \
-  --enable-confidence \
-  --complexity-threshold="high=0.95,expert=0.98"
-```
-
-**Example Output:**
-```
-→ [1/5] Violation: javax-to-jakarta-001 (mandatory)
-  Description: Replace javax.servlet with jakarta.servlet
-  Incidents: 23
-
-  • [1/23] src/Controller.java:15
-  ✓ Fixed: src/Controller.java (cost: $0.12, confidence: 0.98)
-
-  • [2/23] src/ComplexServlet.java:42
-  ⚠ Skipped: src/ComplexServlet.java
-    Reason: Confidence 0.65 below threshold 0.90 (high complexity)
-    To force: --min-confidence=0.65 or --enable-confidence=false
-```
-
-**When to Use:**
-- **Production migrations**: Enable with `on-low-confidence: skip` for maximum safety
-- **Rapid prototyping**: Disable or use `warn-and-apply` to maximize automation
-- **High-risk codebases**: Increase thresholds for complex changes
-- **Review workflows**: Use `manual-review-file` to collect low-confidence fixes for human review
-
-**Migration Complexity Sources:**
-1. **Ruleset metadata** (preferred): Konveyor rulesets can include `migration_complexity` field
-2. **Effort-based fallback**: If metadata missing, kantra-ai maps effort levels (0-10) to complexity
-   - Effort 0-2 → trivial
-   - Effort 3-4 → low
-   - Effort 5-6 → medium
-   - Effort 7-8 → high
-   - Effort 9-10 → expert
-
-**Note:** Confidence filtering is **disabled by default** for backward compatibility. Enable it explicitly when you want the extra safety layer.
-
-## Supported AI Providers
-
-kantra-ai supports **50+ LLM providers** through a combination of native implementations and OpenAI-compatible APIs:
-
-### Native Providers
-
-**Claude (Anthropic)** - Recommended
-```bash
-export ANTHROPIC_API_KEY=sk-ant-...
-./kantra-ai remediate --provider=claude --model=claude-sonnet-4-20250514
-```
-- Best quality for code fixes
-- Batch processing support (50-80% cost savings)
-- Plan generation support
-
-**OpenAI**
-```bash
-export OPENAI_API_KEY=sk-...
-./kantra-ai remediate --provider=openai --model=gpt-4
-```
-- High quality fixes
-- Batch processing support (50-80% cost savings)
-
-### OpenAI-Compatible Providers (Built-in Presets)
-
-**Groq** - Ultra-fast inference
-```bash
-export OPENAI_API_KEY=gsk_...
-./kantra-ai remediate --provider=groq --model=llama-3.1-70b-versatile
-```
-- Fastest inference speeds
-- Free tier available
-- Llama 3.1, Mixtral, Gemma models
-
-**Ollama** - Local models (free, private)
-```bash
-ollama serve  # No API key needed
-./kantra-ai remediate --provider=ollama --model=codellama
-```
-- Run models locally (no API costs)
-- 100% private
-- CodeLlama, Llama 3, DeepSeek Coder, etc.
-
-**Together AI** - Open source models
-```bash
-export OPENAI_API_KEY=...
-./kantra-ai remediate --provider=together --model=meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo
-```
-- Wide selection of open source models
-- Competitive pricing
-
-**Anyscale**
-```bash
-export OPENAI_API_KEY=...
-./kantra-ai remediate --provider=anyscale --model=meta-llama/Meta-Llama-3.1-70B-Instruct
-```
-
-**Perplexity AI** - Online context
-```bash
-export OPENAI_API_KEY=pplx-...
-./kantra-ai remediate --provider=perplexity --model=llama-3.1-sonar-large-128k-online
-```
-- Can search online for migration guidance
-
-**OpenRouter** - 100+ models through one API
-```bash
-export OPENAI_API_KEY=sk-or-...
-./kantra-ai remediate --provider=openrouter --model=meta-llama/llama-3.1-70b-instruct
-```
-- Access to 100+ models
-- Automatic fallbacks
-
-**LM Studio** - Local models with GUI
-```bash
-# Start LM Studio and load a model
-./kantra-ai remediate --provider=lmstudio --model=local-model
-```
-
-### Custom OpenAI-Compatible Providers
-
-Use any OpenAI-compatible API by setting the base URL in `.kantra-ai.yaml`:
-
-```yaml
-provider:
-  name: openai
-  base-url: https://your-custom-api.com/v1
-  model: your-model
-```
-
-Or use environment variable:
-```bash
-export OPENAI_API_KEY=your-key
-./kantra-ai remediate --provider=openai --model=your-model
-```
-
-### Provider Comparison
-
-| Provider | Speed | Cost | Quality | Privacy | Best For |
-|----------|-------|------|---------|---------|----------|
-| Claude | Medium | $$$ | Excellent | Cloud | Production use, highest quality |
-| GPT-4 | Medium | $$$$ | Excellent | Cloud | Production use |
-| Groq | Very Fast | $-$$ | Good | Cloud | Fast iteration, testing |
-| Ollama | Fast | Free | Good | Local | Privacy, offline, cost-sensitive |
-| Together | Fast | $-$$ | Good | Cloud | Open source models |
-| OpenRouter | Varies | Varies | Varies | Cloud | Model exploration |
-
-**Recommendations:**
-- **Production**: Claude (best quality, batch processing)
-- **Testing/Development**: Groq (fast, affordable) or Ollama (free, local)
-- **Cost-sensitive**: Ollama (local, free) or Together (cheap cloud)
-- **Privacy**: Ollama or LM Studio (local execution)
+---
 
 ## Cost Estimation
 
 Typical costs per violation (using Claude Sonnet 4 with batch processing):
-- **Simple fixes** (import changes, simple refactoring): $0.002 - $0.01
-- **Medium complexity** (API migrations, pattern updates): $0.01 - $0.03
-- **Complex fixes** (logic changes, multi-file): $0.03 - $0.10
+
+- **Simple fixes** (import changes): $0.002 - $0.01
+- **Medium complexity** (API migrations): $0.01 - $0.03
+- **Complex fixes** (multi-file changes): $0.03 - $0.10
 
 Use `--dry-run` to get cost estimates before applying fixes.
 
-## GitHub PR Creation
-
-PRs created by kantra-ai include:
-- **Detailed summaries** of violations fixed
-- **File-by-file breakdown** with line numbers
-- **Cost and token metrics** for transparency
-- **AI provider information** for traceability
-- **Professional formatting** with markdown
-
-Example PR: [See PR template in TESTING.md](./docs/guides/PR-TESTING-GUIDE.md)
+---
 
 ## Testing
 
-See [TESTING.md](./docs/guides/TESTING.md) for comprehensive testing instructions, including:
-- Setting up test environments
-- Testing PR creation with real GitHub repositories
-- Troubleshooting common issues
+See [TESTING.md](docs/guides/TESTING.md) for comprehensive testing instructions.
+
+---
 
 ## Contributing
 
-Contributions welcome! Please read [DESIGN.md](./docs/design/DESIGN.md) for architectural details and future plans.
+Contributions welcome! Please read:
+- [Contributing Guide](docs/guides/CONTRIBUTING.md)
+- [Design Documentation](docs/design/DESIGN.md)
+
+---
 
 ## Roadmap
 
 - [x] Core AI-powered remediation
-- [x] Multiple AI provider support (Claude, OpenAI)
+- [x] Multiple AI provider support (Claude, OpenAI, Groq, Ollama, etc.)
 - [x] Git commit automation
 - [x] GitHub PR creation
 - [x] Build/test verification
 - [x] Phased migration planning with AI grouping
-- [x] Interactive phase approval mode
+- [x] Interactive phase approval (Web UI + CLI)
 - [x] Resume capability with state tracking
-- [x] Batch processing optimizations (50-80% cost reduction, 70-90% faster)
-- [x] 50+ AI providers (Groq, Ollama, Together AI, Anyscale, Perplexity, OpenRouter, etc.)
-- [x] Batch processing for OpenAI-compatible providers
+- [x] Batch processing optimizations (50-80% cost reduction)
+- [x] 50+ AI providers support
+- [x] Confidence-based filtering
+- [x] Customizable prompt templates
 - [ ] Native Gemini provider support
 - [ ] Integration with Konveyor CLI
+
+---
 
 ## License
 

@@ -317,6 +317,10 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 	batches := batchViolations(req.Violations, batchSize)
 	fmt.Printf("   Split into %d batches\n\n", len(batches))
 
+	// Hide cursor during progress updates
+	os.Stdout.WriteString("\033[?25l")
+	defer os.Stdout.WriteString("\033[?25h\n") // Show cursor when done
+
 	var allPhases []provider.PlannedPhase
 	var totalTokens int
 	var totalCost float64
@@ -330,8 +334,8 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 		if i > 0 {
 			delay := calculateBatchDelay(totalTokens, i)
 
-			// Show waiting status in progress bar
-			updateBatchProgress(i, len(batches), fmt.Sprintf("Waiting %ds", int(delay.Seconds())))
+			// Show processing status in progress bar during delay
+			updateBatchProgress(i, len(batches), "Processing...")
 
 			select {
 			case <-ctx.Done():
@@ -403,6 +407,11 @@ func calculateBatchDelay(tokensSoFar int, batchIndex int) time.Duration {
 func updateBatchProgress(current, total int, status string) {
 	// Current is 0-based, so add 1 for display
 	currentBatch := current + 1
+
+	// Cap currentBatch at total to avoid exceeding 100%
+	if currentBatch > total {
+		currentBatch = total
+	}
 
 	// Calculate progress (0.0 to 1.0) - show progress for the batch being worked on
 	progress := float64(currentBatch) / float64(total)
