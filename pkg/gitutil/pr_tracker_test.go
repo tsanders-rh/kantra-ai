@@ -416,3 +416,299 @@ func TestPRTracker_DryRunFinalize(t *testing.T) {
 		assert.Len(t, tracker.createdPRs, 3)
 	})
 }
+
+func TestPRTracker_addLowConfidenceComments(t *testing.T) {
+	t.Run("disabled when threshold is 0", func(t *testing.T) {
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0, // Disabled
+			},
+			progress: &NoOpProgressWriter{},
+		}
+
+		// Create fixes with low confidence
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
+				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+			},
+		}
+
+		// Should return nil without creating any comments
+		err := tracker.addLowConfidenceComments(123, fixes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("disabled in dry-run mode", func(t *testing.T) {
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0.8,
+				DryRun:           true, // Dry-run
+			},
+			progress: &NoOpProgressWriter{},
+		}
+
+		// Create fixes with low confidence
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
+				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+			},
+		}
+
+		// Should return nil without creating any comments
+		err := tracker.addLowConfidenceComments(123, fixes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("no comments when all fixes above threshold", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		// Create test file and commit it
+		testFile := tmpDir + "/test.java"
+		err := createAndCommitFile(t, tmpDir, testFile, "public class Test {}")
+		require.NoError(t, err)
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0.8,
+				DryRun:           false,
+			},
+			workingDir: tmpDir,
+			progress:   &NoOpProgressWriter{},
+		}
+
+		// All fixes have high confidence (above threshold)
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
+				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.9},
+			},
+			{
+				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
+				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.85},
+			},
+		}
+
+		// Should return nil - no low-confidence fixes
+		err = tracker.addLowConfidenceComments(123, fixes)
+		assert.NoError(t, err)
+	})
+
+	t.Run("filters fixes by confidence threshold", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		// Create test file and commit it
+		testFile := tmpDir + "/test.java"
+		err := createAndCommitFile(t, tmpDir, testFile, "public class Test {}")
+		require.NoError(t, err)
+
+		// Track the number of comment creation attempts
+		commentCount := 0
+		mockClient := &mockGitHubClientForComments{
+			createReviewCommentFunc: func(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error) {
+				commentCount++
+				return &ReviewCommentResponse{
+					ID:      commentCount,
+					Body:    req.Body,
+					Path:    req.Path,
+					Line:    req.Line,
+					HTMLURL: "https://github.com/test/test/pull/123#discussion_r" + string(rune(commentCount)),
+				}, nil
+			},
+		}
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0.8, // Only comment on fixes below 0.8
+				DryRun:           false,
+			},
+			workingDir:   tmpDir,
+			githubClient: mockClient,
+			progress:     &NoOpProgressWriter{},
+		}
+
+		// Mix of high and low confidence fixes
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
+				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.9}, // Above threshold - no comment
+			},
+			{
+				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
+				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.7}, // Below threshold - comment
+			},
+			{
+				Violation: violation.Violation{ID: "v3", Description: "Test violation 3"},
+				Incident:  violation.Incident{LineNumber: 3, URI: "file://test.java:3"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5}, // Below threshold - comment
+			},
+			{
+				Violation: violation.Violation{ID: "v4", Description: "Test violation 4"},
+				Incident:  violation.Incident{LineNumber: 4, URI: "file://test.java:4"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0}, // No confidence - no comment
+			},
+		}
+
+		err = tracker.addLowConfidenceComments(123, fixes)
+		assert.NoError(t, err)
+
+		// Should have created comments for only the 2 low-confidence fixes (0.7 and 0.5)
+		assert.Equal(t, 2, commentCount, "should create comments for fixes below threshold with confidence > 0")
+	})
+
+	t.Run("gracefully handles comment creation errors", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		// Create test file and commit it
+		testFile := tmpDir + "/test.java"
+		err := createAndCommitFile(t, tmpDir, testFile, "public class Test {}")
+		require.NoError(t, err)
+
+		// Mock client that fails on second comment
+		commentCount := 0
+		mockClient := &mockGitHubClientForComments{
+			createReviewCommentFunc: func(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error) {
+				commentCount++
+				if commentCount == 2 {
+					return nil, &GitHubError{
+						Message:    "Validation Failed",
+						StatusCode: 422,
+					}
+				}
+				return &ReviewCommentResponse{
+					ID:      commentCount,
+					Body:    req.Body,
+					Path:    req.Path,
+					Line:    req.Line,
+					HTMLURL: "https://github.com/test/test/pull/123#discussion_r" + string(rune(commentCount)),
+				}, nil
+			},
+		}
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0.8,
+				DryRun:           false,
+			},
+			workingDir:   tmpDir,
+			githubClient: mockClient,
+			progress:     &NoOpProgressWriter{},
+		}
+
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
+				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.7},
+			},
+			{
+				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
+				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.6},
+			},
+			{
+				Violation: violation.Violation{ID: "v3", Description: "Test violation 3"},
+				Incident:  violation.Incident{LineNumber: 3, URI: "file://test.java:3"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+			},
+		}
+
+		// Should not return error even though second comment failed
+		err = tracker.addLowConfidenceComments(123, fixes)
+		assert.NoError(t, err, "should gracefully handle comment creation errors")
+
+		// All three comments should have been attempted
+		assert.Equal(t, 3, commentCount)
+	})
+
+	t.Run("comment body contains expected information", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+
+		// Create test file and commit it
+		testFile := tmpDir + "/test.java"
+		err := createAndCommitFile(t, tmpDir, testFile, "public class Test {}")
+		require.NoError(t, err)
+
+		var capturedComment ReviewCommentRequest
+		mockClient := &mockGitHubClientForComments{
+			createReviewCommentFunc: func(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error) {
+				capturedComment = req
+				return &ReviewCommentResponse{
+					ID:      1,
+					Body:    req.Body,
+					Path:    req.Path,
+					Line:    req.Line,
+					HTMLURL: "https://github.com/test/test/pull/123#discussion_r1",
+				}, nil
+			},
+		}
+
+		tracker := &PRTracker{
+			config: PRConfig{
+				CommentThreshold: 0.8,
+				DryRun:           false,
+			},
+			workingDir:   tmpDir,
+			githubClient: mockClient,
+			progress:     &NoOpProgressWriter{},
+		}
+
+		fixes := []FixRecord{
+			{
+				Violation: violation.Violation{ID: "deprecated-api", Description: "Use of deprecated API"},
+				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
+				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.65},
+			},
+		}
+
+		err = tracker.addLowConfidenceComments(123, fixes)
+		require.NoError(t, err)
+
+		// Verify comment body contains expected information
+		assert.Contains(t, capturedComment.Body, "⚠️", "should have warning emoji")
+		assert.Contains(t, capturedComment.Body, "65%", "should show confidence percentage")
+		assert.Contains(t, capturedComment.Body, "deprecated-api", "should include violation ID")
+		assert.Contains(t, capturedComment.Body, "Use of deprecated API", "should include violation description")
+		assert.Contains(t, capturedComment.Body, "review carefully", "should include review guidance")
+
+		// Verify comment metadata
+		assert.Equal(t, "test.java", capturedComment.Path)
+		assert.Equal(t, 10, capturedComment.Line)
+		assert.Equal(t, "RIGHT", capturedComment.Side)
+	})
+}
+
+// mockGitHubClientForComments is a mock implementation of GitHubClient for testing comment creation
+type mockGitHubClientForComments struct {
+	createReviewCommentFunc func(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error)
+}
+
+func (m *mockGitHubClientForComments) CreatePullRequest(req PullRequestRequest) (*PullRequestResponse, error) {
+	return nil, nil
+}
+
+func (m *mockGitHubClientForComments) GetDefaultBranch() (string, error) {
+	return "main", nil
+}
+
+func (m *mockGitHubClientForComments) CreateCommitStatus(sha string, req CommitStatusRequest) (*CommitStatusResponse, error) {
+	return nil, nil
+}
+
+func (m *mockGitHubClientForComments) CreateReviewComment(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error) {
+	if m.createReviewCommentFunc != nil {
+		return m.createReviewCommentFunc(prNumber, req)
+	}
+	return nil, nil
+}

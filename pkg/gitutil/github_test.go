@@ -471,3 +471,191 @@ func TestGitHubClient_CreateCommitStatus(t *testing.T) {
 		assert.Equal(t, "success", resp.State)
 	})
 }
+
+func TestGitHubClient_CreateReviewComment(t *testing.T) {
+	t.Run("successful review comment creation", func(t *testing.T) {
+		// Create mock server
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Verify request
+			assert.Equal(t, "/repos/test-owner/test-repo/pulls/123/comments", r.URL.Path)
+			assert.Equal(t, "POST", r.Method)
+			assert.Equal(t, "token test-token", r.Header.Get("Authorization"))
+
+			// Verify request body
+			var reqBody ReviewCommentRequest
+			err := json.NewDecoder(r.Body).Decode(&reqBody)
+			assert.NoError(t, err)
+			assert.Equal(t, "⚠️ Low confidence fix", reqBody.Body)
+			assert.Equal(t, "abc123", reqBody.CommitID)
+			assert.Equal(t, "src/Main.java", reqBody.Path)
+			assert.Equal(t, 42, reqBody.Line)
+			assert.Equal(t, "RIGHT", reqBody.Side)
+
+			// Send mock response
+			w.WriteHeader(http.StatusCreated)
+			resp := ReviewCommentResponse{
+				ID:        456,
+				Body:      "⚠️ Low confidence fix",
+				Path:      "src/Main.java",
+				Line:      42,
+				CommitID:  "abc123",
+				HTMLURL:   "https://github.com/test-owner/test-repo/pull/123#discussion_r456",
+				CreatedAt: "2025-01-15T10:00:00Z",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create review comment
+		req := ReviewCommentRequest{
+			Body:     "⚠️ Low confidence fix",
+			CommitID: "abc123",
+			Path:     "src/Main.java",
+			Line:     42,
+			Side:     "RIGHT",
+		}
+		resp, err := client.CreateReviewComment(123, req)
+
+		// Assert
+		require.NoError(t, err)
+		assert.Equal(t, 456, resp.ID)
+		assert.Equal(t, "⚠️ Low confidence fix", resp.Body)
+		assert.Equal(t, "src/Main.java", resp.Path)
+		assert.Equal(t, 42, resp.Line)
+		assert.Equal(t, "abc123", resp.CommitID)
+		assert.Contains(t, resp.HTMLURL, "discussion_r456")
+	})
+
+	t.Run("unauthorized error", func(t *testing.T) {
+		// Create mock server that returns 401
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnauthorized)
+			errResp := map[string]string{
+				"message": "Bad credentials",
+			}
+			_ = json.NewEncoder(w).Encode(errResp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "invalid-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create review comment
+		req := ReviewCommentRequest{
+			Body:     "Test comment",
+			CommitID: "abc123",
+			Path:     "file.go",
+			Line:     10,
+			Side:     "RIGHT",
+		}
+		_, err := client.CreateReviewComment(123, req)
+
+		// Assert error
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "401")
+		assert.Contains(t, err.Error(), "Bad credentials")
+	})
+
+	t.Run("validation error - invalid path", func(t *testing.T) {
+		// Create mock server that returns 422
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusUnprocessableEntity)
+			errResp := map[string]interface{}{
+				"message": "Validation Failed",
+				"errors": []map[string]string{
+					{"message": "path does not exist in diff"},
+				},
+			}
+			_ = json.NewEncoder(w).Encode(errResp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create review comment with invalid path
+		req := ReviewCommentRequest{
+			Body:     "Test comment",
+			CommitID: "abc123",
+			Path:     "nonexistent.go",
+			Line:     10,
+			Side:     "RIGHT",
+		}
+		_, err := client.CreateReviewComment(123, req)
+
+		// Assert error
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "422")
+		assert.Contains(t, err.Error(), "Validation Failed")
+	})
+
+	t.Run("retry on 503", func(t *testing.T) {
+		attempts := 0
+		// Create mock server that fails twice then succeeds
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			attempts++
+			if attempts < 3 {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				return
+			}
+
+			// Third attempt succeeds
+			w.WriteHeader(http.StatusCreated)
+			resp := ReviewCommentResponse{
+				ID:       789,
+				Body:     "Test comment",
+				Path:     "file.go",
+				Line:     10,
+				CommitID: "abc123",
+				HTMLURL:  "https://github.com/test-owner/test-repo/pull/123#discussion_r789",
+			}
+			_ = json.NewEncoder(w).Encode(resp)
+		}))
+		defer server.Close()
+
+		// Create client
+		client := &GitHubClient{
+			token:   "test-token",
+			owner:   "test-owner",
+			repo:    "test-repo",
+			baseURL: server.URL,
+			client:  server.Client(),
+		}
+
+		// Create review comment
+		req := ReviewCommentRequest{
+			Body:     "Test comment",
+			CommitID: "abc123",
+			Path:     "file.go",
+			Line:     10,
+			Side:     "RIGHT",
+		}
+		resp, err := client.CreateReviewComment(123, req)
+
+		// Assert success after retries
+		require.NoError(t, err)
+		assert.Equal(t, 789, resp.ID)
+		assert.Equal(t, 3, attempts, "should have retried twice before succeeding")
+	})
+}

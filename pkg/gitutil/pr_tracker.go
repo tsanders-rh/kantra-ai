@@ -68,12 +68,20 @@ type CreatedPR struct {
 	PhaseID     string // Phase ID for per-phase strategy
 }
 
+// GitHubClientInterface defines the methods needed from GitHubClient for PR operations
+type GitHubClientInterface interface {
+	CreatePullRequest(req PullRequestRequest) (*PullRequestResponse, error)
+	GetDefaultBranch() (string, error)
+	CreateCommitStatus(sha string, req CommitStatusRequest) (*CommitStatusResponse, error)
+	CreateReviewComment(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error)
+}
+
 // PRTracker manages PR creation aligned with commit strategy
 type PRTracker struct {
 	config         PRConfig
 	workingDir     string
 	providerName   string
-	githubClient   *GitHubClient
+	githubClient   GitHubClientInterface
 	originalBranch string
 	progress       ProgressWriter
 

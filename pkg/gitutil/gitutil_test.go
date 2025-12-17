@@ -32,6 +32,26 @@ func createTestGitRepo(t *testing.T) string {
 	return tmpDir
 }
 
+// createAndCommitFile creates a file with content and commits it to the git repo
+func createAndCommitFile(t *testing.T, repoDir, filePath, content string) error {
+	// Write file
+	if err := os.WriteFile(filePath, []byte(content), 0644); err != nil {
+		return err
+	}
+
+	// Git add
+	cmd := exec.Command("git", "add", ".")
+	cmd.Dir = repoDir
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Git commit
+	cmd = exec.Command("git", "commit", "-m", "test commit")
+	cmd.Dir = repoDir
+	return cmd.Run()
+}
+
 func TestIsGitRepository(t *testing.T) {
 	t.Run("directory with .git", func(t *testing.T) {
 		tmpDir := createTestGitRepo(t)
