@@ -37,7 +37,22 @@ Automatically skips incidents that have already been successfully fixed, enablin
 - Tracks completion at incident-level granularity
 - Reports skipped incidents in execution summary
 
-**Combined Impact**: ~2-3x overall speedup with 10-20% cost savings, plus 100% savings on resume
+### 4. Deduplication Detection (Implemented)
+**Impact**: Cost savings on duplicate violations
+**Status**: ✅ Shipped
+
+Automatically detects and skips duplicate incidents based on unique key (violation ID + file path + line number):
+- Eliminates redundant processing of identical incidents
+- Common in analysis output where same violation appears multiple times
+- Zero cost for duplicates - only process each unique incident once
+- Tracked separately from already-completed incidents
+
+- Implementation: `pkg/executor/executor.go`
+- Key Format: `"violationID:filePath:lineNumber"`
+- Reports duplicate count in execution summary
+- Works across violations within same phase
+
+**Combined Impact**: ~2-3x overall speedup with 10-20% cost savings, plus 100% savings on resume, plus duplicate elimination
 
 ---
 

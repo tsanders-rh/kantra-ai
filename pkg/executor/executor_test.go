@@ -9,6 +9,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/ux"
@@ -601,4 +602,235 @@ func (m *MockProvider) FixBatch(ctx context.Context, req provider.BatchRequest) 
 		return nil, args.Error(1)
 	}
 	return args.Get(0).(*provider.BatchResponse), args.Error(1)
+}
+
+func TestExecute_DeduplicationDetection(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "executor-test-*")
+	assert.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create test source file
+	err = os.WriteFile(filepath.Join(tmpDir, "test.java"), []byte("class Test {}"), 0644)
+	assert.NoError(t, err)
+
+	planPath := filepath.Join(tmpDir, "plan.yaml")
+	statePath := filepath.Join(tmpDir, "state.yaml")
+
+	// Create plan with duplicate incidents (same file, line, and violation)
+	plan := planfile.NewPlan("test-provider", 1)
+	plan.Metadata.CreatedAt = time.Now()
+	plan.Phases = []planfile.Phase{
+		{
+			ID:            "phase-1",
+			Name:          "Test Phase",
+			Order:         1,
+			Risk:          planfile.RiskLow,
+			Category:      "mandatory",
+			EffortRange:   [2]int{1, 3},
+			Explanation:   "Test explanation",
+			EstimatedCost: 0.10,
+			Violations: []planfile.PlannedViolation{
+				{
+					ViolationID:   "test-violation-1",
+					Description:   "Test violation",
+					Category:      "mandatory",
+					Effort:        3,
+					IncidentCount: 4,
+					Incidents: []violation.Incident{
+						// First unique incident
+						{URI: "file:///test.java", LineNumber: 10, Message: "Test 1"},
+						// Duplicate of first (same file, line, violation)
+						{URI: "file:///test.java", LineNumber: 10, Message: "Test 1 duplicate"},
+						// Second unique incident
+						{URI: "file:///test.java", LineNumber: 20, Message: "Test 2"},
+						// Another duplicate of first
+						{URI: "file:///test.java", LineNumber: 10, Message: "Test 1 duplicate again"},
+					},
+				},
+			},
+		},
+	}
+
+	err = planfile.SavePlan(plan, planPath)
+	assert.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+	mockProvider.On("Name").Return("test-provider").Maybe()
+
+	// Mock should only be called with 2 unique incidents (not 4)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		// Verify only 2 incidents sent (duplicates filtered out)
+		return len(req.Incidents) == 2
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{
+					IncidentURI:  "file:///test.java:10",
+					Success:      true,
+					FixedContent: "class TestFixed {}",
+					Explanation:  "Fixed incident 1",
+					Confidence:   0.9,
+				},
+				{
+					IncidentURI:  "file:///test.java:20",
+					Success:      true,
+					FixedContent: "class TestFixed {}",
+					Explanation:  "Fixed incident 2",
+					Confidence:   0.9,
+				},
+			},
+			Success:    true,
+			TokensUsed: 100,
+			Cost:       0.05,
+		},
+		nil,
+	).Once()
+
+	config := Config{
+		PlanPath:  planPath,
+		StatePath: statePath,
+		InputPath: tmpDir,
+		Provider:  mockProvider,
+		Progress:  &ux.NoOpProgressWriter{},
+		DryRun:    true,
+	}
+
+	exec, err := New(config)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	result, err := exec.Execute(ctx)
+
+	assert.NoError(t, err)
+	assert.NotNil(t, result)
+	assert.Equal(t, 1, result.TotalPhases)
+	assert.Equal(t, 1, result.ExecutedPhases)
+	assert.Equal(t, 1, result.CompletedPhases)
+	assert.Equal(t, 2, result.SuccessfulFixes)  // Only 2 unique incidents fixed
+	assert.Equal(t, 0, result.FailedFixes)
+	assert.Equal(t, 0, result.SkippedFixes)
+	assert.Equal(t, 2, result.DuplicateFixes)   // 2 duplicates skipped
+	assert.Equal(t, 0.05, result.TotalCost)
+	assert.Equal(t, 100, result.TotalTokens)
+
+	mockProvider.AssertExpectations(t)
+}
+
+func TestExecute_DeduplicationAcrossViolations(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "executor-test-*")
+	assert.NoError(t, err)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
+
+	// Create test source files
+	err = os.WriteFile(filepath.Join(tmpDir, "test1.java"), []byte("class Test1 {}"), 0644)
+	assert.NoError(t, err)
+	err = os.WriteFile(filepath.Join(tmpDir, "test2.java"), []byte("class Test2 {}"), 0644)
+	assert.NoError(t, err)
+
+	planPath := filepath.Join(tmpDir, "plan.yaml")
+	statePath := filepath.Join(tmpDir, "state.yaml")
+
+	// Create plan with 2 violations that share incidents
+	plan := planfile.NewPlan("test-provider", 1)
+	plan.Metadata.CreatedAt = time.Now()
+	plan.Phases = []planfile.Phase{
+		{
+			ID:            "phase-1",
+			Name:          "Test Phase",
+			Order:         1,
+			Risk:          planfile.RiskLow,
+			Category:      "mandatory",
+			EffortRange:   [2]int{1, 3},
+			EstimatedCost: 0.15,
+			Violations: []planfile.PlannedViolation{
+				{
+					ViolationID:   "violation-1",
+					Description:   "Violation 1",
+					Category:      "mandatory",
+					Effort:        2,
+					IncidentCount: 2,
+					Incidents: []violation.Incident{
+						{URI: "file:///test1.java", LineNumber: 10, Message: "V1 incident 1"},
+						{URI: "file:///test2.java", LineNumber: 20, Message: "V1 incident 2"},
+					},
+				},
+				{
+					ViolationID:   "violation-2",
+					Description:   "Violation 2",
+					Category:      "mandatory",
+					Effort:        2,
+					IncidentCount: 2,
+					Incidents: []violation.Incident{
+						// Same location as violation-1 but different violation ID - NOT a duplicate
+						{URI: "file:///test1.java", LineNumber: 10, Message: "V2 incident 1"},
+						{URI: "file:///test2.java", LineNumber: 30, Message: "V2 incident 2"},
+					},
+				},
+			},
+		},
+	}
+
+	err = planfile.SavePlan(plan, planPath)
+	assert.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+	mockProvider.On("Name").Return("test-provider").Maybe()
+
+	// First batch - violation-1 (2 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return req.Violation.ID == "violation-1" && len(req.Incidents) == 2
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{IncidentURI: "file:///test1.java:10", Success: true, FixedContent: "fixed", Confidence: 0.9},
+				{IncidentURI: "file:///test2.java:20", Success: true, FixedContent: "fixed", Confidence: 0.9},
+			},
+			Success:    true,
+			TokensUsed: 100,
+			Cost:       0.05,
+		},
+		nil,
+	).Once()
+
+	// Second batch - violation-2 (2 incidents, no duplicates since violation ID differs)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return req.Violation.ID == "violation-2" && len(req.Incidents) == 2
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{IncidentURI: "file:///test1.java:10", Success: true, FixedContent: "fixed", Confidence: 0.9},
+				{IncidentURI: "file:///test2.java:30", Success: true, FixedContent: "fixed", Confidence: 0.9},
+			},
+			Success:    true,
+			TokensUsed: 100,
+			Cost:       0.05,
+		},
+		nil,
+	).Once()
+
+	// Disable file grouping for this test to test deduplication across violations
+	batchConfig := fixer.DefaultBatchConfig()
+	batchConfig.GroupByFile = false
+
+	config := Config{
+		PlanPath:    planPath,
+		StatePath:   statePath,
+		InputPath:   tmpDir,
+		Provider:    mockProvider,
+		Progress:    &ux.NoOpProgressWriter{},
+		DryRun:      true,
+		BatchConfig: batchConfig,
+	}
+
+	exec, err := New(config)
+	assert.NoError(t, err)
+
+	ctx := context.Background()
+	result, err := exec.Execute(ctx)
+
+	assert.NoError(t, err)
+	assert.Equal(t, 4, result.SuccessfulFixes) // All 4 incidents fixed (no duplicates across violations)
+	assert.Equal(t, 0, result.DuplicateFixes)  // No duplicates since violation IDs differ
+
+	mockProvider.AssertExpectations(t)
 }

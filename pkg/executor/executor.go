@@ -105,6 +105,7 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 		result.SuccessfulFixes += phaseResult.SuccessfulFixes
 		result.FailedFixes += phaseResult.FailedFixes
 		result.SkippedFixes += phaseResult.SkippedFixes
+		result.DuplicateFixes += phaseResult.DuplicateFixes
 		result.TotalCost += phaseResult.Cost
 		result.TotalTokens += phaseResult.Tokens
 
@@ -217,6 +218,10 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 		confidenceStats = confidence.NewStats()
 	}
 
+	// Track seen incidents to detect duplicates
+	// Key format: "violationID:filePath:lineNumber"
+	seenIncidents := make(map[string]bool)
+
 	// Execute fixes for each violation in the phase
 	for _, plannedViolation := range phase.Violations {
 		// Check for context cancellation
@@ -236,6 +241,7 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 		// Filter incidents that need fixing
 		incidentsToFix := make([]violation.Incident, 0, len(plannedViolation.Incidents))
 		skippedCount := 0
+		duplicateCount := 0
 		for _, incident := range plannedViolation.Incidents {
 			incidentURI := incident.URI
 
@@ -249,17 +255,36 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 				}
 			}
 
+			// Check for duplicate (same file + line + violation)
+			incidentKey := fmt.Sprintf("%s:%s:%d", plannedViolation.ViolationID, incident.GetFilePath(), incident.LineNumber)
+			if seenIncidents[incidentKey] {
+				duplicateCount++
+				continue
+			}
+			seenIncidents[incidentKey] = true
+
 			incidentsToFix = append(incidentsToFix, incident)
 		}
 
 		// Track skipped incidents
 		result.SkippedFixes += skippedCount
+		result.DuplicateFixes += duplicateCount
 
 		if len(incidentsToFix) == 0 {
-			// All incidents already fixed - skip this violation
-			if skippedCount > 0 && e.config.Progress != nil {
-				e.config.Progress.Info("   ⏭️  Skipped %d already-fixed incident(s) for %s",
-					skippedCount, plannedViolation.ViolationID)
+			// All incidents already fixed or duplicates - skip this violation
+			if (skippedCount > 0 || duplicateCount > 0) && e.config.Progress != nil {
+				msg := ""
+				if skippedCount > 0 && duplicateCount > 0 {
+					msg = fmt.Sprintf("   ⏭️  Skipped %d already-fixed and %d duplicate incident(s) for %s",
+						skippedCount, duplicateCount, plannedViolation.ViolationID)
+				} else if skippedCount > 0 {
+					msg = fmt.Sprintf("   ⏭️  Skipped %d already-fixed incident(s) for %s",
+						skippedCount, plannedViolation.ViolationID)
+				} else {
+					msg = fmt.Sprintf("   ⏭️  Skipped %d duplicate incident(s) for %s",
+						duplicateCount, plannedViolation.ViolationID)
+				}
+				e.config.Progress.Info(msg)
 			}
 			continue
 		}
