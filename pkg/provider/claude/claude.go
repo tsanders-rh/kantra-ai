@@ -263,8 +263,8 @@ func (p *Provider) generatePlanDirect(ctx context.Context, req provider.PlanRequ
 
 		// Calculate backoff delay (exponential: 30s, 60s, 90s)
 		backoff := time.Duration(30*(attempt+1)) * time.Second
-		fmt.Printf("   ⏳ Rate limit hit, waiting %v before retry (attempt %d/%d)...\n",
-			backoff.Round(time.Second), attempt+1, maxRetries)
+		fmt.Printf("   ⏳ Rate limit hit, waiting %ds before retry %d/%d...\n",
+			int(backoff.Seconds()), attempt+1, maxRetries)
 
 		// Wait with context cancellation support
 		select {
@@ -315,7 +315,7 @@ func (p *Provider) generatePlanDirect(ctx context.Context, req provider.PlanRequ
 func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanRequest, batchSize int) (*provider.PlanResponse, error) {
 	// Split violations into batches
 	batches := batchViolations(req.Violations, batchSize)
-	fmt.Printf("   Split into %d batches\n", len(batches))
+	fmt.Printf("   Split into %d batches\n\n", len(batches))
 
 	var allPhases []provider.PlannedPhase
 	var totalTokens int
@@ -323,12 +323,19 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 
 	// Generate a mini-plan for each batch
 	for i, batch := range batches {
+		// Update progress bar
+		updateBatchProgress(i, len(batches), "Processing")
+
 		// Add delay between batches to respect rate limits
 		if i > 0 {
 			delay := calculateBatchDelay(totalTokens, i)
-			fmt.Printf("   ⏳ Waiting %v to respect rate limits...\n", delay.Round(time.Second))
+
+			// Show waiting status in progress bar
+			updateBatchProgress(i, len(batches), fmt.Sprintf("Waiting %ds", int(delay.Seconds())))
+
 			select {
 			case <-ctx.Done():
+				fmt.Println()
 				return &provider.PlanResponse{
 					Error: ctx.Err(),
 				}, nil
@@ -336,8 +343,6 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 				// Continue
 			}
 		}
-
-		fmt.Printf("   Processing batch %d/%d (%d violations)...\n", i+1, len(batches), len(batch))
 
 		batchReq := provider.PlanRequest{
 			Violations:    batch,
@@ -347,11 +352,13 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 
 		resp, err := p.generatePlanDirect(ctx, batchReq)
 		if err != nil {
+			fmt.Println()
 			return &provider.PlanResponse{
 				Error: fmt.Errorf("failed to generate plan for batch %d: %w", i+1, err),
 			}, nil
 		}
 		if resp.Error != nil {
+			fmt.Println()
 			return resp, nil
 		}
 
@@ -360,8 +367,12 @@ func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanReq
 		totalCost += resp.Cost
 	}
 
+	// Complete the progress bar
+	updateBatchProgress(len(batches), len(batches), "Complete")
+	fmt.Println()
+
 	// Merge and reorganize phases
-	fmt.Printf("   Merging %d phases from all batches...\n", len(allPhases))
+	fmt.Printf("\n   Merging %d phases from all batches...\n", len(allPhases))
 	mergedPhases := mergePhases(allPhases, req.MaxPhases)
 	fmt.Printf("✓ Generated %d final phases\n", len(mergedPhases))
 
@@ -386,6 +397,31 @@ func calculateBatchDelay(tokensSoFar int, batchIndex int) time.Duration {
 	}
 
 	return baseDelay
+}
+
+// updateBatchProgress displays a progress bar for batch processing
+func updateBatchProgress(current, total int, status string) {
+	// Calculate progress (0.0 to 1.0)
+	progress := float64(current) / float64(total)
+
+	// Build progress bar (40 characters wide)
+	barWidth := 40
+	filled := int(progress * float64(barWidth))
+	bar := ""
+	for i := 0; i < barWidth; i++ {
+		if i < filled {
+			bar += "█"
+		} else {
+			bar += "░"
+		}
+	}
+
+	// Calculate percentage
+	percentage := int(progress * 100)
+
+	// Print progress bar
+	fmt.Printf("\r   Progress [%s] %d%% | Batch %d/%d | %s     ",
+		bar, percentage, current, total, status)
 }
 
 // batchViolations splits violations into batches of specified size
