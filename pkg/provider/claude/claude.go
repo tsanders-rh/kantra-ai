@@ -197,7 +197,22 @@ func enhanceAPIError(err error) error {
 }
 
 // GeneratePlan generates a phased migration plan using Claude
+// If there are too many violations, it batches them to avoid rate limits
 func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
+	const maxViolationsPerBatch = 15 // Keep batches small to avoid token limits
+
+	// If violations fit in one batch, use direct approach
+	if len(req.Violations) <= maxViolationsPerBatch {
+		return p.generatePlanDirect(ctx, req)
+	}
+
+	// Otherwise, batch the violations
+	fmt.Printf("📦 Batching %d violations into smaller groups to avoid rate limits...\n", len(req.Violations))
+	return p.generatePlanBatched(ctx, req, maxViolationsPerBatch)
+}
+
+// generatePlanDirect generates a plan directly without batching
+func (p *Provider) generatePlanDirect(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
 	prompt := buildPlanPrompt(req)
 
 	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
@@ -241,6 +256,189 @@ func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (
 		TokensUsed: int(message.Usage.InputTokens + message.Usage.OutputTokens),
 		Cost:       totalCost,
 	}, nil
+}
+
+// generatePlanBatched splits violations into batches, generates mini-plans, and merges them
+func (p *Provider) generatePlanBatched(ctx context.Context, req provider.PlanRequest, batchSize int) (*provider.PlanResponse, error) {
+	// Split violations into batches
+	batches := batchViolations(req.Violations, batchSize)
+	fmt.Printf("   Split into %d batches\n", len(batches))
+
+	var allPhases []provider.PlannedPhase
+	var totalTokens int
+	var totalCost float64
+
+	// Generate a mini-plan for each batch
+	for i, batch := range batches {
+		fmt.Printf("   Processing batch %d/%d (%d violations)...\n", i+1, len(batches), len(batch))
+
+		batchReq := provider.PlanRequest{
+			Violations:    batch,
+			MaxPhases:     req.MaxPhases,
+			RiskTolerance: req.RiskTolerance,
+		}
+
+		resp, err := p.generatePlanDirect(ctx, batchReq)
+		if err != nil {
+			return &provider.PlanResponse{
+				Error: fmt.Errorf("failed to generate plan for batch %d: %w", i+1, err),
+			}, nil
+		}
+		if resp.Error != nil {
+			return resp, nil
+		}
+
+		allPhases = append(allPhases, resp.Phases...)
+		totalTokens += resp.TokensUsed
+		totalCost += resp.Cost
+	}
+
+	// Merge and reorganize phases
+	fmt.Printf("   Merging %d phases from all batches...\n", len(allPhases))
+	mergedPhases := mergePhases(allPhases, req.MaxPhases)
+	fmt.Printf("✓ Generated %d final phases\n", len(mergedPhases))
+
+	return &provider.PlanResponse{
+		Phases:     mergedPhases,
+		TokensUsed: totalTokens,
+		Cost:       totalCost,
+	}, nil
+}
+
+// batchViolations splits violations into batches of specified size
+func batchViolations(violations []violation.Violation, batchSize int) [][]violation.Violation {
+	var batches [][]violation.Violation
+	for i := 0; i < len(violations); i += batchSize {
+		end := i + batchSize
+		if end > len(violations) {
+			end = len(violations)
+		}
+		batches = append(batches, violations[i:end])
+	}
+	return batches
+}
+
+// mergePhases merges mini-plans into a cohesive final plan
+func mergePhases(phases []provider.PlannedPhase, maxPhases int) []provider.PlannedPhase {
+	if len(phases) == 0 {
+		return phases
+	}
+
+	// Group phases by category and risk level
+	type phaseKey struct {
+		category string
+		risk     string
+	}
+
+	groups := make(map[phaseKey][]provider.PlannedPhase)
+	for _, phase := range phases {
+		key := phaseKey{
+			category: phase.Category,
+			risk:     phase.Risk,
+		}
+		groups[key] = append(groups[key], phase)
+	}
+
+	// Merge phases within each group
+	var merged []provider.PlannedPhase
+	for key, groupPhases := range groups {
+		if len(groupPhases) == 1 {
+			merged = append(merged, groupPhases[0])
+			continue
+		}
+
+		// Merge multiple phases into one
+		mergedPhase := provider.PlannedPhase{
+			ID:                       fmt.Sprintf("phase-%s-%s", key.category, key.risk),
+			Name:                     fmt.Sprintf("%s - %s Risk", key.category, key.risk),
+			Risk:                     key.risk,
+			Category:                 key.category,
+			ViolationIDs:             []string{},
+			EstimatedCost:            0,
+			EstimatedDurationMinutes: 0,
+		}
+
+		// Aggregate from all phases in this group
+		minEffort := 10
+		maxEffort := 0
+		for _, phase := range groupPhases {
+			mergedPhase.ViolationIDs = append(mergedPhase.ViolationIDs, phase.ViolationIDs...)
+			mergedPhase.EstimatedCost += phase.EstimatedCost
+			mergedPhase.EstimatedDurationMinutes += phase.EstimatedDurationMinutes
+
+			if phase.EffortRange[0] < minEffort {
+				minEffort = phase.EffortRange[0]
+			}
+			if phase.EffortRange[1] > maxEffort {
+				maxEffort = phase.EffortRange[1]
+			}
+		}
+
+		mergedPhase.EffortRange = [2]int{minEffort, maxEffort}
+		mergedPhase.Explanation = fmt.Sprintf("Merged %d phases with %s violations at %s risk level.",
+			len(groupPhases), key.category, key.risk)
+
+		merged = append(merged, mergedPhase)
+	}
+
+	// Sort by priority: mandatory > optional > potential, then high risk > medium > low
+	sortPhasesByPriority(merged)
+
+	// Reassign order and IDs
+	for i := range merged {
+		merged[i].Order = i + 1
+		merged[i].ID = fmt.Sprintf("phase-%d", i+1)
+	}
+
+	// Limit to maxPhases if specified
+	if maxPhases > 0 && len(merged) > maxPhases {
+		merged = merged[:maxPhases]
+	}
+
+	return merged
+}
+
+// sortPhasesByPriority sorts phases by category and risk
+func sortPhasesByPriority(phases []provider.PlannedPhase) {
+	// Simple bubble sort for small slices
+	for i := 0; i < len(phases); i++ {
+		for j := i + 1; j < len(phases); j++ {
+			if phasePriority(phases[i]) > phasePriority(phases[j]) {
+				phases[i], phases[j] = phases[j], phases[i]
+			}
+		}
+	}
+}
+
+// phasePriority returns a priority score (lower = higher priority)
+func phasePriority(phase provider.PlannedPhase) int {
+	priority := 0
+
+	// Category priority (mandatory = 0, optional = 100, potential = 200)
+	switch phase.Category {
+	case "mandatory":
+		priority += 0
+	case "optional":
+		priority += 100
+	case "potential":
+		priority += 200
+	default:
+		priority += 300
+	}
+
+	// Risk priority (high = 0, medium = 10, low = 20)
+	switch phase.Risk {
+	case "high":
+		priority += 0
+	case "medium":
+		priority += 10
+	case "low":
+		priority += 20
+	default:
+		priority += 30
+	}
+
+	return priority
 }
 
 // buildPlanPrompt constructs the prompt for plan generation
