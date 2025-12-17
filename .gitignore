@@ -35,3 +35,13 @@ examples/*/src/*.py.bak
 
 # Logs
 *.log
+
+# kantra-ai runtime files
+.kantra-ai-state.yaml
+.kantra-ai-plan.yaml
+.kantra-ai-plan.html
+.kantra-ai-plan/
+
+# Keep example configs
+!.kantra-ai.example.yaml
+!**/.kantra-ai-example.yaml
