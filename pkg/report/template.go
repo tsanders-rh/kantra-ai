@@ -709,13 +709,19 @@ const htmlTemplate = `<!DOCTYPE html>
                 'expert': 0
             };
 
-            {{range .Plan.Phases}}
-                {{range .Violations}}
-                    const effort_{{.ViolationID | replace "-" "_"}} = {{.Effort}};
-                    const complexity_{{.ViolationID | replace "-" "_"}} = effortToComplexity(effort_{{.ViolationID | replace "-" "_"}});
-                    complexityCount[complexity_{{.ViolationID | replace "-" "_"}}]++;
+            // Build effort array from template
+            const efforts = [
+                {{range $pIndex, $phase := .Plan.Phases}}
+                    {{range $vIndex, $violation := $phase.Violations}}
+                        {{$violation.Effort}},
+                    {{end}}
                 {{end}}
-            {{end}}
+            ];
+
+            efforts.forEach(effort => {
+                const complexity = effortToComplexity(effort);
+                complexityCount[complexity]++;
+            });
 
             // Filter out zero counts and prepare data
             const labels = [];
@@ -780,12 +786,18 @@ const htmlTemplate = `<!DOCTYPE html>
             // Aggregate violations by category
             const categoryCount = {};
 
-            {{range .Plan.Phases}}
-                {{range .Violations}}
-                    const category = '{{.Category}}';
-                    categoryCount[category] = (categoryCount[category] || 0) + 1;
+            // Build category array from template
+            const categories = [
+                {{range $pIndex, $phase := .Plan.Phases}}
+                    {{range $vIndex, $violation := $phase.Violations}}
+                        '{{$violation.Category}}',
+                    {{end}}
                 {{end}}
-            {{end}}
+            ];
+
+            categories.forEach(category => {
+                categoryCount[category] = (categoryCount[category] || 0) + 1;
+            });
 
             const ctx = document.getElementById('category-chart');
             new Chart(ctx, {
@@ -827,12 +839,19 @@ const htmlTemplate = `<!DOCTYPE html>
             // Aggregate phases by risk level
             const riskCount = { low: 0, medium: 0, high: 0 };
 
-            {{range .Plan.Phases}}
-                const risk = '{{.Risk}}'.toLowerCase();
-                if (riskCount.hasOwnProperty(risk)) {
-                    riskCount[risk]++;
+            // Build risk array from template
+            const risks = [
+                {{range $index, $phase := .Plan.Phases}}
+                    '{{$phase.Risk}}',
+                {{end}}
+            ];
+
+            risks.forEach(risk => {
+                const riskLower = risk.toLowerCase();
+                if (riskCount.hasOwnProperty(riskLower)) {
+                    riskCount[riskLower]++;
                 }
-            {{end}}
+            });
 
             const ctx = document.getElementById('risk-chart');
             new Chart(ctx, {
