@@ -105,7 +105,16 @@ Open the PR and check:
 **Footer:**
 - ✓ Link to kantra-ai repository
 
-### 3. Code Changes
+### 3. Inline Comments (Low-Confidence Fixes)
+If using `--pr-comment-threshold`, check for inline review comments:
+
+**Verify:**
+- ✓ Comments appear on specific lines with low-confidence fixes
+- ✓ Comment includes warning emoji (⚠️) and confidence percentage
+- ✓ Comment explains the violation and requests careful review
+- ✓ Comments only appear for fixes below the threshold
+
+### 4. Code Changes
 Click on "Files changed" tab:
 
 **Verify:**
@@ -113,7 +122,7 @@ Click on "Files changed" tab:
 - ✓ Changes are syntactically correct
 - ✓ No unrelated changes
 
-### 4. Branch and Commits
+### 5. Branch and Commits
 Check the branch:
 
 **Verify:**
@@ -203,6 +212,26 @@ Single PR with all fixes:
 ```
 
 **Expected:** 1 PR with all violations combined
+
+### With Inline Comments for Low-Confidence Fixes
+Add inline review comments for fixes with confidence below 0.8 (80%):
+
+```bash
+./kantra-ai remediate \
+  --analysis=output.yaml \
+  --input=src \
+  --git-commit=per-violation \
+  --create-pr \
+  --pr-comment-threshold=0.8
+```
+
+**Expected:**
+- PR created as normal
+- Inline comments appear on lines where fixes have confidence < 0.8
+- Comments include warning emoji, confidence %, violation info, and review guidance
+- High-confidence fixes (≥ 0.8) have no comments
+
+**Note:** Set to 0 to disable inline comments (default behavior)
 
 ## Common Issues to Watch For
 
