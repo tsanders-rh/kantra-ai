@@ -22,6 +22,7 @@ type Config struct {
 	DryRun        bool              // Preview without applying changes
 	GitCommit     string            // Git commit strategy (per-violation, per-incident, at-end, "")
 	CreatePR      bool              // Create GitHub pull requests
+	PRStrategy    string            // PR creation strategy (per-violation, per-incident, per-phase, at-end, "")
 	BranchName    string            // Custom branch name prefix
 	Progress        ux.ProgressWriter   // Progress reporting
 	Resume          bool                // Resume from last failure
