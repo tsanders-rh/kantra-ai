@@ -16,6 +16,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tsanders/kantra-ai/pkg/executor"
+	"github.com/tsanders/kantra-ai/pkg/fixer"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 )
@@ -29,20 +30,33 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+// ExecutionSettings holds user-configurable execution settings from the web UI.
+type ExecutionSettings struct {
+	CreateCommits      bool    `json:"createCommits"`
+	CommitStrategy     string  `json:"commitStrategy"`
+	CreatePR           bool    `json:"createPR"`
+	PRStrategy         string  `json:"prStrategy"`
+	PRCommentThreshold float64 `json:"prCommentThreshold"`
+	BatchEnabled       bool    `json:"batchEnabled"`
+	BatchSize          int     `json:"batchSize"`
+	Parallelism        int     `json:"parallelism"`
+}
+
 // PlanServer serves the web-based interactive plan approval UI.
 type PlanServer struct {
-	plan           *planfile.Plan
-	planPath       string
-	inputPath      string
-	provider       provider.Provider
-	addr           string
-	clients        map[*websocket.Conn]bool
-	clientsMutex   sync.RWMutex
-	server         *http.Server
-	executing      bool
-	executionMutex sync.Mutex
-	executionCtx   context.Context
-	executionCancel context.CancelFunc
+	plan             *planfile.Plan
+	planPath         string
+	inputPath        string
+	provider         provider.Provider
+	addr             string
+	clients          map[*websocket.Conn]bool
+	clientsMutex     sync.RWMutex
+	server           *http.Server
+	executing        bool
+	executionMutex   sync.Mutex
+	executionCtx     context.Context
+	executionCancel  context.CancelFunc
+	executionSettings *ExecutionSettings
 }
 
 // NewPlanServer creates a new web server for interactive plan approval.
@@ -288,6 +302,19 @@ func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Parse settings from request body
+	var reqBody struct {
+		Settings ExecutionSettings `json:"settings"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
+		// If parsing fails, use default settings (for backward compatibility)
+		reqBody.Settings = ExecutionSettings{
+			BatchEnabled: true,
+			BatchSize:    10,
+			Parallelism:  4,
+		}
+	}
+
 	// Check if already executing
 	s.executionMutex.Lock()
 	if s.executing {
@@ -296,6 +323,7 @@ func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	s.executing = true
+	s.executionSettings = &reqBody.Settings
 	s.executionMutex.Unlock()
 
 	// Start execution in background
@@ -432,13 +460,36 @@ func (s *PlanServer) executePhases() {
 	// Create progress writer that broadcasts to WebSocket clients
 	progress := &WebSocketProgressWriter{server: s}
 
+	// Get settings (use defaults if not set)
+	settings := s.executionSettings
+	if settings == nil {
+		settings = &ExecutionSettings{
+			BatchEnabled: true,
+			BatchSize:    10,
+			Parallelism:  4,
+		}
+	}
+
+	// Build batch config from settings
+	batchConfig := fixer.BatchConfig{
+		Enabled:      settings.BatchEnabled,
+		MaxBatchSize: settings.BatchSize,
+		Parallelism:  settings.Parallelism,
+		GroupByFile:  true, // Always enabled for optimal token usage
+	}
+
 	// Create executor config
 	execConfig := executor.Config{
-		PlanPath:  s.planPath,
-		InputPath: s.inputPath,
-		Provider:  s.provider,
-		Progress:  progress,
-		DryRun:    false,
+		PlanPath:           s.planPath,
+		InputPath:          s.inputPath,
+		Provider:           s.provider,
+		Progress:           progress,
+		DryRun:             false,
+		GitCommit:          settings.CommitStrategy,
+		CreatePR:           settings.CreatePR,
+		PRStrategy:         settings.PRStrategy,
+		PRCommentThreshold: settings.PRCommentThreshold,
+		BatchConfig:        batchConfig,
 	}
 
 	exec, err := executor.New(execConfig)

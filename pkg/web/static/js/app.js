@@ -664,7 +664,18 @@ Esc             Close modals
         this.closeConfirmExecution();
 
         try {
-            const response = await fetch('/api/execute/start', { method: 'POST' });
+            // Load settings to send with execution request
+            const settings = JSON.parse(localStorage.getItem('kantra-ai-settings') || '{}');
+
+            const response = await fetch('/api/execute/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    settings: settings
+                })
+            });
 
             if (!response.ok) {
                 throw new Error('Failed to start execution');
@@ -1380,6 +1391,7 @@ Esc             Close modals
         document.getElementById('setting-commit-strategy').value = settings.commitStrategy || 'single';
         document.getElementById('setting-create-pr').checked = settings.createPR || false;
         document.getElementById('setting-pr-strategy').value = settings.prStrategy || 'per-phase';
+        document.getElementById('setting-pr-comment-threshold').value = settings.prCommentThreshold || 0;
 
         document.getElementById('setting-batch-enabled').checked = settings.batchEnabled !== false;
         document.getElementById('setting-batch-size').value = settings.batchSize || 10;
@@ -1400,6 +1412,7 @@ Esc             Close modals
             commitStrategy: document.getElementById('setting-commit-strategy').value,
             createPR: document.getElementById('setting-create-pr').checked,
             prStrategy: document.getElementById('setting-pr-strategy').value,
+            prCommentThreshold: parseFloat(document.getElementById('setting-pr-comment-threshold').value),
 
             batchEnabled: document.getElementById('setting-batch-enabled').checked,
             batchSize: parseInt(document.getElementById('setting-batch-size').value),
