@@ -745,6 +745,7 @@ func TestDefaultBatchConfig(t *testing.T) {
 	assert.Equal(t, 8, config.Parallelism)
 	assert.True(t, config.Enabled)
 	assert.True(t, config.GroupByFile)
+	assert.Equal(t, 0, config.MaxTokensPerBatch) // Disabled by default
 }
 
 func TestGetFilePathFromURI(t *testing.T) {

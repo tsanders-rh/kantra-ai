@@ -17,10 +17,11 @@ import (
 type BatchConfig struct {
 	// MaxBatchSize is the maximum number of incidents to fix in a single batch
 	// Default: 10 (stays under token limits)
+	// Can be overridden if MaxTokensPerBatch is set and file sizes vary
 	MaxBatchSize int
 
 	// Parallelism is the number of concurrent batches to process
-	// Default: 4
+	// Default: 8
 	Parallelism int
 
 	// Enabled controls whether batching is used
@@ -32,6 +33,13 @@ type BatchConfig struct {
 	// token usage by 10-20% since file content is sent once per file.
 	// Default: true
 	GroupByFile bool
+
+	// MaxTokensPerBatch is the maximum estimated tokens per batch
+	// When set, batch size is dynamically adjusted based on file sizes
+	// to stay under this limit. Set to 0 to disable (use MaxBatchSize only).
+	// Default: 0 (disabled)
+	// Recommended: 50000 tokens (leaves room in 200K context for prompt + output)
+	MaxTokensPerBatch int
 }
 
 // DefaultBatchConfig returns the recommended batch configuration
@@ -301,6 +309,55 @@ func (bf *BatchFixer) createBatchesByFile(v violation.Violation) []batchJob {
 	}
 
 	return batches
+}
+
+// estimateIncidentTokens estimates the token count for an incident
+// Based on code context (10 lines around the incident) + incident metadata
+// Uses rough approximation: 1 token ≈ 4 characters
+func estimateIncidentTokens(incident violation.Incident, fileContent string) int {
+	const (
+		tokensPerChar     = 0.25 // 1 token ≈ 4 chars
+		contextLines      = 10   // 5 before + 5 after
+		avgCharsPerLine   = 80   // Average line length
+		incidentOverhead  = 50   // Tokens for incident metadata (file, line, message)
+	)
+
+	// If we have file content, estimate based on actual context
+	if fileContent != "" {
+		lines := strings.Split(fileContent, "\n")
+		lineNum := incident.LineNumber
+
+		// Get context range (5 lines before and after)
+		start := max(0, lineNum-5)
+		end := min(len(lines), lineNum+5)
+
+		// Count characters in context
+		contextChars := 0
+		for i := start; i < end && i < len(lines); i++ {
+			contextChars += len(lines[i]) + 1 // +1 for newline
+		}
+
+		return int(float64(contextChars)*tokensPerChar) + incidentOverhead
+	}
+
+	// Fallback: estimate based on average line length
+	estimatedChars := contextLines * avgCharsPerLine
+	return int(float64(estimatedChars)*tokensPerChar) + incidentOverhead
+}
+
+// estimateBatchTokens estimates total tokens for a batch of incidents
+// Includes prompt overhead for batch instructions
+func estimateBatchTokens(incidents []violation.Incident, fileContents map[string]string) int {
+	const promptOverhead = 500 // Tokens for batch instructions, JSON format, etc.
+
+	totalTokens := promptOverhead
+	for _, incident := range incidents {
+		filePath := incident.GetFilePath()
+		fileContent := fileContents[filePath]
+		totalTokens += estimateIncidentTokens(incident, fileContent)
+	}
+
+	return totalTokens
 }
 
 // worker processes batches from the job channel

@@ -63,6 +63,11 @@ var (
 	minConfidence       float64
 	onLowConfidence     string
 	complexityThreshold string // format: "level=threshold,level=threshold"
+
+	// Batch configuration flags
+	maxBatchSize        int
+	maxBatchTokens      int
+	batchParallelism    int
 )
 
 func main() {
@@ -161,6 +166,9 @@ in a state file. Supports resuming from failures and executing specific phases.`
 	executeCmd.Flags().Float64Var(&minConfidence, "min-confidence", 0.0, "Global minimum confidence threshold (0.0-1.0, overrides complexity thresholds)")
 	executeCmd.Flags().StringVar(&onLowConfidence, "on-low-confidence", "skip", "Action on low confidence: skip, warn-and-apply, manual-review-file")
 	executeCmd.Flags().StringVar(&complexityThreshold, "complexity-threshold", "", "Override thresholds: trivial=0.7,low=0.75,medium=0.8,high=0.9,expert=0.95")
+	executeCmd.Flags().IntVar(&maxBatchSize, "max-batch-size", 10, "Maximum incidents per batch (0=use default)")
+	executeCmd.Flags().IntVar(&maxBatchTokens, "max-batch-tokens", 0, "Maximum estimated tokens per batch (0=disabled, recommended: 50000)")
+	executeCmd.Flags().IntVar(&batchParallelism, "batch-parallelism", 8, "Number of concurrent batches (0=use default)")
 
 	_ = executeCmd.MarkFlagRequired("input")
 
@@ -775,6 +783,18 @@ func runExecute(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid confidence configuration: %w", err)
 	}
 
+	// Build batch configuration
+	batchConfig := fixer.DefaultBatchConfig()
+	if maxBatchSize > 0 {
+		batchConfig.MaxBatchSize = maxBatchSize
+	}
+	if maxBatchTokens > 0 {
+		batchConfig.MaxTokensPerBatch = maxBatchTokens
+	}
+	if batchParallelism > 0 {
+		batchConfig.Parallelism = batchParallelism
+	}
+
 	// Create executor config
 	executorConfig := executor.Config{
 		PlanPath:         executePlanPath,
@@ -787,6 +807,7 @@ func runExecute(cmd *cobra.Command, args []string) error {
 		CreatePR:         createPR,
 		Progress:         &ux.ConsoleProgressWriter{},
 		Resume:           executeResume,
+		BatchConfig:      batchConfig,
 		ConfidenceConfig: confidenceConf,
 	}
 

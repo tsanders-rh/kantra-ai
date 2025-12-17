@@ -41,6 +41,43 @@ Automatically skips incidents that have already been successfully fixed, enablin
 
 ---
 
+## Batch Configuration & Control
+
+Users can tune batch processing via CLI flags:
+
+### Available Flags
+- `--max-batch-size N` - Maximum incidents per batch (default: 10)
+  - Increase for small files to process more in parallel
+  - Decrease for large files to avoid token limits
+- `--batch-parallelism N` - Concurrent batches to process (default: 8)
+  - Increase for more parallelism on powerful machines
+  - Decrease to reduce memory usage or API rate limits
+- `--max-batch-tokens N` - Maximum estimated tokens per batch (default: 0/disabled)
+  - When set (recommended: 50000), enables token-aware batching
+  - Prevents context limit errors with large files
+  - Currently estimates tokens; will enable dynamic batching in future
+
+### Token Estimation
+Token estimation utilities are included for future smart batching:
+- `estimateIncidentTokens()` - Estimates tokens for code context (~10 lines)
+- `estimateBatchTokens()` - Estimates total batch size with prompt overhead
+- Uses 1 token ≈ 4 characters approximation
+- Foundation for future dynamic batch sizing
+
+### Example Usage
+```bash
+# Process more incidents per batch (for small files)
+kantra-ai execute --max-batch-size 20
+
+# Reduce parallelism to avoid rate limits
+kantra-ai execute --batch-parallelism 4
+
+# Enable token-aware mode (future feature)
+kantra-ai execute --max-batch-tokens 50000
+```
+
+---
+
 ## Future Optimizations (Deferred)
 
 ### 4. Prompt Caching
@@ -97,11 +134,16 @@ systemBlocks := []anthropic.TextBlockParam{
 
 ## Other Future Optimization Opportunities
 
-### 5. Token Estimation & Pre-batching
+### 5. Dynamic Token-Aware Batching
 **Impact**: Better batch consistency, prevent context limit errors
 **Complexity**: Medium
 
-Currently batches by count (10 incidents max). Could batch by estimated token count for more consistent API usage.
+**Foundation Complete**: Token estimation utilities implemented
+**Next Steps**:
+- Load file contents during batch creation to enable accurate sizing
+- Dynamically adjust batch size based on actual file sizes
+- Automatically split large-file batches to stay under token limits
+- Currently users can manually tune with `--max-batch-size`
 
 ### 6. Response Streaming
 **Impact**: Better UX for large batches
