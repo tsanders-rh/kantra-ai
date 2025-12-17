@@ -29,12 +29,9 @@ func TestNewBatchFixer(t *testing.T) {
 func TestBatchFixer_FixViolationBatch_SingleBatch(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	// Create test files
-	testFile1 := filepath.Join(tmpDir, "test1.java")
-	testFile2 := filepath.Join(tmpDir, "test2.java")
-	err := os.WriteFile(testFile1, []byte("class Test1 {}"), 0644)
-	require.NoError(t, err)
-	err = os.WriteFile(testFile2, []byte("class Test2 {}"), 0644)
+	// Create a single test file with multiple incidents
+	testFile := filepath.Join(tmpDir, "test.java")
+	err := os.WriteFile(testFile, []byte("class Test {}"), 0644)
 	require.NoError(t, err)
 
 	mockProvider := new(MockProvider)
@@ -42,17 +39,17 @@ func TestBatchFixer_FixViolationBatch_SingleBatch(t *testing.T) {
 		&provider.BatchResponse{
 			Fixes: []provider.IncidentFix{
 				{
-					IncidentURI:  "file://" + testFile1 + ":10",
+					IncidentURI:  "file://" + testFile + ":10",
 					Success:      true,
-					FixedContent: "class Test1Fixed {}",
-					Explanation:  "Fixed test1",
+					FixedContent: "class TestFixed {}",
+					Explanation:  "Fixed line 10",
 					Confidence:   0.9,
 				},
 				{
-					IncidentURI:  "file://" + testFile2 + ":20",
+					IncidentURI:  "file://" + testFile + ":20",
 					Success:      true,
-					FixedContent: "class Test2Fixed {}",
-					Explanation:  "Fixed test2",
+					FixedContent: "class TestFixed2 {}",
+					Explanation:  "Fixed line 20",
 					Confidence:   0.9,
 				},
 			},
@@ -61,17 +58,18 @@ func TestBatchFixer_FixViolationBatch_SingleBatch(t *testing.T) {
 			Cost:       0.10,
 		},
 		nil,
-	)
+	).Once()
 
 	config := DefaultBatchConfig()
+	// GroupByFile is enabled by default - both incidents are in the same file
 	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
 
 	v := violation.Violation{
 		ID:          "test-violation",
 		Description: "Test violation",
 		Incidents: []violation.Incident{
-			{URI: "file://" + testFile1, LineNumber: 10},
-			{URI: "file://" + testFile2, LineNumber: 20},
+			{URI: "file://" + testFile, LineNumber: 10},
+			{URI: "file://" + testFile, LineNumber: 20},
 		},
 	}
 
@@ -152,6 +150,7 @@ func TestBatchFixer_FixViolationBatch_MultipleBatches(t *testing.T) {
 
 	config := DefaultBatchConfig()
 	config.MaxBatchSize = 10
+	config.GroupByFile = false // Disable file grouping for simpler test expectations
 	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
 
 	v := violation.Violation{
@@ -175,11 +174,8 @@ func TestBatchFixer_FixViolationBatch_MultipleBatches(t *testing.T) {
 func TestBatchFixer_FixViolationBatch_PartialFailure(t *testing.T) {
 	tmpDir := t.TempDir()
 
-	testFile1 := filepath.Join(tmpDir, "test1.java")
-	testFile2 := filepath.Join(tmpDir, "test2.java")
-	err := os.WriteFile(testFile1, []byte("class Test1 {}"), 0644)
-	require.NoError(t, err)
-	err = os.WriteFile(testFile2, []byte("class Test2 {}"), 0644)
+	testFile := filepath.Join(tmpDir, "test.java")
+	err := os.WriteFile(testFile, []byte("class Test {}"), 0644)
 	require.NoError(t, err)
 
 	mockProvider := new(MockProvider)
@@ -187,13 +183,13 @@ func TestBatchFixer_FixViolationBatch_PartialFailure(t *testing.T) {
 		&provider.BatchResponse{
 			Fixes: []provider.IncidentFix{
 				{
-					IncidentURI:  "file://" + testFile1 + ":10",
+					IncidentURI:  "file://" + testFile + ":10",
 					Success:      true,
-					FixedContent: "class Test1Fixed {}",
+					FixedContent: "class TestFixed {}",
 					Confidence:   0.9,
 				},
 				{
-					IncidentURI:  "file://" + testFile2 + ":20",
+					IncidentURI:  "file://" + testFile + ":20",
 					Success:      false,
 					Error:        assert.AnError,
 				},
@@ -203,16 +199,17 @@ func TestBatchFixer_FixViolationBatch_PartialFailure(t *testing.T) {
 			Cost:       0.08,
 		},
 		nil,
-	)
+	).Once()
 
 	config := DefaultBatchConfig()
+	// GroupByFile is enabled by default - both incidents are in the same file
 	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
 
 	v := violation.Violation{
 		ID: "test-violation",
 		Incidents: []violation.Incident{
-			{URI: "file://" + testFile1, LineNumber: 10},
-			{URI: "file://" + testFile2, LineNumber: 20},
+			{URI: "file://" + testFile, LineNumber: 10},
+			{URI: "file://" + testFile, LineNumber: 20},
 		},
 	}
 
@@ -436,6 +433,7 @@ func TestBatchFixer_Parallelism(t *testing.T) {
 	config := DefaultBatchConfig()
 	config.MaxBatchSize = 10
 	config.Parallelism = 4
+	config.GroupByFile = false // Disable file grouping for simpler test expectations
 	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
 
 	v := violation.Violation{
@@ -451,12 +449,302 @@ func TestBatchFixer_Parallelism(t *testing.T) {
 	mockProvider.AssertExpectations(t)
 }
 
+func TestBatchFixer_FixViolationBatch_FileGrouping(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create 3 test files with multiple incidents each
+	testFile1 := filepath.Join(tmpDir, "file1.java")
+	testFile2 := filepath.Join(tmpDir, "file2.java")
+	testFile3 := filepath.Join(tmpDir, "file3.java")
+
+	err := os.WriteFile(testFile1, []byte("class File1 {}"), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(testFile2, []byte("class File2 {}"), 0644)
+	require.NoError(t, err)
+	err = os.WriteFile(testFile3, []byte("class File3 {}"), 0644)
+	require.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+
+	// Expect 3 separate batches (one per file) due to file grouping
+	// Batch 1: file1.java (2 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 2 && req.Incidents[0].GetFilePath() == testFile1
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{IncidentURI: "file://" + testFile1 + ":10", Success: true, FixedContent: "fixed", Confidence: 0.9},
+				{IncidentURI: "file://" + testFile1 + ":20", Success: true, FixedContent: "fixed", Confidence: 0.9},
+			},
+			Success:    true,
+			TokensUsed: 100,
+			Cost:       0.05,
+		},
+		nil,
+	).Once()
+
+	// Batch 2: file2.java (3 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 3 && req.Incidents[0].GetFilePath() == testFile2
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{IncidentURI: "file://" + testFile2 + ":10", Success: true, FixedContent: "fixed", Confidence: 0.9},
+				{IncidentURI: "file://" + testFile2 + ":20", Success: true, FixedContent: "fixed", Confidence: 0.9},
+				{IncidentURI: "file://" + testFile2 + ":30", Success: true, FixedContent: "fixed", Confidence: 0.9},
+			},
+			Success:    true,
+			TokensUsed: 150,
+			Cost:       0.075,
+		},
+		nil,
+	).Once()
+
+	// Batch 3: file3.java (1 incident)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 1 && req.Incidents[0].GetFilePath() == testFile3
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: []provider.IncidentFix{
+				{IncidentURI: "file://" + testFile3 + ":10", Success: true, FixedContent: "fixed", Confidence: 0.9},
+			},
+			Success:    true,
+			TokensUsed: 50,
+			Cost:       0.025,
+		},
+		nil,
+	).Once()
+
+	config := DefaultBatchConfig()
+	config.MaxBatchSize = 10 // Large enough to fit all incidents from each file
+	// GroupByFile is enabled by default
+	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
+
+	v := violation.Violation{
+		ID: "test-violation",
+		Incidents: []violation.Incident{
+			{URI: "file://" + testFile1, LineNumber: 10},
+			{URI: "file://" + testFile1, LineNumber: 20},
+			{URI: "file://" + testFile2, LineNumber: 10},
+			{URI: "file://" + testFile2, LineNumber: 20},
+			{URI: "file://" + testFile2, LineNumber: 30},
+			{URI: "file://" + testFile3, LineNumber: 10},
+		},
+	}
+
+	results, err := bf.FixViolationBatch(context.Background(), v)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 6)
+
+	// Verify all succeeded
+	for _, result := range results {
+		assert.True(t, result.Success)
+	}
+
+	mockProvider.AssertExpectations(t)
+}
+
+func TestBatchFixer_FixViolationBatch_FileGroupingWithSizeBatching(t *testing.T) {
+	tmpDir := t.TempDir()
+
+	// Create a file that will require multiple batches due to MaxBatchSize
+	testFile := filepath.Join(tmpDir, "large.java")
+	err := os.WriteFile(testFile, []byte("class Large {}"), 0644)
+	require.NoError(t, err)
+
+	mockProvider := new(MockProvider)
+
+	// Create 25 incidents for the same file with MaxBatchSize=10
+	// Should create 3 batches: 10 + 10 + 5
+	var incidents []violation.Incident
+	for i := 0; i < 25; i++ {
+		incidents = append(incidents, violation.Incident{
+			URI:        "file://" + testFile,
+			LineNumber: i + 1,
+		})
+	}
+
+	// First batch (10 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 10
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: func() []provider.IncidentFix {
+				fixes := make([]provider.IncidentFix, 10)
+				for i := 0; i < 10; i++ {
+					fixes[i] = provider.IncidentFix{
+						IncidentURI:  "file://" + testFile + ":" + string(rune('0'+i+1)),
+						Success:      true,
+						FixedContent: "fixed",
+						Confidence:   0.9,
+					}
+				}
+				return fixes
+			}(),
+			Success:    true,
+			TokensUsed: 500,
+			Cost:       0.25,
+		},
+		nil,
+	).Once()
+
+	// Second batch (10 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 10
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: func() []provider.IncidentFix {
+				fixes := make([]provider.IncidentFix, 10)
+				for i := 0; i < 10; i++ {
+					fixes[i] = provider.IncidentFix{
+						IncidentURI:  "file://" + testFile + ":" + string(rune('0'+i+11)),
+						Success:      true,
+						FixedContent: "fixed",
+						Confidence:   0.9,
+					}
+				}
+				return fixes
+			}(),
+			Success:    true,
+			TokensUsed: 500,
+			Cost:       0.25,
+		},
+		nil,
+	).Once()
+
+	// Third batch (5 incidents)
+	mockProvider.On("FixBatch", mock.Anything, mock.MatchedBy(func(req provider.BatchRequest) bool {
+		return len(req.Incidents) == 5
+	})).Return(
+		&provider.BatchResponse{
+			Fixes: func() []provider.IncidentFix {
+				fixes := make([]provider.IncidentFix, 5)
+				for i := 0; i < 5; i++ {
+					fixes[i] = provider.IncidentFix{
+						IncidentURI:  "file://" + testFile + ":" + string(rune('0'+i+21)),
+						Success:      true,
+						FixedContent: "fixed",
+						Confidence:   0.9,
+					}
+				}
+				return fixes
+			}(),
+			Success:    true,
+			TokensUsed: 250,
+			Cost:       0.125,
+		},
+		nil,
+	).Once()
+
+	config := DefaultBatchConfig()
+	config.MaxBatchSize = 10
+	// GroupByFile is enabled by default
+	bf := NewBatchFixer(mockProvider, tmpDir, true, config)
+
+	v := violation.Violation{
+		ID:        "test-violation",
+		Incidents: incidents,
+	}
+
+	results, err := bf.FixViolationBatch(context.Background(), v)
+
+	require.NoError(t, err)
+	assert.Len(t, results, 25)
+
+	// Verify all succeeded
+	for _, result := range results {
+		assert.True(t, result.Success)
+	}
+
+	mockProvider.AssertExpectations(t)
+}
+
+func TestBatchFixer_CreateBatches_FileGrouping(t *testing.T) {
+	config := DefaultBatchConfig()
+	config.MaxBatchSize = 10
+	// GroupByFile is enabled by default
+	bf := NewBatchFixer(nil, "/tmp", false, config)
+
+	// Create incidents across 3 files
+	incidents := []violation.Incident{
+		{URI: "file:///file1.java", LineNumber: 10},
+		{URI: "file:///file1.java", LineNumber: 20},
+		{URI: "file:///file1.java", LineNumber: 30},
+		{URI: "file:///file2.java", LineNumber: 10},
+		{URI: "file:///file2.java", LineNumber: 20},
+		{URI: "file:///file3.java", LineNumber: 10},
+	}
+
+	v := violation.Violation{
+		ID:        "test",
+		Incidents: incidents,
+	}
+
+	batches := bf.createBatches(v)
+
+	// Should create 3 batches (one per file)
+	assert.Len(t, batches, 3)
+
+	// Verify each batch contains incidents from only one file
+	fileGroups := make(map[string]int)
+	for _, batch := range batches {
+		filePath := batch.incidents[0].GetFilePath()
+		fileGroups[filePath]++
+
+		// All incidents in batch should be from the same file
+		for _, incident := range batch.incidents {
+			assert.Equal(t, filePath, incident.GetFilePath())
+		}
+	}
+
+	// Verify we have batches for all 3 files
+	assert.Len(t, fileGroups, 3)
+}
+
+func TestBatchFixer_CreateBatches_FileGroupingWithSizeSplit(t *testing.T) {
+	config := DefaultBatchConfig()
+	config.MaxBatchSize = 5
+	// GroupByFile is enabled by default
+	bf := NewBatchFixer(nil, "/tmp", false, config)
+
+	// Create 12 incidents for the same file (should split into 3 batches: 5+5+2)
+	incidents := make([]violation.Incident, 12)
+	for i := 0; i < 12; i++ {
+		incidents[i] = violation.Incident{
+			URI:        "file:///large.java",
+			LineNumber: i + 1,
+		}
+	}
+
+	v := violation.Violation{
+		ID:        "test",
+		Incidents: incidents,
+	}
+
+	batches := bf.createBatches(v)
+
+	// Should create 3 batches for the same file
+	assert.Len(t, batches, 3)
+	assert.Len(t, batches[0].incidents, 5)
+	assert.Len(t, batches[1].incidents, 5)
+	assert.Len(t, batches[2].incidents, 2)
+
+	// All batches should be for the same file
+	for _, batch := range batches {
+		for _, incident := range batch.incidents {
+			assert.Equal(t, "/large.java", incident.GetFilePath())
+		}
+	}
+}
+
 func TestDefaultBatchConfig(t *testing.T) {
 	config := DefaultBatchConfig()
 
 	assert.Equal(t, 10, config.MaxBatchSize)
-	assert.Equal(t, 4, config.Parallelism)
+	assert.Equal(t, 8, config.Parallelism)
 	assert.True(t, config.Enabled)
+	assert.True(t, config.GroupByFile)
 }
 
 func TestGetFilePathFromURI(t *testing.T) {
