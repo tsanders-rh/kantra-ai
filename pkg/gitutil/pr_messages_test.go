@@ -64,18 +64,20 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 		body := FormatPRBodyForViolation("test-001", "Test violation", "mandatory", 1, fixes, "claude")
 
 		// Verify key sections are present
-		assert.Contains(t, body, "## Summary")
+		assert.Contains(t, body, "### Summary")
 		assert.Contains(t, body, "test-001")
 		assert.Contains(t, body, "Test violation")
 		assert.Contains(t, body, "mandatory")
 		assert.Contains(t, body, "Effort:** 1")
-		assert.Contains(t, body, "## Changes")
-		assert.Contains(t, body, "src/Test.java:10")
-		assert.Contains(t, body, "## AI Remediation Details")
+		assert.Contains(t, body, "### Changes Summary")
+		assert.Contains(t, body, "src/Test.java") // File is now in table format, not "file:line"
+		assert.Contains(t, body, "🔧 AI Remediation Details") // Now in collapsed details
 		assert.Contains(t, body, "claude")
 		assert.Contains(t, body, "$0.0500")
 		assert.Contains(t, body, "100")
 		assert.Contains(t, body, "kantra-ai")
+		assert.Contains(t, body, "### Confidence Assessment") // New section
+		assert.Contains(t, body, "### Review Checklist")      // New section
 	})
 
 	t.Run("multiple incidents same file", func(t *testing.T) {
@@ -117,9 +119,9 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 		body := FormatPRBodyForViolation("test-002", "Multiple fixes", "optional", 2, fixes, "openai")
 
 		// Verify aggregation
-		assert.Contains(t, body, "2 incident(s)")
-		assert.Contains(t, body, "1 file(s)")
-		assert.Contains(t, body, "lines: 10, 20")
+		assert.Contains(t, body, "**Incidents Fixed:** 2")
+		assert.Contains(t, body, "**Files Modified:** 1")
+		assert.Contains(t, body, "10, 20") // Lines in table format
 		assert.Contains(t, body, "$0.0700") // 0.03 + 0.04
 		assert.Contains(t, body, "110")     // 50 + 60
 	})
@@ -140,10 +142,10 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 
 		body := FormatPRBodyForViolation("v1", "desc", "mandatory", 1, fixes, "claude")
 
-		assert.Contains(t, body, "2 incident(s)")
-		assert.Contains(t, body, "2 file(s)")
-		assert.Contains(t, body, "a.java:5")
-		assert.Contains(t, body, "b.java:15")
+		assert.Contains(t, body, "**Incidents Fixed:** 2")
+		assert.Contains(t, body, "**Files Modified:** 2")
+		assert.Contains(t, body, "a.java") // File in table
+		assert.Contains(t, body, "b.java") // File in table
 	})
 }
 
