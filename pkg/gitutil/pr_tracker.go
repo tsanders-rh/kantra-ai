@@ -43,11 +43,12 @@ func ParsePRStrategy(s string) (PRStrategy, error) {
 
 // PRConfig holds PR creation configuration
 type PRConfig struct {
-	Strategy     PRStrategy
-	BranchPrefix string // Base name for branches
-	BaseBranch   string // Target branch (empty = auto-detect)
-	GitHubToken  string
-	DryRun       bool // If true, show what would be done without actually doing it
+	Strategy         PRStrategy
+	BranchPrefix     string  // Base name for branches
+	BaseBranch       string  // Target branch (empty = auto-detect)
+	GitHubToken      string
+	DryRun           bool    // If true, show what would be done without actually doing it
+	CommentThreshold float64 // Add inline comments for fixes with confidence below this (0.0-1.0, 0 = disabled)
 }
 
 // PendingPR represents a PR that needs to be created
@@ -312,6 +313,11 @@ func (pt *PRTracker) createPRsPerViolation(baseBranch string) error {
 			return fmt.Errorf("failed to create PR for violation %s: %w", violationID, err)
 		}
 
+		// Add inline comments for low-confidence fixes
+		if err := pt.addLowConfidenceComments(pr.Number, fixes); err != nil {
+			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
+		}
+
 		// Track created PR
 		pt.createdPRs = append(pt.createdPRs, CreatedPR{
 			Number:      pr.Number,
@@ -367,6 +373,11 @@ func (pt *PRTracker) createPRsPerIncident(baseBranch string) error {
 		pr, err := pt.createPR(title, body, branchName, baseBranch)
 		if err != nil {
 			return fmt.Errorf("failed to create PR for incident %d: %w", i, err)
+		}
+
+		// Add inline comments for low-confidence fixes
+		if err := pt.addLowConfidenceComments(pr.Number, []FixRecord{fix}); err != nil {
+			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 		}
 
 		// Track created PR
@@ -427,6 +438,11 @@ func (pt *PRTracker) createPRsPerPhase(baseBranch string) error {
 			return fmt.Errorf("failed to create PR for phase %s: %w", phaseID, err)
 		}
 
+		// Add inline comments for low-confidence fixes
+		if err := pt.addLowConfidenceComments(pr.Number, fixes); err != nil {
+			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
+		}
+
 		// Track created PR
 		pt.createdPRs = append(pt.createdPRs, CreatedPR{
 			Number:     pr.Number,
@@ -467,6 +483,11 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 	pr, err := pt.createPR(title, body, branchName, baseBranch)
 	if err != nil {
 		return fmt.Errorf("failed to create PR: %w", err)
+	}
+
+	// Add inline comments for low-confidence fixes
+	if err := pt.addLowConfidenceComments(pr.Number, pt.allFixes); err != nil {
+		pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 	}
 
 	// Track created PR
@@ -603,6 +624,78 @@ func (pt *PRTracker) createPR(title, body, head, base string) (*PullRequestRespo
 	}
 
 	return pr, nil
+}
+
+// addLowConfidenceComments adds inline comments to PR for fixes with low confidence
+func (pt *PRTracker) addLowConfidenceComments(prNumber int, fixes []FixRecord) error {
+	// Skip if commenting is disabled or in dry-run mode
+	if pt.config.CommentThreshold == 0 || pt.config.DryRun {
+		return nil
+	}
+
+	// Get current commit SHA from the branch HEAD
+	commitSHA, err := GetCurrentCommitSHA(pt.workingDir)
+	if err != nil {
+		return fmt.Errorf("failed to get commit SHA: %w", err)
+	}
+
+	// Filter for low-confidence fixes
+	lowConfidenceFixes := []FixRecord{}
+	for _, fix := range fixes {
+		if fix.Result != nil && fix.Result.Confidence > 0 && fix.Result.Confidence < pt.config.CommentThreshold {
+			lowConfidenceFixes = append(lowConfidenceFixes, fix)
+		}
+	}
+
+	if len(lowConfidenceFixes) == 0 {
+		return nil
+	}
+
+	pt.progress.Printf("  Adding %d inline comment(s) for low-confidence fixes...\n", len(lowConfidenceFixes))
+
+	// Create comments for each low-confidence fix
+	successCount := 0
+	for _, fix := range lowConfidenceFixes {
+		// Format confidence percentage
+		confidencePct := int(fix.Result.Confidence * 100)
+
+		// Create comment body
+		commentBody := fmt.Sprintf("⚠️ **Low Confidence Fix (%d%%)**\n\n"+
+			"This fix was generated with lower confidence than usual. Please review carefully to ensure:\n"+
+			"- The fix correctly addresses the violation\n"+
+			"- No unintended side effects are introduced\n"+
+			"- The logic remains semantically correct\n\n"+
+			"**Violation:** %s\n"+
+			"**Description:** %s",
+			confidencePct,
+			fix.Violation.ID,
+			fix.Violation.Description,
+		)
+
+		// Create review comment
+		req := ReviewCommentRequest{
+			Body:     commentBody,
+			CommitID: commitSHA,
+			Path:     fix.Result.FilePath,
+			Line:     fix.Incident.LineNumber,
+			Side:     "RIGHT", // Comment on the new version (after changes)
+		}
+
+		_, err := pt.githubClient.CreateReviewComment(prNumber, req)
+		if err != nil {
+			// Log warning but don't fail the PR creation
+			pt.progress.Printf("    Warning: failed to add comment for %s:%d: %v\n",
+				fix.Result.FilePath, fix.Incident.LineNumber, err)
+		} else {
+			successCount++
+		}
+	}
+
+	if successCount > 0 {
+		pt.progress.Printf("  Added %d/%d inline comments successfully\n", successCount, len(lowConfidenceFixes))
+	}
+
+	return nil
 }
 
 // GetCreatedPRs returns the list of created PRs

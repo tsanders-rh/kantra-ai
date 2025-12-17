@@ -21,10 +21,11 @@ type Config struct {
 	PhaseID       string            // Specific phase to execute (empty = all)
 	DryRun        bool              // Preview without applying changes
 	GitCommit     string            // Git commit strategy (per-violation, per-incident, at-end, "")
-	CreatePR      bool              // Create GitHub pull requests
-	PRStrategy    string            // PR creation strategy (per-violation, per-incident, per-phase, at-end, "")
-	BranchName    string            // Custom branch name prefix
-	Progress        ux.ProgressWriter   // Progress reporting
+	CreatePR            bool              // Create GitHub pull requests
+	PRStrategy          string            // PR creation strategy (per-violation, per-incident, per-phase, at-end, "")
+	PRCommentThreshold  float64           // Add inline PR comments for fixes with confidence below this threshold (0.0-1.0, 0 = disabled)
+	BranchName          string            // Custom branch name prefix
+	Progress            ux.ProgressWriter // Progress reporting
 	Resume          bool                // Resume from last failure
 	BatchConfig     fixer.BatchConfig   // Batch processing configuration
 	ConfidenceConfig confidence.Config  // Confidence threshold configuration

@@ -40,6 +40,7 @@ var (
 	gitCommitStrategy   string
 	createPR            bool
 	prStrategy          string
+	prCommentThreshold  float64
 	branchName          string
 	verify              string
 	verifyStrategy      string
@@ -99,6 +100,7 @@ Konveyor violations at reasonable cost and quality.`,
 	remediateCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
 	remediateCmd.Flags().BoolVar(&createPR, "create-pr", false, "Create GitHub pull request(s) after remediation (requires --git-commit)")
 	remediateCmd.Flags().StringVar(&prStrategy, "pr-strategy", "", "PR creation strategy: per-violation, per-incident, per-phase, at-end (default: follows --git-commit)")
+	remediateCmd.Flags().Float64Var(&prCommentThreshold, "pr-comment-threshold", 0.0, "Add inline PR comments for fixes with confidence below this threshold (0.0-1.0, 0 = disabled)")
 	remediateCmd.Flags().StringVar(&branchName, "branch", "", "Branch name for PR (default: kantra-ai/remediation-TIMESTAMP)")
 	remediateCmd.Flags().StringVar(&verify, "verify", "", "Verification type: build, test (runs after fixes to ensure they don't break build/tests)")
 	remediateCmd.Flags().StringVar(&verifyStrategy, "verify-strategy", "at-end", "When to verify: per-fix, per-violation, at-end")
@@ -160,6 +162,7 @@ in a state file. Supports resuming from failures and executing specific phases.`
 	executeCmd.Flags().StringVar(&gitCommitStrategy, "git-commit", "", "Git commit strategy: per-violation, per-incident, at-end")
 	executeCmd.Flags().BoolVar(&createPR, "create-pr", false, "Create GitHub pull request(s)")
 	executeCmd.Flags().StringVar(&prStrategy, "pr-strategy", "", "PR creation strategy: per-violation, per-incident, per-phase, at-end (default: follows --git-commit)")
+	executeCmd.Flags().Float64Var(&prCommentThreshold, "pr-comment-threshold", 0.0, "Add inline PR comments for fixes with confidence below this threshold (0.0-1.0, 0 = disabled)")
 	executeCmd.Flags().StringVar(&branchName, "branch", "", "Branch name for PR")
 	executeCmd.Flags().StringVar(&verify, "verify", "", "Verification type: build, test")
 	executeCmd.Flags().StringVar(&verifyStrategy, "verify-strategy", "at-end", "When to verify: per-fix, per-violation, at-end")
@@ -349,10 +352,11 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 
 		// Initialize PR tracker
 		prConfig := gitutil.PRConfig{
-			Strategy:     parsedPRStrategy,
-			BranchPrefix: branchName,
-			GitHubToken:  githubToken,
-			DryRun:       dryRun,
+			Strategy:         parsedPRStrategy,
+			BranchPrefix:     branchName,
+			GitHubToken:      githubToken,
+			DryRun:           dryRun,
+			CommentThreshold: prCommentThreshold,
 		}
 
 		progress := &gitutil.StdoutProgressWriter{}
@@ -810,20 +814,21 @@ func runExecute(cmd *cobra.Command, args []string) error {
 
 	// Create executor config
 	executorConfig := executor.Config{
-		PlanPath:         executePlanPath,
-		StatePath:        executeStatePath,
-		InputPath:        inputPath,
-		Provider:         prov,
-		PhaseID:          executePhaseID,
-		DryRun:           dryRun,
-		GitCommit:        gitCommitStrategy,
-		CreatePR:         createPR,
-		PRStrategy:       prStrategy,
-		BranchName:       branchName,
-		Progress:         &ux.ConsoleProgressWriter{},
-		Resume:           executeResume,
-		BatchConfig:      batchConfig,
-		ConfidenceConfig: confidenceConf,
+		PlanPath:           executePlanPath,
+		StatePath:          executeStatePath,
+		InputPath:          inputPath,
+		Provider:           prov,
+		PhaseID:            executePhaseID,
+		DryRun:             dryRun,
+		GitCommit:          gitCommitStrategy,
+		CreatePR:           createPR,
+		PRStrategy:         prStrategy,
+		PRCommentThreshold: prCommentThreshold,
+		BranchName:         branchName,
+		Progress:           &ux.ConsoleProgressWriter{},
+		Resume:             executeResume,
+		BatchConfig:        batchConfig,
+		ConfidenceConfig:   confidenceConf,
 	}
 
 	// Create executor
