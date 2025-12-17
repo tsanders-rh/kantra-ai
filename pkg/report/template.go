@@ -6,6 +6,7 @@ const htmlTemplate = `<!DOCTYPE html>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>kantra-ai Migration Plan</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -73,6 +74,31 @@ const htmlTemplate = `<!DOCTYPE html>
         .metric-label {
             font-size: 14px;
             color: #7f8c8d;
+        }
+
+        .charts-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-card {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chart-card h3 {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .chart-card canvas {
+            max-height: 250px;
         }
 
         #phases-container {
@@ -448,6 +474,14 @@ const htmlTemplate = `<!DOCTYPE html>
                 grid-template-columns: repeat(2, 1fr);
             }
 
+            .charts-container {
+                grid-template-columns: 1fr;
+            }
+
+            .chart-card canvas {
+                max-height: 300px;
+            }
+
             .phase-meta,
             .phase-stats {
                 flex-wrap: wrap;
@@ -507,6 +541,22 @@ const htmlTemplate = `<!DOCTYPE html>
             <div class="metric-card">
                 <div class="metric-value">${{printf "%.2f" .TotalCost}}</div>
                 <div class="metric-label">Estimated Cost</div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-container">
+            <div class="chart-card">
+                <h3>Complexity Distribution</h3>
+                <canvas id="complexity-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Violations by Category</h3>
+                <canvas id="category-chart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Risk Distribution</h3>
+                <canvas id="risk-chart"></canvas>
             </div>
         </div>
 
@@ -629,7 +679,197 @@ const htmlTemplate = `<!DOCTYPE html>
             if (firstPhase) {
                 firstPhase.classList.add('expanded');
             }
+
+            // Render charts
+            renderCharts();
         });
+
+        function renderCharts() {
+            renderComplexityChart();
+            renderCategoryChart();
+            renderRiskChart();
+        }
+
+        function renderComplexityChart() {
+            // Map effort to complexity levels
+            const effortToComplexity = (effort) => {
+                if (effort <= 1) return 'trivial';
+                if (effort <= 3) return 'low';
+                if (effort <= 5) return 'medium';
+                if (effort <= 7) return 'high';
+                return 'expert';
+            };
+
+            // Aggregate violations by complexity from template data
+            const complexityCount = {
+                'trivial': 0,
+                'low': 0,
+                'medium': 0,
+                'high': 0,
+                'expert': 0
+            };
+
+            {{range .Plan.Phases}}
+                {{range .Violations}}
+                    const effort_{{.ViolationID | replace "-" "_"}} = {{.Effort}};
+                    const complexity_{{.ViolationID | replace "-" "_"}} = effortToComplexity(effort_{{.ViolationID | replace "-" "_"}});
+                    complexityCount[complexity_{{.ViolationID | replace "-" "_"}}]++;
+                {{end}}
+            {{end}}
+
+            // Filter out zero counts and prepare data
+            const labels = [];
+            const data = [];
+            const colors = {
+                'trivial': '#27ae60',
+                'low': '#2ecc71',
+                'medium': '#f39c12',
+                'high': '#e74c3c',
+                'expert': '#c0392b'
+            };
+            const backgroundColors = [];
+
+            Object.keys(complexityCount).forEach(key => {
+                if (complexityCount[key] > 0) {
+                    labels.push(key.charAt(0).toUpperCase() + key.slice(1));
+                    data.push(complexityCount[key]);
+                    backgroundColors.push(colors[key]);
+                }
+            });
+
+            const ctx = document.getElementById('complexity-chart');
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: backgroundColors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 10,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = Math.round((value / total) * 100);
+                                    return label + ': ' + value + ' (' + percentage + '%)';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCategoryChart() {
+            // Aggregate violations by category
+            const categoryCount = {};
+
+            {{range .Plan.Phases}}
+                {{range .Violations}}
+                    const category = '{{.Category}}';
+                    categoryCount[category] = (categoryCount[category] || 0) + 1;
+                {{end}}
+            {{end}}
+
+            const ctx = document.getElementById('category-chart');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: Object.keys(categoryCount).map(k => k.charAt(0).toUpperCase() + k.slice(1)),
+                    datasets: [{
+                        label: 'Violations',
+                        data: Object.values(categoryCount),
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return 'Violations: ' + context.parsed.y;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: { stepSize: 1 }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderRiskChart() {
+            // Aggregate phases by risk level
+            const riskCount = { low: 0, medium: 0, high: 0 };
+
+            {{range .Plan.Phases}}
+                const risk = '{{.Risk}}'.toLowerCase();
+                if (riskCount.hasOwnProperty(risk)) {
+                    riskCount[risk]++;
+                }
+            {{end}}
+
+            const ctx = document.getElementById('risk-chart');
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: ['Low Risk', 'Medium Risk', 'High Risk'],
+                    datasets: [{
+                        data: [riskCount.low, riskCount.medium, riskCount.high],
+                        backgroundColor: ['#27ae60', '#f39c12', '#e74c3c'],
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 10,
+                                font: { size: 11 }
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = context.parsed || 0;
+                                    return label + ': ' + value + ' phase' + (value !== 1 ? 's' : '');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
     </script>
 </body>
 </html>

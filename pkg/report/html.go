@@ -114,6 +114,9 @@ func templateFuncs() template.FuncMap {
 		"highlightLine": func(codeSnip string, lineNumber int) template.HTML {
 			return template.HTML(highlightLineInCode(codeSnip, lineNumber))
 		},
+		"replace": func(s, old, new string) string {
+			return strings.ReplaceAll(s, old, new)
+		},
 	}
 }
 
