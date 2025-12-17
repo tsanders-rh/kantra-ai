@@ -138,7 +138,7 @@ For larger migrations with 20+ violations, use the `plan` → `execute` workflow
 
 The plan command generates two files:
 - **YAML file** (.kantra-ai-plan.yaml) - Machine-readable plan for execution
-- **HTML report** (.kantra-ai-plan.html) - Interactive visual report for review
+- **HTML report** (.kantra-ai-plan.html) - Static visual report with same styling as web UI
 
 **HTML Report Features:**
 
@@ -146,13 +146,13 @@ The plan command generates two files:
   <img src="docs/images/html-report-example.png" alt="HTML Migration Plan Report" width="800">
 </p>
 
-The interactive HTML report includes:
-- **Summary dashboard** - Overview of phases, violations, incidents, cost, and duration
+The HTML report uses the same visual design as `--interactive-web` and includes:
+- **Summary dashboard** - Metric cards showing phases, violations, incidents, and cost
 - **Collapsible phases** - Expand/collapse each phase to review details
 - **Risk indicators** - Color-coded badges (low/medium/high risk)
-- **Diff-style highlighting** - Before/After code changes in red/green
-- **Line highlighting** - Problematic lines highlighted in orange
-- **Tooltips** - Hover explanations for all metrics
+- **Side-by-side diffs** - Before/After code changes in red/green panes
+- **Code highlighting** - Syntax-highlighted code snippets
+- **Modern styling** - Clean, professional design matching the web UI
 
 **Step 2: Review and edit the plan** (optional):
 
