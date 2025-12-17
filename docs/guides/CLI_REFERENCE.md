@@ -51,6 +51,7 @@ Direct remediation for small migrations with < 20 violations.
 |------|-------------|---------|
 | `--git-commit` | Git commit strategy: `per-violation`, `per-incident`, `at-end` | `--git-commit=per-violation` |
 | `--create-pr` | Create GitHub pull request(s) (requires `--git-commit`) | `--create-pr` |
+| `--pr-strategy` | PR creation strategy: `per-violation`, `per-incident`, `per-phase`, `at-end` (default: follows git-commit) | `--pr-strategy=per-phase` |
 | `--branch` | Custom branch name for PR (default: auto-generated) | `--branch=feature/fixes` |
 
 ### Verification Options
@@ -157,6 +158,7 @@ Execute a previously generated migration plan.
 |------|-------------|---------|
 | `--git-commit` | Git commit strategy | `--git-commit=per-violation` |
 | `--create-pr` | Create GitHub pull request(s) | `--create-pr` |
+| `--pr-strategy` | PR creation strategy | `--pr-strategy=per-phase` |
 | `--branch` | Custom branch name for PR | `--branch=feature/fixes` |
 
 ### Verification Options

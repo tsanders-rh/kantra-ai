@@ -271,6 +271,37 @@ PR #2: Fix: log4j-migration-002 (15 incidents)
 PR #3: Fix: servlet-api-upgrade-003 (8 incidents)
 ```
 
+### Separate PRs Per Phase (Recommended for Phased Migrations)
+
+Create individual PRs for each migration phase, grouping related violations together:
+
+```bash
+./kantra-ai execute \
+  --plan=.kantra-ai-plan/plan.yaml \
+  --input=src \
+  --provider=claude \
+  --git-commit=per-violation \
+  --create-pr \
+  --pr-strategy=per-phase
+```
+
+**Output:**
+```
+PR #1: Fix: Konveyor phase phase-1 (5 violations)
+  - javax-to-jakarta-001 (23 incidents)
+  - servlet-api-upgrade-003 (8 incidents)
+  - ...
+PR #2: Fix: Konveyor phase phase-2 (3 violations)
+  - log4j-migration-002 (15 incidents)
+  - ...
+```
+
+**Benefits:**
+- Better logical grouping than per-violation
+- Easier to review than a single massive PR
+- Aligns with your migration plan's phases
+- Each PR can be tested and merged independently
+
 ### Custom Branch Name
 
 Specify a custom branch name:

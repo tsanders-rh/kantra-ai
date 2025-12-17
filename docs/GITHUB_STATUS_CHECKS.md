@@ -234,7 +234,20 @@ kantra-ai execute \
 
 **Result**: Single PR with all fixes, one test verification status check reported after all fixes applied
 
-### Example 3: Fail-Fast Mode
+### Example 3: Phase-Based PRs with Verification
+
+```bash
+kantra-ai execute \
+  --plan=.kantra-ai-plan/plan.yaml \
+  --input=/path/to/project \
+  --verify=test \
+  --create-pr \
+  --pr-strategy=per-phase
+```
+
+**Result**: One PR per migration phase, each with its own test verification status check
+
+### Example 4: Fail-Fast Mode
 
 ```bash
 kantra-ai execute \
