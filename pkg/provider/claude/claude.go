@@ -197,6 +197,15 @@ func enhanceAPIError(err error) error {
 	})
 }
 
+// isRateLimitError checks if an error is a rate limit error (429)
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errStr := err.Error()
+	return regexp.MustCompile(`(?i)rate.limit|429|too many requests`).MatchString(errStr)
+}
+
 // GeneratePlan generates a phased migration plan using Claude
 // If there are too many violations, it batches them to avoid rate limits
 func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
@@ -216,14 +225,57 @@ func (p *Provider) GeneratePlan(ctx context.Context, req provider.PlanRequest) (
 func (p *Provider) generatePlanDirect(ctx context.Context, req provider.PlanRequest) (*provider.PlanResponse, error) {
 	prompt := buildPlanPrompt(req)
 
-	message, err := p.client.Messages.New(ctx, anthropic.MessageNewParams{
-		Model:       anthropic.F(p.model),
-		MaxTokens:   anthropic.F(int64(PlanningMaxTokens)), // Higher limit for planning
-		Temperature: anthropic.F(0.3),                      // Slightly higher for creativity in planning
-		Messages: anthropic.F([]anthropic.MessageParam{
-			anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
-		}),
-	})
+	// Retry logic for rate limits
+	var message *anthropic.Message
+	var err error
+	maxRetries := 3
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		message, err = p.client.Messages.New(ctx, anthropic.MessageNewParams{
+			Model:       anthropic.F(p.model),
+			MaxTokens:   anthropic.F(int64(PlanningMaxTokens)), // Higher limit for planning
+			Temperature: anthropic.F(0.3),                      // Slightly higher for creativity in planning
+			Messages: anthropic.F([]anthropic.MessageParam{
+				anthropic.NewUserMessage(anthropic.NewTextBlock(prompt)),
+			}),
+		})
+
+		// Success - break out of retry loop
+		if err == nil {
+			break
+		}
+
+		// Check if it's a rate limit error
+		if !isRateLimitError(err) {
+			// Not a rate limit error, return immediately
+			return &provider.PlanResponse{
+				Error: enhanceAPIError(err),
+			}, nil
+		}
+
+		// Rate limit error - check if we should retry
+		if attempt == maxRetries {
+			// Max retries reached
+			return &provider.PlanResponse{
+				Error: enhanceAPIError(err),
+			}, nil
+		}
+
+		// Calculate backoff delay (exponential: 30s, 60s, 90s)
+		backoff := time.Duration(30*(attempt+1)) * time.Second
+		fmt.Printf("   ⏳ Rate limit hit, waiting %v before retry (attempt %d/%d)...\n",
+			backoff.Round(time.Second), attempt+1, maxRetries)
+
+		// Wait with context cancellation support
+		select {
+		case <-ctx.Done():
+			return &provider.PlanResponse{
+				Error: ctx.Err(),
+			}, nil
+		case <-time.After(backoff):
+			// Continue to next attempt
+		}
+	}
 
 	if err != nil {
 		return &provider.PlanResponse{
