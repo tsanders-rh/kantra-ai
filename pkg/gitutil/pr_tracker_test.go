@@ -716,30 +716,6 @@ func (m *mockGitHubClientForComments) CreateReviewComment(prNumber int, req Revi
 	return nil, nil
 }
 
-// mockGitHubClient is used for testing real PR creation flow
-type mockGitHubClient struct {
-	createPRFunc func(req PullRequestRequest) (*PullRequestResponse, error)
-}
-
-func (m *mockGitHubClient) CreatePullRequest(req PullRequestRequest) (*PullRequestResponse, error) {
-	if m.createPRFunc != nil {
-		return m.createPRFunc(req)
-	}
-	return nil, nil
-}
-
-func (m *mockGitHubClient) GetDefaultBranch() (string, error) {
-	return "main", nil
-}
-
-func (m *mockGitHubClient) CreateCommitStatus(sha string, req CommitStatusRequest) (*CommitStatusResponse, error) {
-	return nil, nil
-}
-
-func (m *mockGitHubClient) CreateReviewComment(prNumber int, req ReviewCommentRequest) (*ReviewCommentResponse, error) {
-	return nil, nil
-}
-
 func TestPRTracker_CommitSHATracking(t *testing.T) {
 	t.Run("tracks commit SHA in dry-run mode", func(t *testing.T) {
 		tmpDir := createTestGitRepo(t)
