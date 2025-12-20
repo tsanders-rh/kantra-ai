@@ -191,8 +191,9 @@ func TestCreateCommit(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create commit
-		err = CreateCommit(tmpDir, "Test commit message")
+		sha, err := CreateCommit(tmpDir, "Test commit message")
 		assert.NoError(t, err)
+		assert.NotEmpty(t, sha)
 
 		// Verify commit was created
 		cmd = exec.Command("git", "log", "--oneline")
@@ -215,7 +216,7 @@ func TestCreateCommit(t *testing.T) {
 		require.NoError(t, cmd.Run())
 
 		// Try to commit with nothing staged
-		err := CreateCommit(tmpDir, "Empty commit")
+		_, err := CreateCommit(tmpDir, "Empty commit")
 		assert.Error(t, err)
 	})
 }

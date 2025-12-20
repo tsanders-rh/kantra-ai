@@ -1052,6 +1052,59 @@ func printExecutionSummary(result *executor.Result, duration time.Duration) {
 		fmt.Printf("  %s\n", result.ConfidenceStats.Summary())
 	}
 
+	// Print commit information if any commits were created
+	if len(result.Commits) > 0 {
+		fmt.Println()
+		ux.PrintSection("Git Commits")
+		fmt.Printf("  Total commits: %s\n", ux.Success(fmt.Sprintf("%d", len(result.Commits))))
+		for _, commit := range result.Commits {
+			shortSHA := commit.SHA
+			if len(shortSHA) > 7 {
+				shortSHA = shortSHA[:7]
+			}
+			violationInfo := ""
+			if commit.ViolationID != "" {
+				violationInfo = fmt.Sprintf(" (%s)", commit.ViolationID)
+			} else if commit.PhaseID != "" {
+				violationInfo = fmt.Sprintf(" (%s)", commit.PhaseID)
+			}
+			fmt.Printf("    %s: %d file(s)%s\n",
+				ux.Info(shortSHA),
+				commit.FileCount,
+				violationInfo)
+		}
+	}
+
+	// Print PR information if any PRs were created
+	if len(result.PRs) > 0 {
+		fmt.Println()
+		ux.PrintSection("Pull Requests")
+		fmt.Printf("  Total PRs: %s\n", ux.Success(fmt.Sprintf("%d", len(result.PRs))))
+		for _, pr := range result.PRs {
+			prInfo := ""
+			if pr.ViolationID != "" {
+				prInfo = fmt.Sprintf(" (%s)", pr.ViolationID)
+			} else if pr.PhaseID != "" {
+				prInfo = fmt.Sprintf(" (%s)", pr.PhaseID)
+			}
+			fmt.Printf("    #%d: %s%s\n",
+				pr.Number,
+				ux.Info(pr.URL),
+				prInfo)
+			if len(pr.CommitSHAs) > 0 {
+				shortSHAs := make([]string, len(pr.CommitSHAs))
+				for i, sha := range pr.CommitSHAs {
+					if len(sha) > 7 {
+						shortSHAs[i] = sha[:7]
+					} else {
+						shortSHAs[i] = sha
+					}
+				}
+				fmt.Printf("      Commits: %s\n", strings.Join(shortSHAs, ", "))
+			}
+		}
+	}
+
 	fmt.Println()
 	fmt.Printf("📊 State saved to: %s\n", result.StatePath)
 }

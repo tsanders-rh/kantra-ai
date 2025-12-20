@@ -65,7 +65,10 @@ type CreatedPR struct {
 	URL         string
 	BranchName  string
 	ViolationID string
-	PhaseID     string // Phase ID for per-phase strategy
+	PhaseID     string   // Phase ID for per-phase strategy
+	CommitSHAs  []string // List of commit SHAs included in this PR
+	Title       string   // PR title
+	Timestamp   time.Time
 }
 
 // GitHubClientInterface defines the methods needed from GitHubClient for PR operations
@@ -326,12 +329,30 @@ func (pt *PRTracker) createPRsPerViolation(baseBranch string) error {
 			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 		}
 
+		// Get commit SHA for this PR branch (skip in dry-run)
+		var commitSHA string
+		if !pt.config.DryRun {
+			sha, err := GetCurrentCommitSHA(pt.workingDir)
+			if err != nil {
+				return fmt.Errorf("failed to get commit SHA: %w", err)
+			}
+			commitSHA = sha
+		}
+
 		// Track created PR
+		commitSHAs := []string{}
+		if commitSHA != "" {
+			commitSHAs = []string{commitSHA}
+		}
+
 		pt.createdPRs = append(pt.createdPRs, CreatedPR{
 			Number:      pr.Number,
 			URL:         pr.HTMLURL,
 			BranchName:  branchName,
 			ViolationID: violationID,
+			CommitSHAs:  commitSHAs,
+			Title:       title,
+			Timestamp:   time.Now(),
 		})
 
 		// Return to original branch for next PR (skip in dry-run)
@@ -388,12 +409,30 @@ func (pt *PRTracker) createPRsPerIncident(baseBranch string) error {
 			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 		}
 
+		// Get commit SHA for this PR branch (skip in dry-run)
+		var commitSHA string
+		if !pt.config.DryRun {
+			sha, err := GetCurrentCommitSHA(pt.workingDir)
+			if err != nil {
+				return fmt.Errorf("failed to get commit SHA: %w", err)
+			}
+			commitSHA = sha
+		}
+
 		// Track created PR
+		commitSHAs := []string{}
+		if commitSHA != "" {
+			commitSHAs = []string{commitSHA}
+		}
+
 		pt.createdPRs = append(pt.createdPRs, CreatedPR{
 			Number:      pr.Number,
 			URL:         pr.HTMLURL,
 			BranchName:  branchName,
 			ViolationID: fix.Violation.ID,
+			CommitSHAs:  commitSHAs,
+			Title:       title,
+			Timestamp:   time.Now(),
 		})
 
 		// Return to original branch for next PR (skip in dry-run)
@@ -451,12 +490,30 @@ func (pt *PRTracker) createPRsPerPhase(baseBranch string) error {
 			pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 		}
 
+		// Get commit SHA for this PR branch (skip in dry-run)
+		var commitSHA string
+		if !pt.config.DryRun {
+			sha, err := GetCurrentCommitSHA(pt.workingDir)
+			if err != nil {
+				return fmt.Errorf("failed to get commit SHA: %w", err)
+			}
+			commitSHA = sha
+		}
+
 		// Track created PR
+		commitSHAs := []string{}
+		if commitSHA != "" {
+			commitSHAs = []string{commitSHA}
+		}
+
 		pt.createdPRs = append(pt.createdPRs, CreatedPR{
 			Number:     pr.Number,
 			URL:        pr.HTMLURL,
 			BranchName: branchName,
 			PhaseID:    phaseID,
+			CommitSHAs: commitSHAs,
+			Title:      title,
+			Timestamp:  time.Now(),
 		})
 
 		// Return to original branch for next PR (skip in dry-run)
@@ -498,11 +555,29 @@ func (pt *PRTracker) createPRAtEnd(baseBranch string) error {
 		pt.progress.Printf("  Warning: failed to add low-confidence comments: %v\n", err)
 	}
 
+	// Get commit SHA for this PR branch (skip in dry-run)
+	var commitSHA string
+	if !pt.config.DryRun {
+		sha, err := GetCurrentCommitSHA(pt.workingDir)
+		if err != nil {
+			return fmt.Errorf("failed to get commit SHA: %w", err)
+		}
+		commitSHA = sha
+	}
+
 	// Track created PR
+	commitSHAs := []string{}
+	if commitSHA != "" {
+		commitSHAs = []string{commitSHA}
+	}
+
 	pt.createdPRs = append(pt.createdPRs, CreatedPR{
 		Number:     pr.Number,
 		URL:        pr.HTMLURL,
 		BranchName: branchName,
+		CommitSHAs: commitSHAs,
+		Title:      title,
+		Timestamp:  time.Now(),
 	})
 
 	// Return to original branch (skip in dry-run)

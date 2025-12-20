@@ -48,6 +48,28 @@ type FixRecord struct {
 	PhaseID   string // Optional: Phase ID for per-phase PR strategy
 }
 
+// CommitInfo represents information about a created commit
+type CommitInfo struct {
+	SHA         string    // Commit SHA
+	Message     string    // Commit message
+	ViolationID string    // Violation ID (for per-violation commits)
+	PhaseID     string    // Phase ID (for per-phase commits)
+	FileCount   int       // Number of files changed in this commit
+	Timestamp   time.Time // When the commit was created
+}
+
+// PRInfo represents information about a created pull request
+type PRInfo struct {
+	Number      int       // PR number
+	URL         string    // PR URL
+	Title       string    // PR title
+	BranchName  string    // Branch name
+	ViolationID string    // Violation ID (for per-violation PRs)
+	PhaseID     string    // Phase ID (for per-phase PRs)
+	CommitSHAs  []string  // List of commit SHAs included in this PR
+	Timestamp   time.Time // When the PR was created
+}
+
 // CommitTracker tracks successful fixes and creates git commits based on strategy
 type CommitTracker struct {
 	strategy         CommitStrategy
@@ -56,6 +78,7 @@ type CommitTracker struct {
 	fixesByViolation map[string][]FixRecord
 	allFixes         []FixRecord
 	lastViolationID  string
+	commits          []CommitInfo // Track all created commits
 }
 
 // NewCommitTracker creates a new CommitTracker
@@ -67,6 +90,7 @@ func NewCommitTracker(strategy CommitStrategy, workingDir string, providerName s
 		fixesByViolation: make(map[string][]FixRecord),
 		allFixes:         make([]FixRecord, 0),
 		lastViolationID:  "",
+		commits:          make([]CommitInfo, 0),
 	}
 }
 
@@ -136,9 +160,20 @@ func (ct *CommitTracker) commitPerIncident(record FixRecord) error {
 	)
 
 	// Create commit
-	if err := CreateCommit(ct.workingDir, message); err != nil {
+	sha, err := CreateCommit(ct.workingDir, message)
+	if err != nil {
 		return fmt.Errorf("failed to create per-incident commit: %w", err)
 	}
+
+	// Track commit info
+	ct.commits = append(ct.commits, CommitInfo{
+		SHA:         sha,
+		Message:     message,
+		ViolationID: record.Violation.ID,
+		PhaseID:     record.PhaseID,
+		FileCount:   1,
+		Timestamp:   time.Now(),
+	})
 
 	fmt.Printf("  📝 Created commit for %s\n", record.Result.FilePath)
 	return nil
@@ -169,9 +204,20 @@ func (ct *CommitTracker) commitViolation(violationID string) error {
 	)
 
 	// Create commit
-	if err := CreateCommit(ct.workingDir, message); err != nil {
+	sha, err := CreateCommit(ct.workingDir, message)
+	if err != nil {
 		return fmt.Errorf("failed to create violation commit: %w", err)
 	}
+
+	// Track commit info
+	ct.commits = append(ct.commits, CommitInfo{
+		SHA:         sha,
+		Message:     message,
+		ViolationID: violationID,
+		PhaseID:     fixes[0].PhaseID, // Use phase ID from first fix (all should be same)
+		FileCount:   len(fixes),
+		Timestamp:   time.Now(),
+	})
 
 	fmt.Printf("📝 Created commit for violation %s (%d files)\n", violationID, len(fixes))
 
@@ -223,12 +269,28 @@ func (ct *CommitTracker) commitAtEnd() error {
 	message := FormatAtEndMessage(ct.fixesByViolation, ct.providerName)
 
 	// Create commit
-	if err := CreateCommit(ct.workingDir, message); err != nil {
+	sha, err := CreateCommit(ct.workingDir, message)
+	if err != nil {
 		return fmt.Errorf("failed to create at-end commit: %w", err)
 	}
+
+	// Track commit info
+	ct.commits = append(ct.commits, CommitInfo{
+		SHA:         sha,
+		Message:     message,
+		ViolationID: "", // At-end commits don't have a single violation ID
+		PhaseID:     "", // At-end commits don't have a single phase ID
+		FileCount:   len(stagedFiles),
+		Timestamp:   time.Now(),
+	})
 
 	fmt.Printf("📝 Created batch commit (%d violations, %d files)\n",
 		len(ct.fixesByViolation), len(stagedFiles))
 
 	return nil
+}
+
+// GetCommits returns the list of created commits
+func (ct *CommitTracker) GetCommits() []CommitInfo {
+	return ct.commits
 }

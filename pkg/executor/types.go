@@ -37,19 +37,21 @@ type Config struct {
 
 // Result contains the result of plan execution with detailed metrics.
 type Result struct {
-	TotalPhases      int     // Total phases in plan
-	ExecutedPhases   int     // Phases that were executed
-	CompletedPhases  int     // Phases that completed successfully
-	FailedPhases     int     // Phases that failed
-	TotalFixes       int     // Total fixes attempted
-	SuccessfulFixes  int     // Fixes that succeeded
-	FailedFixes      int     // Fixes that failed
-	SkippedFixes     int     // Fixes skipped (already completed)
-	DuplicateFixes   int     // Fixes skipped (duplicates)
-	TotalCost        float64 // Total cost incurred
-	TotalTokens      int     // Total tokens used
-	StatePath        string  // Path to state file
-	ConfidenceStats  *confidence.Stats // Confidence filtering statistics (nil if disabled)
+	TotalPhases      int                 // Total phases in plan
+	ExecutedPhases   int                 // Phases that were executed
+	CompletedPhases  int                 // Phases that completed successfully
+	FailedPhases     int                 // Phases that failed
+	TotalFixes       int                 // Total fixes attempted
+	SuccessfulFixes  int                 // Fixes that succeeded
+	FailedFixes      int                 // Fixes that failed
+	SkippedFixes     int                 // Fixes skipped (already completed)
+	DuplicateFixes   int                 // Fixes skipped (duplicates)
+	TotalCost        float64             // Total cost incurred
+	TotalTokens      int                 // Total tokens used
+	StatePath        string              // Path to state file
+	ConfidenceStats  *confidence.Stats   // Confidence filtering statistics (nil if disabled)
+	Commits          []gitutil.CommitInfo // List of created git commits (nil if git commits disabled)
+	PRs              []gitutil.PRInfo     // List of created pull requests (nil if PRs disabled)
 }
 
 // PhaseResult contains the result of executing a single phase.

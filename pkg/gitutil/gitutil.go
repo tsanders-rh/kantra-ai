@@ -111,14 +111,21 @@ func StageFile(workingDir string, filePath string) error {
 	return nil
 }
 
-// CreateCommit creates a git commit with the given message
-func CreateCommit(workingDir string, message string) error {
+// CreateCommit creates a git commit with the given message and returns the commit SHA
+func CreateCommit(workingDir string, message string) (string, error) {
 	cmd := exec.Command("git", "commit", "-m", message)
 	cmd.Dir = workingDir
 	if output, err := cmd.CombinedOutput(); err != nil {
-		return fmt.Errorf("failed to create commit: %w\nOutput: %s", err, string(output))
+		return "", fmt.Errorf("failed to create commit: %w\nOutput: %s", err, string(output))
 	}
-	return nil
+
+	// Get the commit SHA
+	sha, err := GetCurrentCommitSHA(workingDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to get commit SHA: %w", err)
+	}
+
+	return sha, nil
 }
 
 // ResetChanges resets all uncommitted changes in the working directory

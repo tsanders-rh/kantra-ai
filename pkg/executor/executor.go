@@ -6,6 +6,7 @@ import (
 
 	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
+	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/ux"
 	"github.com/tsanders/kantra-ai/pkg/violation"
@@ -172,6 +173,31 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 	if e.config.PRTracker != nil && !e.config.DryRun {
 		if err := e.config.PRTracker.Finalize(); err != nil {
 			e.config.Progress.Error("Failed to finalize PR: %v", err)
+		}
+	}
+
+	// Collect commit information from trackers
+	if e.config.VerifiedTracker != nil {
+		result.Commits = e.config.VerifiedTracker.GetCommitTracker().GetCommits()
+	} else if e.config.CommitTracker != nil {
+		result.Commits = e.config.CommitTracker.GetCommits()
+	}
+
+	// Collect PR information from tracker
+	if e.config.PRTracker != nil {
+		createdPRs := e.config.PRTracker.GetCreatedPRs()
+		result.PRs = make([]gitutil.PRInfo, len(createdPRs))
+		for i, pr := range createdPRs {
+			result.PRs[i] = gitutil.PRInfo{
+				Number:      pr.Number,
+				URL:         pr.URL,
+				Title:       pr.Title,
+				BranchName:  pr.BranchName,
+				ViolationID: pr.ViolationID,
+				PhaseID:     pr.PhaseID,
+				CommitSHAs:  pr.CommitSHAs,
+				Timestamp:   pr.Timestamp,
+			}
 		}
 	}
 
