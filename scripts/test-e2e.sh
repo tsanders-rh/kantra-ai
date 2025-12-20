@@ -110,6 +110,9 @@ echo
 
 check_prerequisites
 
+# Save absolute path to kantra-ai binary before changing directories
+KANTRA_AI_BIN="$(pwd)/kantra-ai"
+
 # Step 1: Navigate to test codebase
 log_info "Step 1: Navigating to test codebase..."
 cd "$TEST_CODEBASE"
@@ -147,18 +150,19 @@ prompt_continue
 
 # Step 3: Run Konveyor analysis
 log_info "Step 3: Running Konveyor analysis..."
-log_warn "This will run: kantra analyze --input . --output $ANALYSIS_OUTPUT --target quarkus"
+log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
 echo
 read -p "Modify the kantra command? (y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Enter your kantra analyze command (or press Enter for default):"
+    echo "Note: Use $TEST_CODEBASE for --input (not '.')"
     read -e KANTRA_CMD
     if [ -z "$KANTRA_CMD" ]; then
-        KANTRA_CMD="kantra analyze --input . --output $ANALYSIS_OUTPUT --target quarkus"
+        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
     fi
 else
-    KANTRA_CMD="kantra analyze --input . --output $ANALYSIS_OUTPUT --target quarkus"
+    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
 fi
 
 log_info "Running: $KANTRA_CMD"
@@ -172,7 +176,7 @@ log_info "Step 4: Creating migration plan..."
 log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input ."
 
 # Create a simple plan with just one low-effort phase
-./kantra-ai plan --analysis "$ANALYSIS_OUTPUT" --input .
+"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input .
 
 if [ ! -d "$PLAN_DIR" ]; then
     log_error "Plan directory not created: $PLAN_DIR"
@@ -232,7 +236,7 @@ if [[ $REPLY =~ ^[Yy1]$ ]]; then
     echo
 
     # This will block until the user closes the web UI
-    ./kantra-ai plan --analysis "$ANALYSIS_OUTPUT" --input . --interactive-web
+    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --interactive-web
 
     log_success "Web UI session complete!"
     echo
@@ -270,7 +274,7 @@ else
         fi
 
         log_info "Running execution with PR creation..."
-        ./kantra-ai execute \
+        "$KANTRA_AI_BIN" execute \
             --analysis "$ANALYSIS_OUTPUT" \
             --input . \
             --plan "$PLAN_DIR" \
