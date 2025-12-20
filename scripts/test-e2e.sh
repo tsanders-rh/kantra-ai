@@ -113,15 +113,37 @@ check_prerequisites
 # Save absolute path to kantra-ai binary before changing directories
 KANTRA_AI_BIN="$(pwd)/kantra-ai"
 
-# Step 1: Navigate to test codebase
-log_info "Step 1: Navigating to test codebase..."
+# Step 1: Run Konveyor analysis (before cd to avoid "cannot be current directory" error)
+log_info "Step 1: Running Konveyor analysis..."
+log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+echo
+read -p "Modify the kantra command? (y/N) " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo "Enter your kantra analyze command (or press Enter for default):"
+    echo "Note: Output will go to $TEST_CODEBASE/$ANALYSIS_OUTPUT"
+    read -e KANTRA_CMD
+    if [ -z "$KANTRA_CMD" ]; then
+        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+    fi
+else
+    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+fi
+
+log_info "Running: $KANTRA_CMD"
+eval "$KANTRA_CMD"
+log_success "Analysis complete: $TEST_CODEBASE/$ANALYSIS_OUTPUT"
+
+prompt_continue
+
+# Step 2: Navigate to test codebase
+log_info "Step 2: Navigating to test codebase..."
 cd "$TEST_CODEBASE"
 log_success "Working directory: $(pwd)"
 
 # Check for leftover files from previous test runs
-if [ -f "$ANALYSIS_OUTPUT" ] || [ -d "$PLAN_DIR" ] || [ -f ".kantra-ai-state.yaml" ]; then
+if [ -d "$PLAN_DIR" ] || [ -f ".kantra-ai-state.yaml" ]; then
     log_warn "Found leftover files from previous test run:"
-    [ -f "$ANALYSIS_OUTPUT" ] && echo "  - $ANALYSIS_OUTPUT"
     [ -d "$PLAN_DIR" ] && echo "  - $PLAN_DIR/"
     [ -f ".kantra-ai-state.yaml" ] && echo "  - .kantra-ai-state.yaml"
     echo
@@ -143,8 +165,8 @@ fi
 
 prompt_continue
 
-# Step 2: Create test branch
-log_info "Step 2: Creating test branch..."
+# Step 3: Create test branch
+log_info "Step 3: Creating test branch..."
 ORIGINAL_BRANCH=$(git branch --show-current)
 log_info "Original branch: $ORIGINAL_BRANCH"
 
@@ -155,29 +177,6 @@ fi
 
 git checkout -b "$BRANCH_NAME"
 log_success "Created and checked out branch: $BRANCH_NAME"
-
-prompt_continue
-
-# Step 3: Run Konveyor analysis
-log_info "Step 3: Running Konveyor analysis..."
-log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
-echo
-read -p "Modify the kantra command? (y/N) " -n 1 -r
-echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    echo "Enter your kantra analyze command (or press Enter for default):"
-    echo "Note: Use $TEST_CODEBASE for --input (not '.')"
-    read -e KANTRA_CMD
-    if [ -z "$KANTRA_CMD" ]; then
-        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
-    fi
-else
-    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
-fi
-
-log_info "Running: $KANTRA_CMD"
-eval "$KANTRA_CMD"
-log_success "Analysis complete: $ANALYSIS_OUTPUT"
 
 prompt_continue
 
