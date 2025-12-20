@@ -149,9 +149,14 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 		if result.err != nil {
 			// If batch failed entirely, create failed results for all incidents
 			for _, incident := range result.job.incidents {
+				// Get relative path for the file
+				relPath, err := resolveAndValidateFilePath(incident.GetFilePath(), bf.inputDir)
+				if err != nil {
+					relPath = filepath.Base(incident.GetFilePath()) // fallback to base name
+				}
 				allResults = append(allResults, FixResult{
 					Success:    false,
-					FilePath:   filepath.Base(incident.GetFilePath()),
+					FilePath:   relPath,
 					Error:      result.err,
 					TokensUsed: 0,
 					Cost:       0,
@@ -170,9 +175,25 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 
 		// Convert batch fixes to individual FixResults
 		for _, fix := range result.fixes {
+			// Resolve and validate file path first (needed for both success and failure cases)
+			filePath, err := resolveAndValidateFilePath(getFilePathFromURI(fix.IncidentURI), bf.inputDir)
+			if err != nil {
+				// If we can't resolve the path, create a failed result
+				fixResult := FixResult{
+					Success:    false,
+					FilePath:   filepath.Base(getFilePathFromURI(fix.IncidentURI)), // fallback to base name
+					TokensUsed: tokensPerFix,
+					Cost:       costPerFix,
+					Confidence: fix.Confidence,
+					Error:      fmt.Errorf("invalid file path: %w", err),
+				}
+				allResults = append(allResults, fixResult)
+				continue
+			}
+
 			fixResult := FixResult{
 				Success:    fix.Success,
-				FilePath:   filepath.Base(getFilePathFromURI(fix.IncidentURI)),
+				FilePath:   filePath, // Use the full relative path
 				TokensUsed: tokensPerFix,
 				Cost:       costPerFix,
 				Confidence: fix.Confidence,
@@ -181,15 +202,6 @@ func (bf *BatchFixer) FixViolationBatch(ctx context.Context, v violation.Violati
 			if fix.Success {
 				// Check confidence threshold before applying
 				shouldApply, reason := bf.confidenceConf.ShouldApplyFix(fix.Confidence, v.MigrationComplexity, v.Effort)
-
-				// Resolve and validate file path
-				filePath, err := resolveAndValidateFilePath(getFilePathFromURI(fix.IncidentURI), bf.inputDir)
-				if err != nil {
-					fixResult.Error = fmt.Errorf("invalid file path: %w", err)
-					fixResult.Success = false
-					allResults = append(allResults, fixResult)
-					continue
-				}
 				fullPath := filepath.Join(bf.inputDir, filePath)
 
 				if !shouldApply {
