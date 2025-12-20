@@ -18,18 +18,20 @@ export GITHUB_TOKEN=$(gh auth token)
 ## What It Does
 
 Automates the complete workflow:
-1. ✅ Creates a test branch
-2. ✅ Runs Konveyor analysis
-3. ✅ Generates migration plan
-4. ✅ **Opens web UI for approval and execution**
-5. ✅ Shows results (commits, PRs, stats)
-6. ✅ Cleanup options
+1. ✅ Runs Konveyor analysis
+2. ✅ Creates a test branch
+3. ✅ **Choose workflow (Web UI or CLI)**
+4. ✅ Generates migration plan
+5. ✅ Approval and execution (web or CLI)
+6. ✅ Shows results (commits, PRs, stats)
+7. ✅ Cleanup options
 
 ## The Two Workflows
 
 ### Option 1: Web UI (Recommended) 🌐
 
 Everything in your browser:
+- Creates plan and launches browser automatically
 - Approve phases visually
 - Configure settings
 - Execute with live monitoring
@@ -37,15 +39,23 @@ Everything in your browser:
 
 **Flow:**
 ```
-Script → Analysis → Plan → Browser opens → You approve & execute → Results → Cleanup
+Script → Analysis → Branch → Choose Web UI → Plan created + Browser opens →
+You approve & execute → Results → Cleanup
 ```
 
 ### Option 2: CLI Mode
 
 Traditional approach:
+- Creates static plan files (YAML + HTML)
 - Manual approval in YAML
 - Command-line execution
 - Flag-based configuration
+
+**Flow:**
+```
+Script → Analysis → Branch → Choose CLI → Plan created → Manual approval →
+CLI execution → Results → Cleanup
+```
 
 ## Common Usage
 

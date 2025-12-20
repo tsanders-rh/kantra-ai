@@ -179,34 +179,8 @@ log_success "Created and checked out branch: $BRANCH_NAME"
 
 prompt_continue
 
-# Step 4: Create migration plan
-log_info "Step 4: Creating migration plan..."
-log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --output $PLAN_DIR"
-
-# Create a simple plan with just one low-effort phase
-"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --output "$PLAN_DIR"
-
-if [ ! -d "$PLAN_DIR" ]; then
-    log_error "Plan directory not created: $PLAN_DIR"
-    exit 1
-fi
-
-log_success "Plan created in: $PLAN_DIR"
-echo
-log_info "Plan files:"
-ls -lh "$PLAN_DIR/"
-echo
-
-# Show plan summary
-if [ -f "$PLAN_DIR/plan.yaml" ]; then
-    log_info "Plan summary:"
-    grep -E "^(id:|name:|status:|violations:)" "$PLAN_DIR/plan.yaml" | head -20
-fi
-
-prompt_continue
-
-# Step 5: Choose workflow mode
-log_info "Step 5: Choose approval and execution workflow..."
+# Step 4: Choose workflow mode
+log_info "Step 4: Choose approval and execution workflow..."
 echo
 echo "How would you like to approve phases and execute?"
 echo "  1) Interactive Web UI - Approve and execute in browser with live monitoring"
@@ -218,7 +192,7 @@ echo
 
 if [[ $REPLY =~ ^[Yy1]$ ]]; then
     # Interactive Web Workflow
-    log_info "Starting interactive web planner for approval and execution..."
+    log_info "Step 5: Creating migration plan and launching interactive web UI..."
     echo
     log_info "In the web UI you can:"
     echo "  ✓ Review the migration plan with visual charts"
@@ -244,14 +218,41 @@ if [[ $REPLY =~ ^[Yy1]$ ]]; then
     echo
 
     # This will block until the user closes the web UI
+    # The plan command with --interactive-web creates the plan AND launches the web UI
     "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --output "$PLAN_DIR" --interactive-web
 
     log_success "Web UI session complete!"
     echo
-    log_info "Check $STATE_FILE for execution results"
+    log_info "Plan saved in: $PLAN_DIR"
 
 else
     # CLI Workflow
+    log_info "Step 5: Creating migration plan..."
+    log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --output $PLAN_DIR"
+    echo
+
+    # Create the plan
+    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --output "$PLAN_DIR"
+
+    if [ ! -d "$PLAN_DIR" ]; then
+        log_error "Plan directory not created: $PLAN_DIR"
+        exit 1
+    fi
+
+    log_success "Plan created in: $PLAN_DIR"
+    echo
+    log_info "Plan files:"
+    ls -lh "$PLAN_DIR/"
+    echo
+
+    # Show plan summary
+    if [ -f "$PLAN_DIR/plan.yaml" ]; then
+        log_info "Plan summary:"
+        grep -E "^(id:|name:|status:|violations:)" "$PLAN_DIR/plan.yaml" | head -20
+    fi
+
+    prompt_continue
+
     log_info "Manual approval and CLI execution workflow..."
     echo
     log_info "Step 5a: Approve a phase manually"

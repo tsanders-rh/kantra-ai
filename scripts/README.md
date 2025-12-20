@@ -56,41 +56,39 @@ export ANTHROPIC_API_KEY=your-key-here
 
 **Step 1: Setup**
 - Validates prerequisites
+- Runs `kantra analyze` on the test codebase
+- Generates analysis output YAML in /tmp
+
+**Step 2: Branch Setup**
+- Navigates to test codebase
 - Checks git status
 - Creates timestamped test branch
 
-**Step 2: Analysis**
-- Runs `kantra analyze` on the codebase
-- Generates analysis output YAML
-- Customizable command via interactive prompt
+**Step 3: Workflow Selection**
+- Choose between Interactive Web UI or CLI Mode
 
-**Step 3: Planning**
-- Runs `kantra-ai plan` to create migration plan
-- Generates plan.yaml and plan.html
-- Shows plan summary
-
-**Step 4: Workflow Selection**
-Choose between two workflows:
+**Step 4-5: Planning and Execution**
 
 **Option 1: Interactive Web UI** (Recommended)
-- Launches web UI at http://localhost:8080
+- Creates plan and launches web UI at http://localhost:8080
 - Approve/defer phases with visual charts
 - Configure git, PR, and verification settings
 - Execute with live progress monitoring
 - View results in-browser with PR links
 
 **Option 2: CLI Mode** (Traditional)
+- Creates migration plan (plan.yaml and plan.html)
 - Manually approve phases in plan.yaml
-- Run execution via command line
+- Run execution via command line with PR creation
 - Configure via CLI flags
 
-**Step 5: Review**
+**Step 6: Review Results**
 - Shows created commits
 - Lists changed files
 - Displays created pull requests
 - Shows execution statistics
 
-**Step 6: Cleanup**
+**Step 7: Cleanup**
 Three cleanup options:
 1. **Keep everything** - Review at your leisure
 2. **Close PR, keep local** - Clean up GitHub, keep local branch
