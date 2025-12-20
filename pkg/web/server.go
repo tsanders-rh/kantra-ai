@@ -59,6 +59,20 @@ type ExecutionSettings struct {
 	Parallelism        int     `json:"parallelism"`
 }
 
+// ExecutionStatus tracks the current state of plan execution
+type ExecutionStatus struct {
+	State            string      `json:"state"` // "idle", "running", "completed", "failed", "cancelled"
+	Message          string      `json:"message"`
+	StartTime        time.Time   `json:"start_time,omitempty"`
+	EndTime          time.Time   `json:"end_time,omitempty"`
+	CurrentPhase     int         `json:"current_phase"`
+	TotalPhases      int         `json:"total_phases"`
+	SuccessfulFixes  int         `json:"successful_fixes"`
+	FailedFixes      int         `json:"failed_fixes"`
+	TotalCost        float64     `json:"total_cost"`
+	Error            string      `json:"error,omitempty"`
+}
+
 // PlanServer serves the web-based interactive plan approval UI.
 type PlanServer struct {
 	plan             *planfile.Plan
@@ -74,6 +88,7 @@ type PlanServer struct {
 	executionCtx     context.Context
 	executionCancel  context.CancelFunc
 	executionSettings *ExecutionSettings
+	executionStatus  ExecutionStatus
 }
 
 // NewPlanServer creates a new web server for interactive plan approval.
@@ -85,6 +100,10 @@ func NewPlanServer(plan *planfile.Plan, planPath string, inputPath string, prov 
 		provider:  prov,
 		addr:      "localhost:8080",
 		clients:   make(map[*websocket.Conn]bool),
+		executionStatus: ExecutionStatus{
+			State:   "idle",
+			Message: "No execution in progress",
+		},
 	}
 }
 
@@ -380,6 +399,19 @@ func (s *PlanServer) handleExecuteCancel(w http.ResponseWriter, r *http.Request)
 	if s.executionCancel != nil {
 		s.executionCancel()
 	}
+
+	// Update execution status to cancelled
+	s.executionStatus = ExecutionStatus{
+		State:           "cancelled",
+		Message:         "Execution cancelled by user",
+		EndTime:         time.Now(),
+		StartTime:       s.executionStatus.StartTime,
+		TotalPhases:     s.executionStatus.TotalPhases,
+		CurrentPhase:    s.executionStatus.CurrentPhase,
+		SuccessfulFixes: s.executionStatus.SuccessfulFixes,
+		FailedFixes:     s.executionStatus.FailedFixes,
+		TotalCost:       s.executionStatus.TotalCost,
+	}
 	s.executionMutex.Unlock()
 
 	// Broadcast cancellation message
@@ -399,18 +431,19 @@ func (s *PlanServer) handleExecuteCancel(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-// handleExecuteStatus returns execution status (placeholder for MVP).
+// handleExecuteStatus returns the current execution status.
 func (s *PlanServer) handleExecuteStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
+	s.executionMutex.Lock()
+	status := s.executionStatus
+	s.executionMutex.Unlock()
+
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"status":  "idle",
-		"message": "Execution feature coming soon",
-	}); err != nil {
+	if err := json.NewEncoder(w).Encode(status); err != nil {
 		fmt.Fprintf(os.Stderr, "Error encoding response: %v\n", err)
 	}
 }
@@ -500,6 +533,25 @@ func mapVerificationStrategy(webStrategy string) verifier.VerificationStrategy {
 	}
 }
 
+// setExecutionError sets the execution status to failed and broadcasts an error.
+func (s *PlanServer) setExecutionError(errMsg string) {
+	s.executionMutex.Lock()
+	s.executionStatus = ExecutionStatus{
+		State:   "failed",
+		Message: "Execution failed",
+		Error:   errMsg,
+		EndTime: time.Now(),
+	}
+	s.executionMutex.Unlock()
+
+	s.BroadcastUpdate(ExecutionUpdate{
+		Type: "error",
+		Data: map[string]string{
+			"message": errMsg,
+		},
+	})
+}
+
 // executePhases runs the plan execution in the background.
 func (s *PlanServer) executePhases() {
 	defer func() {
@@ -507,6 +559,16 @@ func (s *PlanServer) executePhases() {
 		s.executing = false
 		s.executionMutex.Unlock()
 	}()
+
+	// Initialize execution status
+	s.executionMutex.Lock()
+	s.executionStatus = ExecutionStatus{
+		State:       "running",
+		Message:     "Execution started",
+		StartTime:   time.Now(),
+		TotalPhases: len(s.plan.Phases),
+	}
+	s.executionMutex.Unlock()
 
 	// Create execution context
 	s.executionCtx, s.executionCancel = context.WithCancel(context.Background())
@@ -557,12 +619,7 @@ func (s *PlanServer) executePhases() {
 	if settings.CreateCommits && settings.CommitStrategy != "" {
 		strategy, err := gitutil.ParseStrategy(settings.CommitStrategy)
 		if err != nil {
-			s.BroadcastUpdate(ExecutionUpdate{
-				Type: "error",
-				Data: map[string]string{
-					"message": fmt.Sprintf("Invalid commit strategy: %v", err),
-				},
-			})
+			s.setExecutionError(fmt.Sprintf("Invalid commit strategy: %v", err))
 			return
 		}
 
@@ -570,12 +627,7 @@ func (s *PlanServer) executePhases() {
 		if settings.RunVerification {
 			verifyType, err := verifier.ParseVerificationType(settings.VerificationType)
 			if err != nil {
-				s.BroadcastUpdate(ExecutionUpdate{
-					Type: "error",
-					Data: map[string]string{
-						"message": fmt.Sprintf("Invalid verification type: %v", err),
-					},
-				})
+				s.setExecutionError(fmt.Sprintf("Invalid verification type: %v", err))
 				return
 			}
 
@@ -591,12 +643,7 @@ func (s *PlanServer) executePhases() {
 
 			verifiedTracker, err = gitutil.NewVerifiedCommitTracker(strategy, s.inputPath, s.provider.Name(), verifyConfig)
 			if err != nil {
-				s.BroadcastUpdate(ExecutionUpdate{
-					Type: "error",
-					Data: map[string]string{
-						"message": fmt.Sprintf("Failed to initialize verification: %v", err),
-					},
-				})
+				s.setExecutionError(fmt.Sprintf("Failed to initialize verification: %v", err))
 				return
 			}
 			commitTracker = verifiedTracker.GetCommitTracker()
@@ -610,12 +657,7 @@ func (s *PlanServer) executePhases() {
 	if settings.CreatePR && settings.PRStrategy != "" {
 		parsedPRStrategy, err := gitutil.ParsePRStrategy(settings.PRStrategy)
 		if err != nil {
-			s.BroadcastUpdate(ExecutionUpdate{
-				Type: "error",
-				Data: map[string]string{
-					"message": fmt.Sprintf("Invalid PR strategy: %v", err),
-				},
-			})
+			s.setExecutionError(fmt.Sprintf("Invalid PR strategy: %v", err))
 			return
 		}
 
@@ -635,12 +677,7 @@ func (s *PlanServer) executePhases() {
 
 		prTracker, err = gitutil.NewPRTracker(prConfig, s.inputPath, s.provider.Name(), progress)
 		if err != nil {
-			s.BroadcastUpdate(ExecutionUpdate{
-				Type: "error",
-				Data: map[string]string{
-					"message": fmt.Sprintf("Failed to initialize PR tracker: %v", err),
-				},
-			})
+			s.setExecutionError(fmt.Sprintf("Failed to initialize PR tracker: %v", err))
 			return
 		}
 	}
@@ -665,12 +702,7 @@ func (s *PlanServer) executePhases() {
 
 	exec, err := executor.New(execConfig)
 	if err != nil {
-		s.BroadcastUpdate(ExecutionUpdate{
-			Type: "error",
-			Data: map[string]string{
-				"message": fmt.Sprintf("Failed to create executor: %v", err),
-			},
-		})
+		s.setExecutionError(fmt.Sprintf("Failed to create executor: %v", err))
 		return
 	}
 
@@ -688,6 +720,23 @@ func (s *PlanServer) executePhases() {
 	// Execute plan
 	result, err := exec.Execute(s.executionCtx)
 	if err != nil {
+		// Check if it was a cancellation
+		if s.executionCtx.Err() == context.Canceled {
+			// Status already set by handleExecuteCancel
+		} else {
+			s.executionMutex.Lock()
+			s.executionStatus = ExecutionStatus{
+				State:           "failed",
+				Message:         "Execution failed",
+				Error:           err.Error(),
+				EndTime:         time.Now(),
+				SuccessfulFixes: result.SuccessfulFixes,
+				FailedFixes:     result.FailedFixes,
+				TotalCost:       result.TotalCost,
+			}
+			s.executionMutex.Unlock()
+		}
+
 		s.BroadcastUpdate(ExecutionUpdate{
 			Type: "error",
 			Data: map[string]interface{}{
@@ -697,6 +746,21 @@ func (s *PlanServer) executePhases() {
 		})
 		return
 	}
+
+	// Update status to completed
+	s.executionMutex.Lock()
+	s.executionStatus = ExecutionStatus{
+		State:           "completed",
+		Message:         "Execution completed successfully",
+		EndTime:         time.Now(),
+		StartTime:       s.executionStatus.StartTime, // Preserve start time
+		TotalPhases:     result.TotalPhases,
+		CurrentPhase:    result.TotalPhases,
+		SuccessfulFixes: result.SuccessfulFixes,
+		FailedFixes:     result.FailedFixes,
+		TotalCost:       result.TotalCost,
+	}
+	s.executionMutex.Unlock()
 
 	// Send completion message
 	s.BroadcastUpdate(ExecutionUpdate{
@@ -744,6 +808,11 @@ func (w *WebSocketProgressWriter) Error(format string, args ...interface{}) {
 func (w *WebSocketProgressWriter) StartPhase(phaseName string) {
 	w.currentPhase = phaseName
 	w.phaseIndex++
+
+	// Update execution status with current phase
+	w.server.executionMutex.Lock()
+	w.server.executionStatus.CurrentPhase = w.phaseIndex
+	w.server.executionMutex.Unlock()
 
 	w.server.BroadcastUpdate(ExecutionUpdate{
 		Type: "phase_start",
