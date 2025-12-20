@@ -265,7 +265,7 @@ else
     log_info "Step 5b: Run execution with PR creation..."
     echo
     log_info "Configuration:"
-    echo "  - Git commits: enabled (per-phase)"
+    echo "  - Git commits: enabled (per-violation)"
     echo "  - PR creation: enabled (at-end)"
     echo "  - Dry run: disabled (will make real changes)"
     echo
@@ -290,7 +290,7 @@ else
             --state-file "$STATE_FILE" \
             --provider claude \
             --git-commit \
-            --commit-strategy per-phase \
+            --commit-strategy per-violation \
             --create-pr \
             --pr-strategy at-end \
             --pr-branch-prefix "kantra-ai-test"
