@@ -118,6 +118,16 @@ log_info "Step 1: Navigating to test codebase..."
 cd "$TEST_CODEBASE"
 log_success "Working directory: $(pwd)"
 
+# Check for leftover files from previous test runs
+if [ -f "$ANALYSIS_OUTPUT" ] || [ -d "$PLAN_DIR" ] || [ -f ".kantra-ai-state.yaml" ]; then
+    log_warn "Found leftover files from previous test run:"
+    [ -f "$ANALYSIS_OUTPUT" ] && echo "  - $ANALYSIS_OUTPUT"
+    [ -d "$PLAN_DIR" ] && echo "  - $PLAN_DIR/"
+    [ -f ".kantra-ai-state.yaml" ] && echo "  - .kantra-ai-state.yaml"
+    echo
+    log_info "These will be overwritten by this test run."
+fi
+
 # Check git status
 if [ -n "$(git status --porcelain)" ]; then
     log_warn "Working directory has uncommitted changes"
@@ -150,7 +160,7 @@ prompt_continue
 
 # Step 3: Run Konveyor analysis
 log_info "Step 3: Running Konveyor analysis..."
-log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
+log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
 echo
 read -p "Modify the kantra command? (y/N) " -n 1 -r
 echo
@@ -159,10 +169,10 @@ if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Note: Use $TEST_CODEBASE for --input (not '.')"
     read -e KANTRA_CMD
     if [ -z "$KANTRA_CMD" ]; then
-        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
+        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
     fi
 else
-    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus"
+    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
 fi
 
 log_info "Running: $KANTRA_CMD"
