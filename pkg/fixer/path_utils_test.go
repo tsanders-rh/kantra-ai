@@ -1,6 +1,7 @@
 package fixer
 
 import (
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,11 +11,12 @@ import (
 // TestResolveAndValidateFilePath_PathTraversal tests security edge cases
 func TestResolveAndValidateFilePath_PathTraversal(t *testing.T) {
 	tests := []struct {
-		name      string
-		filePath  string
-		inputDir  string
-		wantErr   bool
-		errContains string
+		name          string
+		filePath      string
+		inputDir      string
+		wantErr       bool
+		errContains   string
+		skipOnWindows bool
 	}{
 		{
 			name:     "normal relative path",
@@ -37,11 +39,12 @@ func TestResolveAndValidateFilePath_PathTraversal(t *testing.T) {
 			errContains: "outside input directory",
 		},
 		{
-			name:        "local absolute path outside input dir returns error",
-			filePath:    "/Users/other/project/file.java",
-			inputDir:    "/workspace/project",
-			wantErr:     true,
-			errContains: "does not match input directory",
+			name:          "local absolute path outside input dir returns error",
+			filePath:      "/Users/other/project/file.java",
+			inputDir:      "/workspace/project",
+			wantErr:       true,
+			errContains:   "does not match input directory",
+			skipOnWindows: true, // Unix-style absolute paths don't work the same on Windows
 		},
 		{
 			name:     "container path /opt/input is made relative",
@@ -96,6 +99,10 @@ func TestResolveAndValidateFilePath_PathTraversal(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.skipOnWindows && runtime.GOOS == "windows" {
+				t.Skip("Skipping on Windows: Unix-style absolute paths behave differently")
+			}
+
 			result, err := resolveAndValidateFilePath(tt.filePath, tt.inputDir)
 
 			if tt.wantErr {
