@@ -218,6 +218,167 @@ func TestFormatPerViolationMessage_EmptyFixes(t *testing.T) {
 	assert.Contains(t, message, "Total Tokens: 0")
 }
 
+func TestCommitTracker_GetCommits(t *testing.T) {
+	t.Run("returns empty list when no commits", func(t *testing.T) {
+		tracker := NewCommitTracker(StrategyAtEnd, "/test/dir", "claude")
+		commits := tracker.GetCommits()
+		assert.Empty(t, commits)
+	})
+
+	t.Run("tracks commits from per-incident strategy", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+		tracker := NewCommitTracker(StrategyPerIncident, tmpDir, "claude")
+
+		// Create and track a fix
+		filename := "test.txt"
+		filepath := filepath.Join(tmpDir, filename)
+		err := os.WriteFile(filepath, []byte("fixed"), 0644)
+		require.NoError(t, err)
+
+		v := violation.Violation{ID: "v1", Description: "Test", Category: "mandatory", Effort: 1}
+		incident := violation.Incident{URI: "file://" + filepath, LineNumber: 10}
+		result := &fixer.FixResult{FilePath: filename, Cost: 0.01, TokensUsed: 100, Success: true}
+
+		err = tracker.TrackFix(v, incident, result)
+		require.NoError(t, err)
+
+		// Verify commit was tracked
+		commits := tracker.GetCommits()
+		require.Len(t, commits, 1)
+		assert.NotEmpty(t, commits[0].SHA)
+		assert.Equal(t, "v1", commits[0].ViolationID)
+		assert.Equal(t, 1, commits[0].FileCount)
+		assert.Contains(t, commits[0].Message, "v1")
+		assert.NotZero(t, commits[0].Timestamp)
+	})
+
+	t.Run("tracks commits from per-violation strategy", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+		tracker := NewCommitTracker(StrategyPerViolation, tmpDir, "claude")
+
+		// Create and track multiple fixes for same violation
+		v1 := violation.Violation{ID: "v1", Description: "Test 1", Category: "mandatory", Effort: 1}
+		for i := 1; i <= 2; i++ {
+			filename := fmt.Sprintf("test%d.txt", i)
+			filepath := filepath.Join(tmpDir, filename)
+			err := os.WriteFile(filepath, []byte("fixed"), 0644)
+			require.NoError(t, err)
+
+			incident := violation.Incident{URI: "file://" + filepath}
+			result := &fixer.FixResult{FilePath: filename, Success: true}
+			err = tracker.TrackFix(v1, incident, result)
+			require.NoError(t, err)
+		}
+
+		// Create and track fix for different violation
+		v2 := violation.Violation{ID: "v2", Description: "Test 2", Category: "optional", Effort: 2}
+		filename := "test3.txt"
+		filepath := filepath.Join(tmpDir, filename)
+		err := os.WriteFile(filepath, []byte("fixed"), 0644)
+		require.NoError(t, err)
+
+		incident := violation.Incident{URI: "file://" + filepath}
+		result := &fixer.FixResult{FilePath: filename, Success: true}
+		err = tracker.TrackFix(v2, incident, result)
+		require.NoError(t, err)
+
+		// Finalize to create commits
+		err = tracker.Finalize()
+		require.NoError(t, err)
+
+		// Verify commits were tracked - should have 2 commits (one per violation)
+		commits := tracker.GetCommits()
+		require.Len(t, commits, 2)
+
+		// First commit should be for v1 with 2 files
+		assert.Equal(t, "v1", commits[0].ViolationID)
+		assert.Equal(t, 2, commits[0].FileCount)
+		assert.NotEmpty(t, commits[0].SHA)
+
+		// Second commit should be for v2 with 1 file
+		assert.Equal(t, "v2", commits[1].ViolationID)
+		assert.Equal(t, 1, commits[1].FileCount)
+		assert.NotEmpty(t, commits[1].SHA)
+
+		// SHAs should be different
+		assert.NotEqual(t, commits[0].SHA, commits[1].SHA)
+	})
+
+	t.Run("tracks commit from at-end strategy", func(t *testing.T) {
+		tmpDir := createTestGitRepo(t)
+		configGitUser(t, tmpDir)
+		tracker := NewCommitTracker(StrategyAtEnd, tmpDir, "claude")
+
+		// Create and track fixes for multiple violations
+		for i := 1; i <= 3; i++ {
+			filename := fmt.Sprintf("test%d.txt", i)
+			filepath := filepath.Join(tmpDir, filename)
+			err := os.WriteFile(filepath, []byte("fixed"), 0644)
+			require.NoError(t, err)
+
+			v := violation.Violation{ID: fmt.Sprintf("v%d", i), Description: fmt.Sprintf("Test %d", i), Category: "mandatory", Effort: 1}
+			incident := violation.Incident{URI: "file://" + filepath}
+			result := &fixer.FixResult{FilePath: filename, Success: true}
+			err = tracker.TrackFix(v, incident, result)
+			require.NoError(t, err)
+		}
+
+		// Finalize to create single commit
+		err := tracker.Finalize()
+		require.NoError(t, err)
+
+		// Verify single commit was tracked with all files
+		commits := tracker.GetCommits()
+		require.Len(t, commits, 1)
+		assert.NotEmpty(t, commits[0].SHA)
+		assert.Equal(t, "", commits[0].ViolationID) // at-end commits don't have a single violation ID
+		assert.Equal(t, 3, commits[0].FileCount)
+		assert.Contains(t, commits[0].Message, "Batch remediation")
+	})
+}
+
+func TestCommitTracker_CommitInfoFields(t *testing.T) {
+	tmpDir := createTestGitRepo(t)
+	configGitUser(t, tmpDir)
+	tracker := NewCommitTracker(StrategyPerIncident, tmpDir, "claude")
+
+	// Create and track a fix
+	filename := "test.txt"
+	filepath := filepath.Join(tmpDir, filename)
+	err := os.WriteFile(filepath, []byte("fixed content"), 0644)
+	require.NoError(t, err)
+
+	v := violation.Violation{ID: "test-violation", Description: "Test violation", Category: "mandatory", Effort: 5}
+	incident := violation.Incident{URI: "file://" + filepath, LineNumber: 42}
+	result := &fixer.FixResult{
+		ViolationID: v.ID,
+		FilePath:    filename,
+		Cost:        0.05,
+		TokensUsed:  500,
+		Success:     true,
+	}
+
+	err = tracker.TrackFix(v, incident, result)
+	require.NoError(t, err)
+
+	commits := tracker.GetCommits()
+	require.Len(t, commits, 1)
+
+	commit := commits[0]
+
+	// Verify all CommitInfo fields are populated correctly
+	assert.Len(t, commit.SHA, 40, "SHA should be 40 characters (full git SHA)")
+	assert.NotEmpty(t, commit.Message, "Message should not be empty")
+	assert.Contains(t, commit.Message, "test-violation", "Message should contain violation ID")
+	assert.Contains(t, commit.Message, "Test violation", "Message should contain violation description")
+	assert.Equal(t, "test-violation", commit.ViolationID, "ViolationID should match")
+	assert.Equal(t, "", commit.PhaseID, "PhaseID should be empty for this test")
+	assert.Equal(t, 1, commit.FileCount, "FileCount should be 1")
+	assert.NotZero(t, commit.Timestamp, "Timestamp should be set")
+}
+
 // configGitUser configures git user for a test repository
 func configGitUser(t *testing.T, dir string) {
 	cmd := exec.Command("git", "config", "user.name", "Test User")
