@@ -8,6 +8,7 @@ package executor
 import (
 	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
+	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/provider"
 	"github.com/tsanders/kantra-ai/pkg/ux"
 )
@@ -25,10 +26,13 @@ type Config struct {
 	PRStrategy          string            // PR creation strategy (per-violation, per-incident, per-phase, at-end, "")
 	PRCommentThreshold  float64           // Add inline PR comments for fixes with confidence below this threshold (0.0-1.0, 0 = disabled)
 	BranchName          string            // Custom branch name prefix
-	Progress            ux.ProgressWriter // Progress reporting
-	Resume          bool                // Resume from last failure
-	BatchConfig     fixer.BatchConfig   // Batch processing configuration
-	ConfidenceConfig confidence.Config  // Confidence threshold configuration
+	Progress            ux.ProgressWriter       // Progress reporting
+	Resume              bool                    // Resume from last failure
+	BatchConfig         fixer.BatchConfig       // Batch processing configuration
+	ConfidenceConfig    confidence.Config       // Confidence threshold configuration
+	CommitTracker       *gitutil.CommitTracker  // Git commit tracker (nil if disabled)
+	VerifiedTracker     *gitutil.VerifiedCommitTracker // Verified commit tracker (nil if disabled)
+	PRTracker           *gitutil.PRTracker      // PR tracker (nil if disabled)
 }
 
 // Result contains the result of plan execution with detailed metrics.

@@ -92,20 +92,23 @@ Issue: {{.Message}}
 OUTPUT FORMAT (JSON):
 Return a JSON array with one object per incident. Each object must have:
 - "incident_uri": The file URI (use the File path from above)
-- "fixed_content": COMPLETE fixed file content (entire file, not diff)
+- "success": Boolean - true if fix succeeded, false if it failed
+- "fixed_content": COMPLETE fixed file content (entire file, not diff) - required even if success is false
 - "confidence": Confidence score 0.0-1.0
-- "explanation": Brief explanation of the fix
+- "explanation": Brief explanation of the fix (or reason for failure if success is false)
 
 Example response:
 [
   {
     "incident_uri": "file:///path/to/file1.java",
+    "success": true,
     "fixed_content": "<entire file content>",
     "confidence": 0.95,
     "explanation": "Replaced javax with jakarta imports"
   },
   {
     "incident_uri": "file:///path/to/file2.java",
+    "success": true,
     "fixed_content": "<entire file content>",
     "confidence": 0.92,
     "explanation": "Updated servlet package references"

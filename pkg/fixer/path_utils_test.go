@@ -37,10 +37,23 @@ func TestResolveAndValidateFilePath_PathTraversal(t *testing.T) {
 			errContains: "outside input directory",
 		},
 		{
-			name:     "absolute path outside input dir treated as relative",
-			filePath: "/etc/passwd",
+			name:        "local absolute path outside input dir returns error",
+			filePath:    "/Users/other/project/file.java",
+			inputDir:    "/workspace/project",
+			wantErr:     true,
+			errContains: "does not match input directory",
+		},
+		{
+			name:     "container path /opt/input is made relative",
+			filePath: "/opt/input/source/Main.java",
 			inputDir: "/workspace/project",
-			wantErr:  false, // Absolute paths outside inputDir are stripped and treated as relative (safe)
+			wantErr:  false,
+		},
+		{
+			name:     "container path without system prefix is made relative",
+			filePath: "/src/Main.java",
+			inputDir: "/workspace/project",
+			wantErr:  false,
 		},
 		{
 			name:     "path with multiple slashes",

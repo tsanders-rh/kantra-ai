@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -198,6 +199,20 @@ func runRemediate(cmd *cobra.Command, args []string) error {
 	}
 	if inputPath == "" && cfg.Paths.Input != "" {
 		inputPath = cfg.Paths.Input
+	}
+	// Normalize inputPath to absolute path to prevent path resolution issues
+	if inputPath != "" {
+		// Special case: if path starts with "Users/" or "home/", it's likely missing the leading slash
+		// This happens when users copy paths without the leading slash
+		if strings.HasPrefix(inputPath, "Users/") || strings.HasPrefix(inputPath, "home/") {
+			inputPath = "/" + inputPath
+		}
+
+		absInputPath, err := filepath.Abs(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve input path '%s': %w", inputPath, err)
+		}
+		inputPath = absInputPath
 	}
 	if providerName == "claude" && cfg.Provider.Name != "" { // "claude" is the flag default
 		providerName = cfg.Provider.Name
@@ -663,6 +678,21 @@ func runPlan(cmd *cobra.Command, args []string) error {
 	// Load configuration from file (if exists)
 	cfg := config.LoadOrDefault()
 
+	// Normalize inputPath to absolute path to prevent path resolution issues
+	if inputPath != "" {
+		// Special case: if path starts with "Users/" or "home/", it's likely missing the leading slash
+		// This happens when users copy paths without the leading slash
+		if strings.HasPrefix(inputPath, "Users/") || strings.HasPrefix(inputPath, "home/") {
+			inputPath = "/" + inputPath
+		}
+
+		absInputPath, err := filepath.Abs(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve input path '%s': %w", inputPath, err)
+		}
+		inputPath = absInputPath
+	}
+
 	// Create provider
 	prov, err := createProvider(providerName, model, cfg)
 	if err != nil {
@@ -782,6 +812,21 @@ func runExecute(cmd *cobra.Command, args []string) error {
 	// Load configuration from file (if exists)
 	cfg := config.LoadOrDefault()
 
+	// Normalize inputPath to absolute path to prevent path resolution issues
+	if inputPath != "" {
+		// Special case: if path starts with "Users/" or "home/", it's likely missing the leading slash
+		// This happens when users copy paths without the leading slash
+		if strings.HasPrefix(inputPath, "Users/") || strings.HasPrefix(inputPath, "home/") {
+			inputPath = "/" + inputPath
+		}
+
+		absInputPath, err := filepath.Abs(inputPath)
+		if err != nil {
+			return fmt.Errorf("failed to resolve input path '%s': %w", inputPath, err)
+		}
+		inputPath = absInputPath
+	}
+
 	// Create provider
 	prov, err := createProvider(providerName, model, cfg)
 	if err != nil {
@@ -793,6 +838,117 @@ func runExecute(cmd *cobra.Command, args []string) error {
 	fmt.Printf("📂 Input: %s\n", inputPath)
 	fmt.Printf("🤖 Provider: %s\n", prov.Name())
 	fmt.Println()
+
+	// Initialize git tracker if requested
+	var commitTracker *gitutil.CommitTracker
+	var verifiedTracker *gitutil.VerifiedCommitTracker
+	if gitCommitStrategy != "" {
+		if !gitutil.IsGitInstalled() {
+			return fmt.Errorf("--git-commit requires git to be installed")
+		}
+		if !gitutil.IsGitRepository(inputPath) {
+			return fmt.Errorf("--git-commit requires input directory to be a git repository")
+		}
+
+		strategy, err := gitutil.ParseStrategy(gitCommitStrategy)
+		if err != nil {
+			return err
+		}
+
+		// Check if verification is requested
+		if verify != "" {
+			// Parse verification configuration
+			verifyType, err := verifier.ParseVerificationType(verify)
+			if err != nil {
+				return err
+			}
+
+			verifyStrat, err := verifier.ParseVerificationStrategy(verifyStrategy)
+			if err != nil {
+				return err
+			}
+
+			verifyConfig := verifier.Config{
+				Type:          verifyType,
+				Strategy:      verifyStrat,
+				WorkingDir:    inputPath,
+				CustomCommand: verifyCommand,
+				FailFast:      verifyFailFast,
+				SkipOnDryRun:  dryRun,
+			}
+
+			verifiedTracker, err = gitutil.NewVerifiedCommitTracker(strategy, inputPath, providerName, verifyConfig)
+			if err != nil {
+				return fmt.Errorf("failed to initialize verification: %w", err)
+			}
+			commitTracker = verifiedTracker.GetCommitTracker()
+			ux.PrintSuccess("Git commits enabled (%s strategy)", gitCommitStrategy)
+			ux.PrintSuccess("Verification enabled (%s, %s strategy)", verify, verifyStrategy)
+			fmt.Println()
+		} else {
+			commitTracker = gitutil.NewCommitTracker(strategy, inputPath, providerName)
+			ux.PrintSuccess("Git commits enabled (%s strategy)", gitCommitStrategy)
+			fmt.Println()
+		}
+	}
+
+	// Initialize PR tracker if requested
+	var prTracker *gitutil.PRTracker
+	if createPR {
+		// Validate prerequisites
+		if gitCommitStrategy == "" {
+			return fmt.Errorf("--create-pr requires --git-commit to be set")
+		}
+
+		// Check for GitHub token (not required in dry-run mode)
+		githubToken := os.Getenv("GITHUB_TOKEN")
+		if githubToken == "" && !dryRun {
+			return fmt.Errorf("--create-pr requires GITHUB_TOKEN environment variable\n\n" +
+				"To set up:\n" +
+				"  1. Create a token at: https://github.com/settings/tokens\n" +
+				"  2. Grant 'repo' scope\n" +
+				"  3. Export: export GITHUB_TOKEN=your_token_here")
+		}
+
+		// Parse PR strategy - use explicit flag if provided, otherwise derive from commit strategy
+		var parsedPRStrategy gitutil.PRStrategy
+		var err error
+		if prStrategy != "" {
+			parsedPRStrategy, err = gitutil.ParsePRStrategy(prStrategy)
+			if err != nil {
+				return fmt.Errorf("invalid --pr-strategy: %w", err)
+			}
+		} else {
+			// Fall back to deriving from git-commit strategy
+			parsedPRStrategy, err = gitutil.ParsePRStrategy(gitCommitStrategy)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Generate branch name if not provided
+		if branchName == "" {
+			branchName = fmt.Sprintf("kantra-ai/remediation-%d", time.Now().Unix())
+		}
+
+		// Initialize PR tracker
+		prConfig := gitutil.PRConfig{
+			Strategy:         parsedPRStrategy,
+			BranchPrefix:     branchName,
+			GitHubToken:      githubToken,
+			DryRun:           dryRun,
+			CommentThreshold: prCommentThreshold,
+		}
+
+		progress := &gitutil.StdoutProgressWriter{}
+		prTracker, err = gitutil.NewPRTracker(prConfig, inputPath, providerName, progress)
+		if err != nil {
+			return fmt.Errorf("failed to initialize PR tracker: %w", err)
+		}
+
+		ux.PrintSuccess("PR creation enabled (%s strategy)", gitCommitStrategy)
+		fmt.Println()
+	}
 
 	// Build confidence configuration
 	confidenceConf, err := buildConfidenceConfig(cfg)
@@ -829,6 +985,9 @@ func runExecute(cmd *cobra.Command, args []string) error {
 		Resume:             executeResume,
 		BatchConfig:        batchConfig,
 		ConfidenceConfig:   confidenceConf,
+		CommitTracker:      commitTracker,
+		VerifiedTracker:    verifiedTracker,
+		PRTracker:          prTracker,
 	}
 
 	// Create executor

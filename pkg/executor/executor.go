@@ -157,6 +157,24 @@ func (e *Executor) Execute(ctx context.Context) (*Result, error) {
 		}
 	}
 
+	// Finalize git commits if enabled
+	if e.config.VerifiedTracker != nil && !e.config.DryRun {
+		if err := e.config.VerifiedTracker.Finalize(); err != nil {
+			e.config.Progress.Error("Failed to finalize verified commits: %v", err)
+		}
+	} else if e.config.CommitTracker != nil && !e.config.DryRun {
+		if err := e.config.CommitTracker.Finalize(); err != nil {
+			e.config.Progress.Error("Failed to finalize commits: %v", err)
+		}
+	}
+
+	// Finalize PR creation if enabled
+	if e.config.PRTracker != nil && !e.config.DryRun {
+		if err := e.config.PRTracker.Finalize(); err != nil {
+			e.config.Progress.Error("Failed to finalize PR: %v", err)
+		}
+	}
+
 	return result, nil
 }
 
@@ -332,6 +350,24 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 			result.Tokens += fixResult.TokensUsed
 
 			e.state.RecordIncidentFix(plannedViolation.ViolationID, incidentURI, fixResult.Cost)
+
+			// Track for git commit if enabled
+			if e.config.VerifiedTracker != nil && !e.config.DryRun {
+				if err := e.config.VerifiedTracker.TrackFix(v, incident, &fixResult); err != nil {
+					e.config.Progress.Error("Git commit/verification failed: %v", err)
+				}
+			} else if e.config.CommitTracker != nil && !e.config.DryRun {
+				if err := e.config.CommitTracker.TrackFix(v, incident, &fixResult); err != nil {
+					e.config.Progress.Error("Git commit failed: %v", err)
+				}
+			}
+
+			// Track for PR if enabled
+			if e.config.PRTracker != nil && !e.config.DryRun {
+				if err := e.config.PRTracker.TrackForPR(v, incident, &fixResult); err != nil {
+					e.config.Progress.Error("PR tracking failed: %v", err)
+				}
+			}
 		}
 	}
 
