@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -351,22 +352,25 @@ func TestBatchFixer_CreateBatches(t *testing.T) {
 
 func TestBatchFixer_ResolveFilePath(t *testing.T) {
 	tests := []struct {
-		name     string
-		inputDir string
-		filePath string
-		expected string
+		name          string
+		inputDir      string
+		filePath      string
+		expected      string
+		skipOnWindows bool
 	}{
 		{
-			name:     "absolute path matching inputDir",
-			inputDir: "/workspace/project",
-			filePath: "/workspace/project/src/Main.java",
-			expected: "src/Main.java",
+			name:          "absolute path matching inputDir",
+			inputDir:      "/workspace/project",
+			filePath:      "/workspace/project/src/Main.java",
+			expected:      "src/Main.java",
+			skipOnWindows: true, // Unix-style absolute paths don't work the same on Windows
 		},
 		{
-			name:     "absolute path not matching inputDir",
-			inputDir: "/workspace/project",
-			filePath: "/other/path/Main.java",
-			expected: "other/path/Main.java",
+			name:          "absolute path not matching inputDir",
+			inputDir:      "/workspace/project",
+			filePath:      "/other/path/Main.java",
+			expected:      "other/path/Main.java",
+			skipOnWindows: true, // Unix-style absolute paths don't work the same on Windows
 		},
 		{
 			name:     "relative path",
@@ -384,6 +388,9 @@ func TestBatchFixer_ResolveFilePath(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			if tt.skipOnWindows && runtime.GOOS == "windows" {
+				t.Skip("Skipping on Windows: Unix-style absolute paths behave differently")
+			}
 			result, err := resolveAndValidateFilePath(tt.filePath, tt.inputDir)
 			require.NoError(t, err)
 			// Normalize to forward slashes for cross-platform comparison
