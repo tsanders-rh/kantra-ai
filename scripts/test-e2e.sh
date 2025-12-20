@@ -97,8 +97,11 @@ fi
 
 # Configuration
 BRANCH_NAME="kantra-ai-test-$(date +%Y%m%d-%H%M%S)"
-ANALYSIS_OUTPUT="analysis-output.yaml"
-PLAN_DIR=".kantra-ai-plan"
+TEST_TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+TEMP_DIR="/tmp/kantra-ai-test-$TEST_TIMESTAMP"
+ANALYSIS_OUTPUT="$TEMP_DIR/analysis-output.yaml"
+PLAN_DIR="$TEMP_DIR/plan"
+STATE_FILE="$TEMP_DIR/kantra-ai-state.yaml"
 
 echo "=============================================="
 echo "  Kantra-AI End-to-End Test Script"
@@ -106,33 +109,38 @@ echo "=============================================="
 echo
 log_info "Test codebase: $TEST_CODEBASE"
 log_info "Test branch: $BRANCH_NAME"
+log_info "Temp directory: $TEMP_DIR"
 echo
 
 check_prerequisites
+
+# Create temp directory for test artifacts
+mkdir -p "$TEMP_DIR"
+log_success "Created temp directory: $TEMP_DIR"
 
 # Save absolute path to kantra-ai binary before changing directories
 KANTRA_AI_BIN="$(pwd)/kantra-ai"
 
 # Step 1: Run Konveyor analysis (before cd to avoid "cannot be current directory" error)
 log_info "Step 1: Running Konveyor analysis..."
-log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+log_warn "This will run: kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
 echo
 read -p "Modify the kantra command? (y/N) " -n 1 -r
 echo
 if [[ $REPLY =~ ^[Yy]$ ]]; then
     echo "Enter your kantra analyze command (or press Enter for default):"
-    echo "Note: Output will go to $TEST_CODEBASE/$ANALYSIS_OUTPUT"
+    echo "Note: Output will go to $ANALYSIS_OUTPUT"
     read -e KANTRA_CMD
     if [ -z "$KANTRA_CMD" ]; then
-        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+        KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
     fi
 else
-    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $TEST_CODEBASE/$ANALYSIS_OUTPUT --target quarkus --overwrite"
+    KANTRA_CMD="kantra analyze --input $TEST_CODEBASE --output $ANALYSIS_OUTPUT --target quarkus --overwrite"
 fi
 
 log_info "Running: $KANTRA_CMD"
 eval "$KANTRA_CMD"
-log_success "Analysis complete: $TEST_CODEBASE/$ANALYSIS_OUTPUT"
+log_success "Analysis complete: $ANALYSIS_OUTPUT"
 
 prompt_continue
 
@@ -140,15 +148,6 @@ prompt_continue
 log_info "Step 2: Navigating to test codebase..."
 cd "$TEST_CODEBASE"
 log_success "Working directory: $(pwd)"
-
-# Check for leftover files from previous test runs
-if [ -d "$PLAN_DIR" ] || [ -f ".kantra-ai-state.yaml" ]; then
-    log_warn "Found leftover files from previous test run:"
-    [ -d "$PLAN_DIR" ] && echo "  - $PLAN_DIR/"
-    [ -f ".kantra-ai-state.yaml" ] && echo "  - .kantra-ai-state.yaml"
-    echo
-    log_info "These will be overwritten by this test run."
-fi
 
 # Check git status
 if [ -n "$(git status --porcelain)" ]; then
@@ -182,10 +181,10 @@ prompt_continue
 
 # Step 4: Create migration plan
 log_info "Step 4: Creating migration plan..."
-log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input ."
+log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --plan-dir $PLAN_DIR"
 
 # Create a simple plan with just one low-effort phase
-"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input .
+"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --plan-dir "$PLAN_DIR"
 
 if [ ! -d "$PLAN_DIR" ]; then
     log_error "Plan directory not created: $PLAN_DIR"
@@ -241,22 +240,22 @@ if [[ $REPLY =~ ^[Yy1]$ ]]; then
     prompt_continue
 
     log_info "Launching web UI at http://localhost:8080"
-    log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --interactive-web"
+    log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --plan-dir $PLAN_DIR --state-file $STATE_FILE --interactive-web"
     echo
 
     # This will block until the user closes the web UI
-    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --interactive-web
+    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --plan-dir "$PLAN_DIR" --state-file "$STATE_FILE" --interactive-web
 
     log_success "Web UI session complete!"
     echo
-    log_info "Check .kantra-ai-state.yaml for execution results"
+    log_info "Check $STATE_FILE for execution results"
 
 else
     # CLI Workflow
     log_info "Manual approval and CLI execution workflow..."
     echo
     log_info "Step 5a: Approve a phase manually"
-    echo "  - Open: file://$PWD/$PLAN_DIR/plan.html"
+    echo "  - Open: file://$PLAN_DIR/plan.html"
     echo "  - Or edit: $PLAN_DIR/plan.yaml"
     echo "  - Set one phase status to 'approved'"
     echo
@@ -287,6 +286,7 @@ else
             --analysis "$ANALYSIS_OUTPUT" \
             --input . \
             --plan "$PLAN_DIR" \
+            --state-file "$STATE_FILE" \
             --provider claude \
             --git-commit \
             --commit-strategy per-phase \
@@ -320,11 +320,15 @@ gh pr list --head "$BRANCH_NAME"
 echo
 
 # Show state file
-if [ -f ".kantra-ai-state.yaml" ]; then
+if [ -f "$STATE_FILE" ]; then
     log_info "Execution state:"
-    grep -E "^(total_|executed_|successful_|failed_)" .kantra-ai-state.yaml
+    grep -E "^(total_|executed_|successful_|failed_)" "$STATE_FILE"
     echo
 fi
+
+# Show temp directory location
+log_info "Test artifacts location: $TEMP_DIR"
+echo
 
 prompt_continue
 
@@ -347,6 +351,10 @@ case $REPLY in
         echo "  - View PR: gh pr view"
         echo "  - View commits: git log"
         echo "  - View diff: git diff $ORIGINAL_BRANCH"
+        echo "  - Test artifacts: $TEMP_DIR"
+        echo
+        log_warn "Remember to clean up temp directory later:"
+        echo "  rm -rf $TEMP_DIR"
         ;;
     2)
         log_info "Closing PR and deleting remote branch..."
@@ -360,6 +368,10 @@ case $REPLY in
             git push origin --delete "$BRANCH_NAME"
             log_success "Deleted remote branch: $BRANCH_NAME"
         fi
+
+        # Clean up temp directory
+        rm -rf "$TEMP_DIR"
+        log_success "Removed temp directory: $TEMP_DIR"
 
         log_info "Local branch kept for review: $BRANCH_NAME"
         ;;
@@ -387,16 +399,16 @@ case $REPLY in
         git branch -D "$BRANCH_NAME"
         log_success "Deleted local branch: $BRANCH_NAME"
 
-        # Clean up files
-        rm -f "$ANALYSIS_OUTPUT"
-        rm -rf "$PLAN_DIR"
-        rm -f ".kantra-ai-state.yaml"
-        log_success "Cleaned up analysis files"
+        # Clean up temp directory
+        rm -rf "$TEMP_DIR"
+        log_success "Removed temp directory: $TEMP_DIR"
 
         log_success "Full cleanup complete!"
         ;;
     *)
         log_info "No cleanup performed"
+        log_warn "Remember to clean up temp directory later:"
+        echo "  rm -rf $TEMP_DIR"
         ;;
 esac
 
@@ -407,3 +419,4 @@ log_info "Summary:"
 echo "  Test codebase: $TEST_CODEBASE"
 echo "  Test branch: $BRANCH_NAME"
 echo "  Current branch: $(git branch --show-current)"
+echo "  Temp directory: $TEMP_DIR"
