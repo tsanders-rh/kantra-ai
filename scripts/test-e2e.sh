@@ -181,10 +181,10 @@ prompt_continue
 
 # Step 4: Create migration plan
 log_info "Step 4: Creating migration plan..."
-log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --plan-dir $PLAN_DIR"
+log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --output $PLAN_DIR"
 
 # Create a simple plan with just one low-effort phase
-"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --plan-dir "$PLAN_DIR"
+"$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --output "$PLAN_DIR"
 
 if [ ! -d "$PLAN_DIR" ]; then
     log_error "Plan directory not created: $PLAN_DIR"
@@ -240,11 +240,11 @@ if [[ $REPLY =~ ^[Yy1]$ ]]; then
     prompt_continue
 
     log_info "Launching web UI at http://localhost:8080"
-    log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --plan-dir $PLAN_DIR --state-file $STATE_FILE --interactive-web"
+    log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --output $PLAN_DIR --interactive-web"
     echo
 
     # This will block until the user closes the web UI
-    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --plan-dir "$PLAN_DIR" --state-file "$STATE_FILE" --interactive-web
+    "$KANTRA_AI_BIN" plan --analysis "$ANALYSIS_OUTPUT" --input . --output "$PLAN_DIR" --interactive-web
 
     log_success "Web UI session complete!"
     echo
