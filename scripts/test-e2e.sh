@@ -188,66 +188,100 @@ fi
 
 prompt_continue
 
-# Step 5: Approve a simple phase for testing
-log_info "Step 5: Approving a phase for testing..."
+# Step 5: Choose workflow mode
+log_info "Step 5: Choose approval and execution workflow..."
 echo
-log_warn "You should now:"
-echo "  1. Review the plan in $PLAN_DIR/plan.html"
-echo "  2. Or use --interactive-web mode"
-echo "  3. Approve ONE simple phase (low effort/risk)"
+echo "How would you like to approve phases and execute?"
+echo "  1) Interactive Web UI - Approve and execute in browser with live monitoring"
+echo "  2) CLI Mode - Manually approve in plan.yaml, then execute via command line"
 echo
-read -p "Would you like to use interactive web mode? (y/N) " -n 1 -r
+read -p "Enter choice (1-2): " -n 1 -r
 echo
-if [[ $REPLY =~ ^[Yy]$ ]]; then
-    log_info "Starting interactive web planner..."
+echo
+
+if [[ $REPLY =~ ^[Yy1]$ ]]; then
+    # Interactive Web Workflow
+    log_info "Starting interactive web planner for approval and execution..."
+    echo
+    log_info "In the web UI you can:"
+    echo "  ✓ Review the migration plan with visual charts"
+    echo "  ✓ Approve/defer phases interactively"
+    echo "  ✓ Configure settings (git, PR, verification, etc.)"
+    echo "  ✓ Execute with live progress monitoring"
+    echo "  ✓ View execution results and created PRs"
+    echo
+    log_warn "Recommended: Approve just ONE simple phase for testing"
+    echo
+
+    # Check for GitHub token upfront
+    if [ -z "$GITHUB_TOKEN" ]; then
+        log_warn "GITHUB_TOKEN not set. PR creation will be disabled."
+        echo "  To enable PR creation: export GITHUB_TOKEN=\$(gh auth token)"
+        echo
+    fi
+
+    prompt_continue
+
+    log_info "Launching web UI at http://localhost:8080"
     log_info "Running: kantra-ai plan --analysis $ANALYSIS_OUTPUT --input . --interactive-web"
+    echo
+
+    # This will block until the user closes the web UI
     ./kantra-ai plan --analysis "$ANALYSIS_OUTPUT" --input . --interactive-web
+
+    log_success "Web UI session complete!"
+    echo
+    log_info "Check .kantra-ai-state.yaml for execution results"
+
 else
-    log_info "Manual approval required"
+    # CLI Workflow
+    log_info "Manual approval and CLI execution workflow..."
+    echo
+    log_info "Step 5a: Approve a phase manually"
     echo "  - Open: file://$PWD/$PLAN_DIR/plan.html"
     echo "  - Or edit: $PLAN_DIR/plan.yaml"
     echo "  - Set one phase status to 'approved'"
+    echo
     prompt_continue
-fi
 
-# Step 6: Run execution with PR creation
-log_info "Step 6: Running kantra-ai with PR creation..."
-echo
-log_info "Configuration:"
-echo "  - Git commits: enabled (per-phase)"
-echo "  - PR creation: enabled (at-end)"
-echo "  - Dry run: disabled (will make real changes)"
-echo
+    log_info "Step 5b: Run execution with PR creation..."
+    echo
+    log_info "Configuration:"
+    echo "  - Git commits: enabled (per-phase)"
+    echo "  - PR creation: enabled (at-end)"
+    echo "  - Dry run: disabled (will make real changes)"
+    echo
 
-read -p "Proceed with execution? (y/N) " -n 1 -r
-echo
-if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-    log_warn "Skipping execution"
-else
-    # Check for GitHub token
-    if [ -z "$GITHUB_TOKEN" ]; then
-        log_warn "GITHUB_TOKEN not set. PR creation will fail."
-        echo "  Set it with: export GITHUB_TOKEN=\$(gh auth token)"
-        prompt_continue
+    read -p "Proceed with execution? (y/N) " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        log_warn "Skipping execution"
+    else
+        # Check for GitHub token
+        if [ -z "$GITHUB_TOKEN" ]; then
+            log_warn "GITHUB_TOKEN not set. PR creation will fail."
+            echo "  Set it with: export GITHUB_TOKEN=\$(gh auth token)"
+            prompt_continue
+        fi
+
+        log_info "Running execution with PR creation..."
+        ./kantra-ai execute \
+            --analysis "$ANALYSIS_OUTPUT" \
+            --input . \
+            --plan "$PLAN_DIR" \
+            --provider claude \
+            --git-commit \
+            --commit-strategy per-phase \
+            --create-pr \
+            --pr-strategy at-end \
+            --pr-branch-prefix "kantra-ai-test"
+
+        log_success "Execution complete!"
     fi
-
-    log_info "Running execution with PR creation..."
-    ./kantra-ai execute \
-        --analysis "$ANALYSIS_OUTPUT" \
-        --input . \
-        --plan "$PLAN_DIR" \
-        --provider claude \
-        --git-commit \
-        --commit-strategy per-phase \
-        --create-pr \
-        --pr-strategy at-end \
-        --pr-branch-prefix "kantra-ai-test"
-
-    log_success "Execution complete!"
 fi
 
-# Step 7: Review results
-log_info "Step 7: Review results..."
+# Step 6: Review results
+log_info "Step 6: Review results..."
 echo
 log_info "What was created:"
 echo
@@ -276,8 +310,8 @@ fi
 
 prompt_continue
 
-# Step 8: Cleanup
-log_info "Step 8: Cleanup options..."
+# Step 7: Cleanup
+log_info "Step 7: Cleanup options..."
 echo
 echo "Choose cleanup action:"
 echo "  1) Keep everything for review"

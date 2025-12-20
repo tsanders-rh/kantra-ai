@@ -67,25 +67,28 @@ export ANTHROPIC_API_KEY=your-key-here
 - Generates plan.yaml and plan.html
 - Shows plan summary
 
-**Step 4: Approval**
-- Option to use interactive web UI
-- Or manually approve phases in plan.yaml
-- Recommends approving just one simple phase for testing
+**Step 4: Workflow Selection**
+Choose between two workflows:
 
-**Step 5: Execution**
-- Runs `kantra-ai execute` with:
-  - Git commits enabled (per-phase strategy)
-  - PR creation enabled (at-end strategy)
-  - Real changes (not dry-run)
-- Creates commits and pull request
+**Option 1: Interactive Web UI** (Recommended)
+- Launches web UI at http://localhost:8080
+- Approve/defer phases with visual charts
+- Configure git, PR, and verification settings
+- Execute with live progress monitoring
+- View results in-browser with PR links
 
-**Step 6: Review**
+**Option 2: CLI Mode** (Traditional)
+- Manually approve phases in plan.yaml
+- Run execution via command line
+- Configure via CLI flags
+
+**Step 5: Review**
 - Shows created commits
 - Lists changed files
 - Displays created pull requests
 - Shows execution statistics
 
-**Step 7: Cleanup**
+**Step 6: Cleanup**
 Three cleanup options:
 1. **Keep everything** - Review at your leisure
 2. **Close PR, keep local** - Clean up GitHub, keep local branch
@@ -114,7 +117,39 @@ Press Enter to continue or Ctrl+C to abort...
 ℹ️  Step 3: Running Konveyor analysis...
 ⚠️  This will run: kantra analyze --input . --output analysis-output.yaml --target quarkus
 
-Modify the kantra command? (y/N)
+Modify the kantra command? (y/N) n
+
+[Analysis runs...]
+
+ℹ️  Step 4: Creating migration plan...
+[Plan created]
+
+ℹ️  Step 5: Choose approval and execution workflow...
+
+How would you like to approve phases and execute?
+  1) Interactive Web UI - Approve and execute in browser with live monitoring
+  2) CLI Mode - Manually approve in plan.yaml, then execute via command line
+
+Enter choice (1-2): 1
+
+ℹ️  Starting interactive web planner for approval and execution...
+
+In the web UI you can:
+  ✓ Review the migration plan with visual charts
+  ✓ Approve/defer phases interactively
+  ✓ Configure settings (git, PR, verification, etc.)
+  ✓ Execute with live progress monitoring
+  ✓ View execution results and created PRs
+
+⚠️  Recommended: Approve just ONE simple phase for testing
+
+Press Enter to continue...
+
+ℹ️  Launching web UI at http://localhost:8080
+
+[Browser opens, you approve phases and execute in the UI]
+
+✓ Web UI session complete!
 ...
 ```
 
@@ -144,22 +179,20 @@ rm -f .kantra-ai-state.yaml
 
 ### Tips
 
-1. **Start Small**: Approve only one low-effort, low-risk phase for your first test
+1. **Use Interactive Web UI**: Choose option 1 for the best experience - you can approve phases, configure all settings, and execute with live monitoring all in your browser
 
-2. **Review Before Cleanup**: Use cleanup option 1 to keep everything, review the PR and commits, then manually clean up later
+2. **Start Small**: Approve only one low-effort, low-risk phase for your first test
 
-3. **Iterate Quickly**: Use cleanup option 3 for full cleanup, then run the script again to test changes
+3. **Review Before Cleanup**: Use cleanup option 1 to keep everything, review the PR and commits, then manually clean up later
 
-4. **Test Different Strategies**: Modify the execute step to test different commit/PR strategies:
-   ```bash
-   # Per-violation commits and PRs
-   ./kantra-ai execute ... --commit-strategy per-violation --pr-strategy per-violation
+4. **Iterate Quickly**: Use cleanup option 3 for full cleanup, then run the script again to test changes
 
-   # Single commit and PR at end
-   ./kantra-ai execute ... --commit-strategy at-end --pr-strategy at-end
-   ```
+5. **Test Different Strategies**: In the web UI, use the Settings panel to test different commit/PR strategies:
+   - Per-violation commits and PRs
+   - Per-phase commits with single PR at end
+   - Single commit and PR after all fixes
 
-5. **Dry Run First**: Modify the script to add `--dry-run` flag to execution step if you want to preview without making changes
+6. **Monitor Live Progress**: When using the web UI, watch execution progress in real-time with the activity log and statistics
 
 ### Troubleshooting
 
