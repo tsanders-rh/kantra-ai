@@ -2,6 +2,7 @@ package fixer
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -94,7 +95,7 @@ func TestBatchFixer_FixViolationBatch_MultipleBatches(t *testing.T) {
 	// Create 15 test files (will be split into 2 batches: 10 + 5)
 	var incidents []violation.Incident
 	for i := 0; i < 15; i++ {
-		testFile := filepath.Join(tmpDir, "test"+string(rune('0'+i))+".java")
+		testFile := filepath.Join(tmpDir, fmt.Sprintf("test_%d.java", i))
 		err := os.WriteFile(testFile, []byte("class Test {}"), 0644)
 		require.NoError(t, err)
 		incidents = append(incidents, violation.Incident{
@@ -405,7 +406,7 @@ func TestBatchFixer_Parallelism(t *testing.T) {
 	// Create 20 test files to trigger parallel processing
 	var incidents []violation.Incident
 	for i := 0; i < 20; i++ {
-		testFile := filepath.Join(tmpDir, "test_"+string(rune('a'+i))+".java")
+		testFile := filepath.Join(tmpDir, fmt.Sprintf("test_%d.java", i))
 		err := os.WriteFile(testFile, []byte("class Test {}"), 0644)
 		require.NoError(t, err)
 		incidents = append(incidents, violation.Incident{
