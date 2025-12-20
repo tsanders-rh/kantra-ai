@@ -189,7 +189,10 @@
                 </div>
                 <div class="modal-body">
                     <div class="settings-section">
-                        <h3>Confidence Filtering</h3>
+                        <h3>
+                            Confidence Filtering
+                            <i class="fas fa-info-circle info-icon" title="Filter AI fixes based on their confidence scores. Fixes below the threshold can be skipped, reviewed, or attempted anyway."></i>
+                        </h3>
                         <label class="settings-checkbox">
                             <input type="checkbox" id="setting-confidence-enabled" checked>
                             Enable confidence threshold filtering
@@ -210,14 +213,24 @@
                     </div>
 
                     <div class="settings-section">
-                        <h3>Verification</h3>
+                        <h3>
+                            Verification
+                            <i class="fas fa-info-circle info-icon" title="Automatically verify fixes by running builds or tests. Helps catch breaking changes early. Verification can run after each phase, violation, or at the end."></i>
+                        </h3>
                         <label class="settings-checkbox">
-                            <input type="checkbox" id="setting-run-build" checked>
-                            Run build after fixes
+                            <input type="checkbox" id="setting-run-verification" checked>
+                            Run verification after fixes
                         </label>
                         <div class="settings-field">
-                            <label>Build strategy:</label>
-                            <select id="setting-build-strategy">
+                            <label>Verification type:</label>
+                            <select id="setting-verification-type">
+                                <option value="build">Build</option>
+                                <option value="test">Test</option>
+                            </select>
+                        </div>
+                        <div class="settings-field">
+                            <label>Verification strategy:</label>
+                            <select id="setting-verification-strategy">
                                 <option value="at-end">At end of execution</option>
                                 <option value="per-phase">After each phase</option>
                                 <option value="per-violation">After each violation</option>
@@ -225,12 +238,15 @@
                         </div>
                         <label class="settings-checkbox">
                             <input type="checkbox" id="setting-fail-fast" checked>
-                            Fail fast on build errors
+                            Fail fast on verification errors
                         </label>
                     </div>
 
                     <div class="settings-section">
-                        <h3>Git Integration</h3>
+                        <h3>
+                            Git Integration
+                            <i class="fas fa-info-circle info-icon" title="Automatically create git commits and pull requests as fixes are applied. Commit strategies control when commits are created. PR comment threshold adds inline comments for low-confidence fixes."></i>
+                        </h3>
                         <label class="settings-checkbox">
                             <input type="checkbox" id="setting-create-commits">
                             Create commits
@@ -264,7 +280,10 @@
                     </div>
 
                     <div class="settings-section">
-                        <h3>Batch Processing</h3>
+                        <h3>
+                            Batch Processing
+                            <i class="fas fa-info-circle info-icon" title="Process multiple incidents in a single API call to reduce costs and improve performance. Batch size controls how many incidents are grouped together. Higher parallelism processes more batches concurrently."></i>
+                        </h3>
                         <label class="settings-checkbox">
                             <input type="checkbox" id="setting-batch-enabled" checked>
                             Enable batch processing

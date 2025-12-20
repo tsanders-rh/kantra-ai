@@ -1383,8 +1383,9 @@ Esc             Close modals
         document.getElementById('confidence-value').textContent = (settings.confidenceThreshold || 70) + '%';
         document.getElementById('setting-low-confidence-action').value = settings.lowConfidenceAction || 'skip';
 
-        document.getElementById('setting-run-build').checked = settings.runBuild !== false;
-        document.getElementById('setting-build-strategy').value = settings.buildStrategy || 'at-end';
+        document.getElementById('setting-run-verification').checked = settings.runVerification !== false;
+        document.getElementById('setting-verification-type').value = settings.verificationType || 'build';
+        document.getElementById('setting-verification-strategy').value = settings.verificationStrategy || 'at-end';
         document.getElementById('setting-fail-fast').checked = settings.failFast !== false;
 
         document.getElementById('setting-create-commits').checked = settings.createCommits || false;
@@ -1404,8 +1405,9 @@ Esc             Close modals
             confidenceThreshold: parseInt(document.getElementById('setting-confidence-threshold').value),
             lowConfidenceAction: document.getElementById('setting-low-confidence-action').value,
 
-            runBuild: document.getElementById('setting-run-build').checked,
-            buildStrategy: document.getElementById('setting-build-strategy').value,
+            runVerification: document.getElementById('setting-run-verification').checked,
+            verificationType: document.getElementById('setting-verification-type').value,
+            verificationStrategy: document.getElementById('setting-verification-strategy').value,
             failFast: document.getElementById('setting-fail-fast').checked,
 
             createCommits: document.getElementById('setting-create-commits').checked,
