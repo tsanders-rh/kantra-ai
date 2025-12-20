@@ -410,6 +410,22 @@ Use `--dry-run` to get cost estimates before applying fixes.
 
 ## Testing
 
+### Automated E2E Testing
+
+For manual end-to-end testing with a real codebase:
+
+```bash
+# Build and run the E2E test script
+go build -o kantra-ai ./cmd/kantra-ai
+./scripts/test-e2e.sh ~/Workspace/boat-fuel-tracker-j2ee
+```
+
+The script automates the entire workflow: analysis → planning → approval → execution → PR creation → cleanup.
+
+**See:** [Test Script Documentation](scripts/README.md)
+
+### Unit & Integration Tests
+
 See [TESTING.md](docs/guides/TESTING.md) for comprehensive testing instructions.
 
 ---
