@@ -103,6 +103,17 @@ During execution, monitor:
 - **Activity Log** - Real-time event stream
 - **Statistics** - Success/failure counts
 
+### Execution Summary
+
+After completion, review:
+
+- **Phases Executed** - Total count
+- **Successful/Failed Fixes** - Success rate
+- **Cost & Tokens** - Total API usage
+- **Duration** - Total execution time
+- **Git Commits** (if enabled) - SHAs, file counts, context
+- **Pull Requests** (if enabled) - PR numbers, clickable URLs, associated commits
+
 ## Settings Panel
 
 Configure before execution:

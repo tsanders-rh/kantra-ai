@@ -263,6 +263,15 @@ After execution completes, view:
 - Failed fixes count (if any)
 - Total cost and tokens used
 - Final duration
+- **Git Commits** (if `--git-commit` enabled):
+  - Shortened commit SHAs (7 characters)
+  - File count per commit
+  - Violation/phase context
+- **Pull Requests** (if `--create-pr` enabled):
+  - PR number and clickable URL
+  - PR title
+  - Violation/phase context
+  - Associated commit SHAs
 - Links to detailed reports
 - Option to return to plan view or close
 
