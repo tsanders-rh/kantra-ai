@@ -774,6 +774,8 @@ func (s *PlanServer) executePhases() {
 			"failed_fixes":     result.FailedFixes,
 			"total_cost":       result.TotalCost,
 			"total_tokens":     result.TotalTokens,
+			"commits":          result.Commits,
+			"prs":              result.PRs,
 		},
 	})
 }

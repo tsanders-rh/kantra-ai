@@ -1004,6 +1004,8 @@ Esc             Close modals
                         <div class="stat-label">Duration</div>
                     </div>
                 </div>
+                ${this.renderCommitsSection(data.commits)}
+                ${this.renderPRsSection(data.prs)}
                 <div class="summary-actions">
                     <button class="btn btn-primary" onclick="app.closeExecution()">
                         <i class="fas fa-check"></i> Done
@@ -1019,6 +1021,66 @@ Esc             Close modals
         if (cancelBtn) {
             cancelBtn.style.display = 'none';
         }
+    }
+
+    renderCommitsSection(commits) {
+        if (!commits || commits.length === 0) {
+            return '';
+        }
+
+        return `
+            <div class="summary-section">
+                <h4><i class="fas fa-code-branch"></i> Git Commits (${commits.length})</h4>
+                <div class="commits-list">
+                    ${commits.map(commit => {
+                        const shortSHA = commit.SHA && commit.SHA.length > 7 ? commit.SHA.substring(0, 7) : commit.SHA;
+                        const context = commit.ViolationID ? `(${commit.ViolationID})` :
+                                       commit.PhaseID ? `(${commit.PhaseID})` : '';
+                        return `
+                            <div class="commit-item">
+                                <span class="commit-sha">${this.escapeHtml(shortSHA || '')}</span>
+                                <span class="commit-files">${commit.FileCount || 0} file(s)</span>
+                                ${context ? `<span class="commit-context">${this.escapeHtml(context)}</span>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    renderPRsSection(prs) {
+        if (!prs || prs.length === 0) {
+            return '';
+        }
+
+        return `
+            <div class="summary-section">
+                <h4><i class="fas fa-code-pull-request"></i> Pull Requests (${prs.length})</h4>
+                <div class="prs-list">
+                    ${prs.map(pr => {
+                        const context = pr.ViolationID ? `(${pr.ViolationID})` :
+                                       pr.PhaseID ? `(${pr.PhaseID})` : '';
+                        const commitSHAs = pr.CommitSHAs && pr.CommitSHAs.length > 0
+                            ? pr.CommitSHAs.map(sha => sha.substring(0, 7)).join(', ')
+                            : '';
+                        return `
+                            <div class="pr-item">
+                                <div class="pr-header">
+                                    <span class="pr-number">#${pr.Number || 0}</span>
+                                    <a href="${this.escapeHtml(pr.URL || '')}" target="_blank" class="pr-url">
+                                        ${this.escapeHtml(pr.Title || 'View PR')}
+                                        <i class="fas fa-external-link-alt"></i>
+                                    </a>
+                                    ${context ? `<span class="pr-context">${this.escapeHtml(context)}</span>` : ''}
+                                </div>
+                                ${commitSHAs ? `<div class="pr-commits">Commits: ${this.escapeHtml(commitSHAs)}</div>` : ''}
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
     }
 
     closeExecution() {
