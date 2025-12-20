@@ -15,10 +15,13 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/tsanders/kantra-ai/pkg/confidence"
 	"github.com/tsanders/kantra-ai/pkg/executor"
 	"github.com/tsanders/kantra-ai/pkg/fixer"
+	"github.com/tsanders/kantra-ai/pkg/gitutil"
 	"github.com/tsanders/kantra-ai/pkg/planfile"
 	"github.com/tsanders/kantra-ai/pkg/provider"
+	"github.com/tsanders/kantra-ai/pkg/verifier"
 )
 
 //go:embed static/*
@@ -32,11 +35,25 @@ var upgrader = websocket.Upgrader{
 
 // ExecutionSettings holds user-configurable execution settings from the web UI.
 type ExecutionSettings struct {
+	// Confidence filtering
+	ConfidenceEnabled    bool    `json:"confidenceEnabled"`
+	ConfidenceThreshold  int     `json:"confidenceThreshold"` // 0-100 percentage
+	LowConfidenceAction  string  `json:"lowConfidenceAction"` // "skip", "prompt", "attempt"
+
+	// Verification
+	RunVerification       bool   `json:"runVerification"`
+	VerificationType      string `json:"verificationType"`      // "build", "test"
+	VerificationStrategy  string `json:"verificationStrategy"`  // "at-end", "per-phase", "per-violation"
+	FailFast              bool   `json:"failFast"`
+
+	// Git integration
 	CreateCommits      bool    `json:"createCommits"`
 	CommitStrategy     string  `json:"commitStrategy"`
 	CreatePR           bool    `json:"createPR"`
 	PRStrategy         string  `json:"prStrategy"`
 	PRCommentThreshold float64 `json:"prCommentThreshold"`
+
+	// Batch processing
 	BatchEnabled       bool    `json:"batchEnabled"`
 	BatchSize          int     `json:"batchSize"`
 	Parallelism        int     `json:"parallelism"`
@@ -309,9 +326,16 @@ func (s *PlanServer) handleExecuteStart(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 		// If parsing fails, use default settings (for backward compatibility)
 		reqBody.Settings = ExecutionSettings{
-			BatchEnabled: true,
-			BatchSize:    10,
-			Parallelism:  4,
+			ConfidenceEnabled:    false,
+			ConfidenceThreshold:  70,
+			LowConfidenceAction:  "skip",
+			RunVerification:      false,
+			VerificationType:     "build",
+			VerificationStrategy: "at-end",
+			FailFast:             false,
+			BatchEnabled:         true,
+			BatchSize:            10,
+			Parallelism:          4,
 		}
 	}
 
@@ -445,6 +469,37 @@ type ExecutionUpdate struct {
 	Data interface{} `json:"data"`
 }
 
+// mapConfidenceAction converts web UI action string to confidence.Action.
+// Web UI uses: "skip", "prompt", "attempt"
+// Backend uses: "skip", "manual-review-file", "warn-and-apply"
+func mapConfidenceAction(webAction string) confidence.Action {
+	switch webAction {
+	case "skip":
+		return confidence.ActionSkip
+	case "prompt":
+		return confidence.ActionManualReviewFile
+	case "attempt":
+		return confidence.ActionWarnAndApply
+	default:
+		return confidence.ActionSkip // Default to safest option
+	}
+}
+
+// mapVerificationStrategy converts web UI strategy string to verifier.VerificationStrategy.
+// Web UI uses: "at-end", "per-phase", "per-violation"
+// Backend uses: "at-end", "per-violation", "per-fix"
+// Note: "per-phase" maps to "per-violation" as closest equivalent
+func mapVerificationStrategy(webStrategy string) verifier.VerificationStrategy {
+	switch webStrategy {
+	case "at-end":
+		return verifier.StrategyAtEnd
+	case "per-phase", "per-violation":
+		return verifier.StrategyPerViolation
+	default:
+		return verifier.StrategyAtEnd // Default to safest option
+	}
+}
+
 // executePhases runs the plan execution in the background.
 func (s *PlanServer) executePhases() {
 	defer func() {
@@ -464,9 +519,16 @@ func (s *PlanServer) executePhases() {
 	settings := s.executionSettings
 	if settings == nil {
 		settings = &ExecutionSettings{
-			BatchEnabled: true,
-			BatchSize:    10,
-			Parallelism:  4,
+			ConfidenceEnabled:    false,
+			ConfidenceThreshold:  70,
+			LowConfidenceAction:  "skip",
+			RunVerification:      false,
+			VerificationType:     "build",
+			VerificationStrategy: "at-end",
+			FailFast:             false,
+			BatchEnabled:         true,
+			BatchSize:            10,
+			Parallelism:          4,
 		}
 	}
 
@@ -478,18 +540,127 @@ func (s *PlanServer) executePhases() {
 		GroupByFile:  true, // Always enabled for optimal token usage
 	}
 
+	// Build confidence config from settings
+	confidenceConfig := confidence.DefaultConfig()
+	confidenceConfig.Enabled = settings.ConfidenceEnabled
+	if settings.ConfidenceThreshold > 0 {
+		// Convert from percentage (0-100) to float (0.0-1.0)
+		confidenceConfig.Default = float64(settings.ConfidenceThreshold) / 100.0
+	}
+	confidenceConfig.OnLowConfidence = mapConfidenceAction(settings.LowConfidenceAction)
+
+	// Initialize git trackers if commits are enabled
+	var commitTracker *gitutil.CommitTracker
+	var verifiedTracker *gitutil.VerifiedCommitTracker
+	var prTracker *gitutil.PRTracker
+
+	if settings.CreateCommits && settings.CommitStrategy != "" {
+		strategy, err := gitutil.ParseStrategy(settings.CommitStrategy)
+		if err != nil {
+			s.BroadcastUpdate(ExecutionUpdate{
+				Type: "error",
+				Data: map[string]string{
+					"message": fmt.Sprintf("Invalid commit strategy: %v", err),
+				},
+			})
+			return
+		}
+
+		// If verification is enabled, create VerifiedCommitTracker
+		if settings.RunVerification {
+			verifyType, err := verifier.ParseVerificationType(settings.VerificationType)
+			if err != nil {
+				s.BroadcastUpdate(ExecutionUpdate{
+					Type: "error",
+					Data: map[string]string{
+						"message": fmt.Sprintf("Invalid verification type: %v", err),
+					},
+				})
+				return
+			}
+
+			verifyStrat := mapVerificationStrategy(settings.VerificationStrategy)
+
+			verifyConfig := verifier.Config{
+				Type:         verifyType,
+				Strategy:     verifyStrat,
+				WorkingDir:   s.inputPath,
+				FailFast:     settings.FailFast,
+				SkipOnDryRun: false,
+			}
+
+			verifiedTracker, err = gitutil.NewVerifiedCommitTracker(strategy, s.inputPath, s.provider.Name(), verifyConfig)
+			if err != nil {
+				s.BroadcastUpdate(ExecutionUpdate{
+					Type: "error",
+					Data: map[string]string{
+						"message": fmt.Sprintf("Failed to initialize verification: %v", err),
+					},
+				})
+				return
+			}
+			commitTracker = verifiedTracker.GetCommitTracker()
+		} else {
+			// No verification, just create regular CommitTracker
+			commitTracker = gitutil.NewCommitTracker(strategy, s.inputPath, s.provider.Name())
+		}
+	}
+
+	// Initialize PR tracker if enabled
+	if settings.CreatePR && settings.PRStrategy != "" {
+		parsedPRStrategy, err := gitutil.ParsePRStrategy(settings.PRStrategy)
+		if err != nil {
+			s.BroadcastUpdate(ExecutionUpdate{
+				Type: "error",
+				Data: map[string]string{
+					"message": fmt.Sprintf("Invalid PR strategy: %v", err),
+				},
+			})
+			return
+		}
+
+		// Get GitHub token from environment
+		githubToken := os.Getenv("GITHUB_TOKEN")
+
+		// Generate branch name
+		branchName := fmt.Sprintf("kantra-ai/remediation-%d", time.Now().Unix())
+
+		// Create PR config
+		prConfig := gitutil.PRConfig{
+			Strategy:           parsedPRStrategy,
+			BranchPrefix:       branchName,
+			GitHubToken:        githubToken,
+			CommentThreshold:   settings.PRCommentThreshold,
+		}
+
+		prTracker, err = gitutil.NewPRTracker(prConfig, s.inputPath, s.provider.Name(), progress)
+		if err != nil {
+			s.BroadcastUpdate(ExecutionUpdate{
+				Type: "error",
+				Data: map[string]string{
+					"message": fmt.Sprintf("Failed to initialize PR tracker: %v", err),
+				},
+			})
+			return
+		}
+	}
+
 	// Create executor config
 	execConfig := executor.Config{
-		PlanPath:           s.planPath,
-		InputPath:          s.inputPath,
-		Provider:           s.provider,
-		Progress:           progress,
-		DryRun:             false,
-		GitCommit:          settings.CommitStrategy,
-		CreatePR:           settings.CreatePR,
-		PRStrategy:         settings.PRStrategy,
-		PRCommentThreshold: settings.PRCommentThreshold,
-		BatchConfig:        batchConfig,
+		PlanPath:            s.planPath,
+		InputPath:           s.inputPath,
+		Provider:            s.provider,
+		Progress:            progress,
+		DryRun:              false,
+		GitCommit:           settings.CommitStrategy,
+		CreatePR:            settings.CreatePR,
+		PRStrategy:          settings.PRStrategy,
+		PRCommentThreshold:  settings.PRCommentThreshold,
+		BatchConfig:         batchConfig,
+		ConfidenceConfig:    confidenceConfig,
+		CommitTracker:       commitTracker,
+		VerifiedTracker:     verifiedTracker,
+		PRTracker:           prTracker,
 	}
 
 	exec, err := executor.New(execConfig)
@@ -592,4 +763,9 @@ func (w *WebSocketProgressWriter) EndPhase() {
 			"phase_index": w.phaseIndex,
 		},
 	})
+}
+
+// Printf implements gitutil.ProgressWriter interface
+func (w *WebSocketProgressWriter) Printf(format string, args ...interface{}) {
+	w.Info(format, args...)
 }
