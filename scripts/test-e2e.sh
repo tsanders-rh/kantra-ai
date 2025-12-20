@@ -4,7 +4,12 @@
 #
 # This script automates testing of the kantra-ai tool using a real codebase.
 # It creates a test branch, runs analysis, creates a simple migration plan,
-# executes fixes with PR creation, and provides cleanup helpers.
+# launches the interactive web UI for approval and execution, and provides
+# cleanup helpers.
+#
+# Documentation:
+#   Quick Start: scripts/test-e2e-README.md
+#   Full Guide:  scripts/README.md
 #
 # Usage:
 #   ./scripts/test-e2e.sh [test-codebase-path]

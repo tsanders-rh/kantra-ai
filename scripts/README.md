@@ -2,6 +2,8 @@
 
 Helper scripts for testing and development.
 
+> **Quick Start:** See [test-e2e-README.md](test-e2e-README.md) for a simple getting started guide.
+
 ## test-e2e.sh
 
 End-to-end test script for validating kantra-ai functionality with a real codebase.
