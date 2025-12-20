@@ -1451,7 +1451,7 @@ Esc             Close modals
         document.getElementById('setting-fail-fast').checked = settings.failFast !== false;
 
         document.getElementById('setting-create-commits').checked = settings.createCommits || false;
-        document.getElementById('setting-commit-strategy').value = settings.commitStrategy || 'single';
+        document.getElementById('setting-commit-strategy').value = settings.commitStrategy || 'per-violation';
         document.getElementById('setting-create-pr').checked = settings.createPR || false;
         document.getElementById('setting-pr-strategy').value = settings.prStrategy || 'per-phase';
         document.getElementById('setting-pr-comment-threshold').value = settings.prCommentThreshold || 0;
