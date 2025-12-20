@@ -386,7 +386,8 @@ func TestBatchFixer_ResolveFilePath(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := resolveAndValidateFilePath(tt.filePath, tt.inputDir)
 			require.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
+			// Normalize to forward slashes for cross-platform comparison
+			assert.Equal(t, tt.expected, filepath.ToSlash(result))
 		})
 	}
 }
