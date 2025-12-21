@@ -377,20 +377,23 @@ func (e *Executor) executePhase(ctx context.Context, phase *planfile.Phase) Phas
 
 			e.state.RecordIncidentFix(plannedViolation.ViolationID, incidentURI, fixResult.Cost)
 
+			// Create a copy to avoid pointer aliasing bug (all pointers would point to same loop variable)
+			fixResultCopy := fixResult
+
 			// Track for git commit if enabled
 			if e.config.VerifiedTracker != nil && !e.config.DryRun {
-				if err := e.config.VerifiedTracker.TrackFix(v, incident, &fixResult); err != nil {
+				if err := e.config.VerifiedTracker.TrackFix(v, incident, &fixResultCopy); err != nil {
 					e.config.Progress.Error("Git commit/verification failed: %v", err)
 				}
 			} else if e.config.CommitTracker != nil && !e.config.DryRun {
-				if err := e.config.CommitTracker.TrackFix(v, incident, &fixResult); err != nil {
+				if err := e.config.CommitTracker.TrackFix(v, incident, &fixResultCopy); err != nil {
 					e.config.Progress.Error("Git commit failed: %v", err)
 				}
 			}
 
 			// Track for PR if enabled
 			if e.config.PRTracker != nil && !e.config.DryRun {
-				if err := e.config.PRTracker.TrackForPR(v, incident, &fixResult); err != nil {
+				if err := e.config.PRTracker.TrackForPR(v, incident, &fixResultCopy); err != nil {
 					e.config.Progress.Error("PR tracking failed: %v", err)
 				}
 			}

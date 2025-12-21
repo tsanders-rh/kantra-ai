@@ -43,7 +43,7 @@ func ParseStrategy(s string) (CommitStrategy, error) {
 type FixRecord struct {
 	Violation violation.Violation
 	Incident  violation.Incident
-	Result    *fixer.FixResult
+	Result    fixer.FixResult // Store value, not pointer, to avoid aliasing bugs
 	Timestamp time.Time
 	PhaseID   string // Optional: Phase ID for per-phase PR strategy
 }
@@ -99,7 +99,7 @@ func (ct *CommitTracker) TrackFix(v violation.Violation, incident violation.Inci
 	record := FixRecord{
 		Violation: v,
 		Incident:  incident,
-		Result:    result,
+		Result:    *result, // Dereference pointer to store value copy
 		Timestamp: time.Now(),
 	}
 
@@ -148,6 +148,18 @@ func (ct *CommitTracker) commitPerIncident(record FixRecord) error {
 		return fmt.Errorf("failed to stage file for per-incident commit: %w", err)
 	}
 
+	// Check if there are actually any staged changes
+	hasChanges, err := HasStagedChanges(ct.workingDir)
+	if err != nil {
+		return fmt.Errorf("failed to check for staged changes: %w", err)
+	}
+
+	if !hasChanges {
+		// No changes to commit (file was already committed)
+		fmt.Printf("  ⏭️  Skipping commit for %s (no changes)\n", record.Result.FilePath)
+		return nil
+	}
+
 	// Create commit message
 	message := FormatPerIncidentMessage(
 		record.Violation.ID,
@@ -191,6 +203,20 @@ func (ct *CommitTracker) commitViolation(violationID string) error {
 		if err := StageFile(ct.workingDir, fix.Result.FilePath); err != nil {
 			return fmt.Errorf("failed to stage file for violation commit: %w", err)
 		}
+	}
+
+	// Check if there are actually any staged changes
+	hasChanges, err := HasStagedChanges(ct.workingDir)
+	if err != nil {
+		return fmt.Errorf("failed to check for staged changes: %w", err)
+	}
+
+	if !hasChanges {
+		// No changes to commit (file was already committed by previous violation)
+		fmt.Printf("⏭️  Skipping commit for violation %s (no changes to commit)\n", violationID)
+		// Clear the fixes for this violation
+		delete(ct.fixesByViolation, violationID)
+		return nil
 	}
 
 	// Create commit message

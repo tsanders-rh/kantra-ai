@@ -124,7 +124,7 @@ func TestCommitTracker_TrackFix_PerViolation(t *testing.T) {
 		// Track first violation
 		err := tracker.trackForPerViolation(FixRecord{
 			Violation: v1,
-			Result:    &fixer.FixResult{FilePath: "file1.java"},
+			Result:    fixer.FixResult{FilePath: "file1.java"},
 		})
 		assert.NoError(t, err)
 		assert.Equal(t, "violation-001", tracker.lastViolationID)
@@ -133,7 +133,7 @@ func TestCommitTracker_TrackFix_PerViolation(t *testing.T) {
 		// Track another incident of same violation
 		err = tracker.trackForPerViolation(FixRecord{
 			Violation: v1,
-			Result:    &fixer.FixResult{FilePath: "file2.java"},
+			Result:    fixer.FixResult{FilePath: "file2.java"},
 		})
 		assert.NoError(t, err)
 		assert.Len(t, tracker.fixesByViolation["violation-001"], 2)
@@ -146,9 +146,9 @@ func TestCommitTracker_TrackFix_PerViolation(t *testing.T) {
 		v1 := violation.Violation{ID: "v1"}
 
 		// Errors expected since /test/dir doesn't exist, but we're testing tracking logic
-		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: &fixer.FixResult{}})
-		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: &fixer.FixResult{}})
-		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: &fixer.FixResult{}})
+		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: fixer.FixResult{}})
+		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: fixer.FixResult{}})
+		_ = tracker.trackForPerViolation(FixRecord{Violation: v1, Result: fixer.FixResult{}})
 
 		// All three fixes should be accumulated for v1
 		assert.Len(t, tracker.fixesByViolation["v1"], 3)

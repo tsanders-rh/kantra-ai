@@ -25,7 +25,7 @@ func TestFormatPerViolationMessage(t *testing.T) {
 				URI:        "file:///src/File1.java",
 				LineNumber: 10,
 			},
-			Result: &fixer.FixResult{
+			Result: fixer.FixResult{
 				FilePath:   "src/File1.java",
 				Cost:       0.01,
 				TokensUsed: 100,
@@ -38,7 +38,7 @@ func TestFormatPerViolationMessage(t *testing.T) {
 				URI:        "file:///src/File2.java",
 				LineNumber: 25,
 			},
-			Result: &fixer.FixResult{
+			Result: fixer.FixResult{
 				FilePath:   "src/File2.java",
 				Cost:       0.02,
 				TokensUsed: 150,
@@ -107,7 +107,7 @@ func TestFormatAtEndMessage(t *testing.T) {
 		"violation-001": {
 			{
 				Violation: v1,
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/File1.java",
 					Cost:       0.01,
 					TokensUsed: 100,
@@ -115,7 +115,7 @@ func TestFormatAtEndMessage(t *testing.T) {
 			},
 			{
 				Violation: v1,
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/File2.java",
 					Cost:       0.02,
 					TokensUsed: 150,
@@ -125,7 +125,7 @@ func TestFormatAtEndMessage(t *testing.T) {
 		"violation-002": {
 			{
 				Violation: v2,
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/File3.java",
 					Cost:       0.03,
 					TokensUsed: 200,
@@ -158,7 +158,7 @@ func TestFormatPerViolationMessage_LongDescription(t *testing.T) {
 	fixes := []FixRecord{
 		{
 			Violation: v,
-			Result: &fixer.FixResult{
+			Result: fixer.FixResult{
 				FilePath:   "test.java",
 				Cost:       0.01,
 				TokensUsed: 50,
@@ -190,7 +190,7 @@ func TestFormatPerViolationMessage_ZeroCostAndTokens(t *testing.T) {
 	fixes := []FixRecord{
 		{
 			Violation: v,
-			Result: &fixer.FixResult{
+			Result: fixer.FixResult{
 				FilePath:   "test.java",
 				Cost:       0.0,
 				TokensUsed: 0,

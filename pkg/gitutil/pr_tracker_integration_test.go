@@ -241,7 +241,7 @@ func TestPRTracker_CreatePRAtEnd_DryRun(t *testing.T) {
 				{
 					Violation: violation.Violation{ID: "v1", Description: "Test"},
 					Incident:  violation.Incident{LineNumber: 10},
-					Result:    &fixer.FixResult{FilePath: "test.java", Cost: 0.01, TokensUsed: 10},
+					Result:    fixer.FixResult{FilePath: "test.java", Cost: 0.01, TokensUsed: 10},
 					Timestamp: time.Now(),
 				},
 			},

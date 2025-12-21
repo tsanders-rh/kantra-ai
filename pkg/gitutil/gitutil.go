@@ -95,6 +95,22 @@ func HasUncommittedChanges(dir string) (bool, error) {
 	return len(strings.TrimSpace(string(output))) > 0, nil
 }
 
+// HasStagedChanges checks if there are staged changes ready to be committed
+func HasStagedChanges(dir string) (bool, error) {
+	cmd := exec.Command("git", "diff", "--cached", "--quiet")
+	cmd.Dir = dir
+	err := cmd.Run()
+	if err != nil {
+		// Exit code 1 means there ARE changes, exit code 0 means no changes
+		if exitErr, ok := err.(*exec.ExitError); ok && exitErr.ExitCode() == 1 {
+			return true, nil
+		}
+		return false, fmt.Errorf("failed to check staged changes: %w", err)
+	}
+	// Exit code 0 means no staged changes
+	return false, nil
+}
+
 // StageFile stages a specific file for commit
 func StageFile(workingDir string, filePath string) error {
 	// Validate and sanitize the file path to prevent command injection

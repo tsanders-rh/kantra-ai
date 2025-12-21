@@ -52,7 +52,7 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 				Incident: violation.Incident{
 					LineNumber: 10,
 				},
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/Test.java",
 					Cost:       0.05,
 					TokensUsed: 100,
@@ -92,7 +92,7 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 				Incident: violation.Incident{
 					LineNumber: 10,
 				},
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/Main.java",
 					Cost:       0.03,
 					TokensUsed: 50,
@@ -108,7 +108,7 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 				Incident: violation.Incident{
 					LineNumber: 20,
 				},
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "src/Main.java",
 					Cost:       0.04,
 					TokensUsed: 60,
@@ -131,12 +131,12 @@ func TestFormatPRBodyForViolation(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1"},
 				Incident:  violation.Incident{LineNumber: 5},
-				Result:    &fixer.FixResult{FilePath: "a.java", Cost: 0.01, TokensUsed: 10},
+				Result:    fixer.FixResult{FilePath: "a.java", Cost: 0.01, TokensUsed: 10},
 			},
 			{
 				Violation: violation.Violation{ID: "v1"},
 				Incident:  violation.Incident{LineNumber: 15},
-				Result:    &fixer.FixResult{FilePath: "b.java", Cost: 0.02, TokensUsed: 20},
+				Result:    fixer.FixResult{FilePath: "b.java", Cost: 0.02, TokensUsed: 20},
 			},
 		}
 
@@ -248,7 +248,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 						Effort:      1,
 					},
 					Incident: violation.Incident{LineNumber: 10},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file1.java",
 						Cost:       0.05,
 						TokensUsed: 100,
@@ -281,7 +281,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 						Category:    "mandatory",
 						Effort:      1,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file1.java",
 						Cost:       0.05,
 						TokensUsed: 100,
@@ -294,7 +294,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 						Category:    "mandatory",
 						Effort:      1,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file2.java",
 						Cost:       0.03,
 						TokensUsed: 50,
@@ -309,7 +309,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 						Category:    "optional",
 						Effort:      2,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file3.java",
 						Cost:       0.10,
 						TokensUsed: 200,
@@ -346,7 +346,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 						Description: longDesc,
 						Category:    "mandatory",
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file.java",
 						Cost:       0.01,
 						TokensUsed: 10,
@@ -372,7 +372,7 @@ func TestFormatPRBodyAtEnd(t *testing.T) {
 					Description: "Test",
 					Category:    "mandatory",
 				},
-				Result: &fixer.FixResult{
+				Result: fixer.FixResult{
 					FilePath:   "file" + string(rune(i)) + ".java",
 					Cost:       0.01,
 					TokensUsed: 10,
@@ -429,7 +429,7 @@ func TestFormatPRBodyForPhase(t *testing.T) {
 						Effort:      2,
 					},
 					Incident: violation.Incident{LineNumber: 10},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file1.java",
 						Cost:       0.05,
 						TokensUsed: 100,
@@ -465,7 +465,7 @@ func TestFormatPRBodyForPhase(t *testing.T) {
 						Category:    "mandatory",
 						Effort:      1,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file1.java",
 						Cost:       0.05,
 						TokensUsed: 100,
@@ -480,7 +480,7 @@ func TestFormatPRBodyForPhase(t *testing.T) {
 						Category:    "mandatory",
 						Effort:      1,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file2.java",
 						Cost:       0.03,
 						TokensUsed: 50,
@@ -497,7 +497,7 @@ func TestFormatPRBodyForPhase(t *testing.T) {
 						Category:    "optional",
 						Effort:      3,
 					},
-					Result: &fixer.FixResult{
+					Result: fixer.FixResult{
 						FilePath:   "file3.java",
 						Cost:       0.10,
 						TokensUsed: 200,

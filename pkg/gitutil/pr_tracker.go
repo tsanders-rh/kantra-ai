@@ -197,7 +197,7 @@ func (pt *PRTracker) TrackForPRWithPhase(v violation.Violation, incident violati
 	record := FixRecord{
 		Violation: v,
 		Incident:  incident,
-		Result:    result,
+		Result:    *result, // Dereference pointer to store value copy
 		Timestamp: time.Now(),
 		PhaseID:   phaseID,
 	}
@@ -725,7 +725,7 @@ func (pt *PRTracker) addLowConfidenceComments(prNumber int, fixes []FixRecord) e
 	// Filter for low-confidence fixes
 	lowConfidenceFixes := []FixRecord{}
 	for _, fix := range fixes {
-		if fix.Result != nil && fix.Result.Confidence > 0 && fix.Result.Confidence < pt.config.CommentThreshold {
+		if fix.Result.Confidence > 0 && fix.Result.Confidence < pt.config.CommentThreshold {
 			lowConfidenceFixes = append(lowConfidenceFixes, fix)
 		}
 	}

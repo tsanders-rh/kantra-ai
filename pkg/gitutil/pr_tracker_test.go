@@ -232,7 +232,7 @@ func TestPendingPR_Structure(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "test-001"},
 				Incident:  violation.Incident{LineNumber: 42},
-				Result:    &fixer.FixResult{FilePath: "test.java"},
+				Result:    fixer.FixResult{FilePath: "test.java"},
 				Timestamp: time.Now(),
 			},
 		},
@@ -434,7 +434,7 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
 				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
 			},
 		}
 
@@ -457,7 +457,7 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
 				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
 			},
 		}
 
@@ -489,12 +489,12 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
 				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.9},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.9},
 			},
 			{
 				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
 				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.85},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.85},
 			},
 		}
 
@@ -542,22 +542,22 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
 				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.9}, // Above threshold - no comment
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.9}, // Above threshold - no comment
 			},
 			{
 				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
 				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.7}, // Below threshold - comment
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.7}, // Below threshold - comment
 			},
 			{
 				Violation: violation.Violation{ID: "v3", Description: "Test violation 3"},
 				Incident:  violation.Incident{LineNumber: 3, URI: "file://test.java:3"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5}, // Below threshold - comment
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.5}, // Below threshold - comment
 			},
 			{
 				Violation: violation.Violation{ID: "v4", Description: "Test violation 4"},
 				Incident:  violation.Incident{LineNumber: 4, URI: "file://test.java:4"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0}, // No confidence - no comment
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0}, // No confidence - no comment
 			},
 		}
 
@@ -612,17 +612,17 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "v1", Description: "Test violation"},
 				Incident:  violation.Incident{LineNumber: 1, URI: "file://test.java:1"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.7},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.7},
 			},
 			{
 				Violation: violation.Violation{ID: "v2", Description: "Test violation 2"},
 				Incident:  violation.Incident{LineNumber: 2, URI: "file://test.java:2"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.6},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.6},
 			},
 			{
 				Violation: violation.Violation{ID: "v3", Description: "Test violation 3"},
 				Incident:  violation.Incident{LineNumber: 3, URI: "file://test.java:3"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.5},
 			},
 		}
 
@@ -671,7 +671,7 @@ func TestPRTracker_addLowConfidenceComments(t *testing.T) {
 			{
 				Violation: violation.Violation{ID: "deprecated-api", Description: "Use of deprecated API"},
 				Incident:  violation.Incident{LineNumber: 10, URI: "file://test.java:10"},
-				Result:    &fixer.FixResult{FilePath: "test.java", Confidence: 0.65},
+				Result:    fixer.FixResult{FilePath: "test.java", Confidence: 0.65},
 			},
 		}
 
