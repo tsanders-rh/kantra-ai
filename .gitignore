@@ -45,3 +45,4 @@ examples/*/src/*.py.bak
 # Keep example configs
 !.kantra-ai.example.yaml
 !**/.kantra-ai-example.yaml
+.metadata/
